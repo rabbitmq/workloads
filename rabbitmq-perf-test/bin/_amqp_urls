@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+set -e
+
+export PATH=/home/vcap/app/bin:$PATH
+
+jq -c -r '.["user-provided"] | select(.[].name=="rmq") | .[0].credentials.urls | join(",")' <<< "${VCAP_SERVICES:?must be set}"
