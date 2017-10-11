@@ -1,0 +1,32 @@
+path: ../rabbitmq-perf-test
+command: ./bin/start
+
+buildpack: java_buildpack
+memory: 512M
+disk_quota: 256M
+
+no-route: true
+health-check-type: none
+
+env:
+  METRICS_SAMPLING_INTEVAL: 30
+  PRODUCERS: 0
+  CONSUMERS: 0
+  MSG_SIZE: 1000
+  QUEUE: perf-test
+  ROUTING_KEY: perf-test
+  AUTO_ACK: true
+  AUTO_DELETE: false
+  QUEUE_ARGS: "x-max-length=250000"
+
+services:
+  - rmq
+
+applications:
+  - name: produce
+    env:
+      PRODUCERS: 1
+
+  - name: consume
+    env:
+      CONSUMERS: 1

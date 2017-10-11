@@ -4,16 +4,26 @@ set -e
 
 export PATH=/home/vcap/app/bin:$PATH
 
+declare -a perftest_opts
+
+[ -z "$MULTI_ACK_EVERY" ] ||
+  perftest_opts+=(--multiAckEvery "$MULTI_ACK_EVERY")
+
+[ -z "$QOS" ] ||
+  perftest_opts+=(--qos "$QOS")
+
+[ -z "$AUTO_ACK" ] ||
+  perftest_opts+=(--autoack)
+
 _start_command com.rabbitmq.perf.PerfTest \
   --uris "$(_amqp_urls)" \
-  --multiAckEvery "${MULTI_ACK_EVERY:?must be set}" \
   --size "${MSG_SIZE:?must be set}" \
   --interval "${METRICS_SAMPLING_INTEVAL:?must be set}" \
-  --qos "${QOS:?must be set}" \
   --queue "${QUEUE:?must be set}" \
   --consumers "${CONSUMERS:?must be set}" \
   --producers "${PRODUCERS:?must be set}" \
   --routingKey "${ROUTING_KEY:?must be set}" \
   --autoDelete "${AUTO_DELETE:=true}" \
   --queueArgs "$QUEUE_ARGS" \
+  "${perftest_opts[@]}" \
   --predeclared
