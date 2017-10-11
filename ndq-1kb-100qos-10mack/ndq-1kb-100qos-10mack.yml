@@ -8,11 +8,11 @@ instance_groups:
     properties:
       erlang:
         cookie: ((erlang_cookie))
-        version: 19.3.6.2
+        version: 20.1
       rabbitmq-management:
         rates_modes: basic
       rabbitmq-server:
-        additional_erl_args: '+d'
+        additional_erl_args: ''
         admin_pass: ((rabbitmq_server_admin_pass))
         admin_user: admin
         cluster_keepalive_interval: 10000
@@ -22,11 +22,11 @@ instance_groups:
         credit_flow_default_credit: "{400, 200}"
         debug: true
         delegate_count: 16
-        disk_free_limit: "{mem_relative, 1.0}"
+        disk_free_limit: "{mem_relative, 0.2}"
         distribution_buffer_size: 128000
         fhc_read_buffering: false
         fhc_write_buffering: true
-        generic-unix-url: https://github.com/rabbitmq/rabbitmq-server/releases/download/rabbitmq_v3_6_13/rabbitmq-server-generic-unix-3.6.13.tar.xz
+        generic-unix-url: https://github.com/rabbitmq/rabbitmq-server/releases/download/rabbitmq_v3_6_12/rabbitmq-server-generic-unix-3.6.12.tar.xz
         hipe_compile: false
         lazy_queue_explicit_gc_run_operation_threshold: 1000
         log_levels: info
@@ -40,7 +40,7 @@ instance_groups:
         msg_store_io_batch_size: 4096
         num_tcp_acceptors: 10
         queue_explicit_gc_run_operation_threshold: 1000
-        queue_index_embed_msgs_below: 409
+        queue_index_embed_msgs_below: 4096
         queue_master_locator: client-local
         scheduler_bind_type: db
         vm_memory_high_watermark: 0.5
@@ -54,7 +54,7 @@ instance_groups:
       include_bosh_tags: true
       integrations:
         rabbitmq:
-          init_config:
+          init_config: 
           instances:
           - rabbitmq_api_url: http://127.0.0.1:15672/api/
             rabbitmq_pass: ((rabbitmq_server_admin_pass))
@@ -73,7 +73,7 @@ instance_groups:
           port: 15672
           registration_interval: 30s
           uris:
-          - ndq-1kb-100qos-10mack
+          - ndq-1kb-100qos-10mack.gcp.rabbitmq.com
         - name: netdata-ndq-1kb-100qos-10mack
           port: 19999
           prepend_instance_index: true
@@ -88,9 +88,10 @@ instance_groups:
   name: rmq
   networks:
   - name: private
-  persistent_disk_type: 10GB
+  persistent_disk_type: 5GB
   stemcell: bosh-google-kvm-ubuntu-trusty-go_agent
-  vm_type: n1-standard-4
+  vm_type: n1-highcpu-4
+  vm_extensions: [preemptible]
 name: ndq-1kb-100qos-10mack
 releases:
 - name: rabbitmq-server
