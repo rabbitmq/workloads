@@ -18,7 +18,7 @@ env:
   ROUTING_KEY: perf-test
   MULTI_ACK_EVERY: 10
   AUTO_DELETE: false
-  QUEUE_ARGS: "x-max-length=1000000"
+  QUEUE_ARGS: "x-max-length=250000"
 
 services:
   - rmq

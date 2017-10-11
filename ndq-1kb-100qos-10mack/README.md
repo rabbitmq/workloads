@@ -1,12 +1,10 @@
 ## Non-durable queue, small messages, consumer ACKs
 
 ```
-| ERLANG               | 19.3.6.2      |
-| RABBITMQ             | 3.6.13-dev    |
-| GCP INSTANCE TYPE    | n1-standard-4 |
+| GCP INSTANCE TYPE    | n1-highcpu-4  |
 | -------------------- | ------------  |
 | QUEUE                | non-durable   |
-| MAX-LENGTH           | 1,000,000     |
+| MAX-LENGTH           | 250,000       |
 | -------------------- | ------------  |
 | PUBLISHERS           | 2             |
 | PUBLISHER RATE MSG/S | ∞             |
@@ -44,8 +42,8 @@ At some point, RabbitMQ will not be able to release enough memory to clear the m
 
 Since we do not want our publishers blocked, our only other option is to start dropping messages [\[2\]](#queues-dont-fix-overload).
 
-We limit the number of messages in our queue to 1 million.
-Once there are 1 million messages in the queue, the queue will start dropping messages from the head, meaning the oldest messages will be dropped first.
+We limit the number of messages in our queue to 250,000.
+Once there are 250,000 messages in the queue, the queue will start dropping messages from the head, meaning the oldest messages will be dropped first.
 This will reduce performance since the queue process has more work to do, but it will keep the system as a whole in a stable, non-blocked state.
 The producers will not be blocked, as would be the case if the memory alarm got triggered, so messages will continue flowing, even if at a reduced rate.
 
