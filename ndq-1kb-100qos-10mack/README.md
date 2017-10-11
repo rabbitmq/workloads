@@ -1,4 +1,6 @@
-## Non-durable queue, small messages, consumer ACKs
+## Non-durable queue, 1KB messages, consumer multi-ACKs
+
+![](metrics.png)
 
 ```
 | GCP INSTANCE TYPE    | n1-highcpu-4  |

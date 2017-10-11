@@ -22,7 +22,7 @@ instance_groups:
         credit_flow_default_credit: "{400, 200}"
         debug: true
         delegate_count: 16
-        disk_free_limit: "{mem_relative, 0.2}"
+        disk_free_limit: "{mem_relative, 1.0}"
         distribution_buffer_size: 128000
         fhc_read_buffering: false
         fhc_write_buffering: true
@@ -91,7 +91,8 @@ instance_groups:
   persistent_disk_type: 5GB
   stemcell: bosh-google-kvm-ubuntu-trusty-go_agent
   vm_type: n1-highcpu-4
-  vm_extensions: [preemptible]
+  vm_extensions:
+  - preemptible
 name: ndq-1kb-100qos-10mack
 releases:
 - name: rabbitmq-server
