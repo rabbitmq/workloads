@@ -98,7 +98,7 @@ releases:
 - name: rabbitmq-server
   version: 0.11.0
   url: https://github.com/rabbitmq/rabbitmq-server-boshrelease/releases/download/v0.11.0/rabbitmq-server-0.11.0.tgz
-  sha1: TBC
+  sha1: 6b3e67c4d5903437ac41dacf3b313a5b0f7f91f5
 - name: datadog-agent
   sha1: fe8dc3e0a6dd058dfca81d2f927c3b93b4c92f80
   url: https://github.com/onemedical/datadog-agent-boshrelease/releases/download/v5.8.5.5/datadog-agent-5.8.5.5.tgz
