@@ -15,6 +15,12 @@ declare -a perftest_opts
 [ -z "$AUTO_ACK" ] ||
   perftest_opts+=(--autoack)
 
+[ -z "$CHANNELS_PER_PRODUCER" ] ||
+  perftest_opts+=(--producerChannelCount "$CHANNELS_PER_PRODUCER")
+
+[ -z "$CHANNELS_PER_CONSUMER" ] ||
+  perftest_opts+=(--consumerChannelCount "$CHANNELS_PER_CONSUMER")
+
 _start_command com.rabbitmq.perf.PerfTest \
   --uris "$(_amqp_urls)" \
   --size "${MSG_SIZE:?must be set}" \
