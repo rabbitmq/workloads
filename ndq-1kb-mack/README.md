@@ -1,22 +1,55 @@
-## Non-durable queue, 1KB messages, consumer multi-ACKs
+## Use-case
 
-![](metrics.png)
+### Messages are ordered
 
-```
-| GCP INSTANCE TYPE    | n1-highcpu-4  |
-| -------------------- | ------------  |
+In order for message order to be preserved, we must use a single RabbitMQ queue.
+
+### Messages can be lost
+
+To achieve maximum throughput, we only keep messages in memory and use a single RabbitMQ node.
+We disable message paging to disk and limit the queue length so that memory growth is bounded.
+
+### Consumer confirms
+
+We cannot flood consumers with messages, consumers must acknowledge messages as they get processed.
+
+## Setup
+
+We limit the size of messages to 1KB since it's a sensible default that is most likely to exist in real-world scenarios.
+
+To ensure messages are only kept in memory, we publish transient messages to a non-durable queue.
+We disable paging to disk via `vm_memory_high_watermark_paging_ratio` and limit the number of messages in the queue via `x-max-length`.
+As a precaution, we set the `vm_memory_high_watermark` to half the available RAM.
+Reaching the memory high watermark is unlikely, we set `x-max-length`.
+
+To achieve maximum message throughput, consumers acknowledge messages in batches of 50 and prefetch messages in batches of 200.
+These numbers are specific to our environment, they will not be optimal for any other environment.
+
+Our RabbitMQ node has 8 CPU cores, which translates to 8 Erlang schedulers.
+To achieve optimal Erlang scheduler utilization, we have 1 producer and 1 consumer with 1 connection & 1 channel each.
+This means that we have 2 connection processes, 2 channel processes & 1 queue process (5 processes in total), spread across 8 Erlang schedulers.
+Since our use-case is CPU & network-intensive, we chose an n1-highcpu-8 instance type.
+
+Here is a summary of our configuration:
+
+| PROPERTY             | VALUE         |
+| -------------------- | ------------- |
+| GCP INSTANCE TYPE    | n1-highcpu-8  |
 | QUEUE                | non-durable   |
-| MAX-LENGTH           | 250,000       |
-| -------------------- | ------------  |
-| PUBLISHERS           | 2             |
-| PUBLISHER RATE MSG/S | ∞             |
+| QUEUE MAX-LENGTH     | 250,000       |
+| PUBLISHERS           | 1             |
+| PUBLISHER RATE MSG/S | unlimited     |
 | MSG SIZE             | 1000          |
-| -------------------- | ------------  |
-| CONSUMERS            | 2             |
-| CONSUMER RATE MSG/S  | ∞             |
-| QOS (PREFETCH)       | 100           |
-| MULTI-ACK            | every 10 msgs |
-```
+| CONSUMERS            | 1             |
+| CONSUMER RATE MSG/S  | unlimited     |
+| QOS (PREFETCH)       | 200           |
+| MULTI-ACK            | every 50 msgs |
+
+## Observations
+
+![](ndq-1kb-mack.png)
+
+## Details
 
 ### `vm_memory_high_watermark_paging_ratio`
 
@@ -49,24 +82,13 @@ Once there are 250,000 messages in the queue, the queue will start dropping mess
 This will reduce performance since the queue process has more work to do, but it will keep the system as a whole in a stable, non-blocked state.
 The producers will not be blocked, as would be the case if the memory alarm got triggered, so messages will continue flowing, even if at a reduced rate.
 
-### Consumer Bias
+### Links
 
-The consumer bias ensures that when a queue is under pressure from both consumers and producers, it prioritises consumers.
-If it didn't, a queue with a backlog of messages would never make progress on its backlog, since both produce and consume operations would have the same priority.
-We all know that the fastest queue is an empty queue [\[3\]](#2.6.1-performance-of-queues), so the quicker a queue becomes empty, the quicker it reaches peak performance.
-The reason for this is simple: when the queue is empty, producer channels send messages directly to consumer channels.
-
-The consumer bias that was introduced in RabbitMQ 3.3 [\[4\]](#3.3-consumer-bias) had a consume to produce ratio of `1.1:1`, meaning that for every 1 new message, deliver at least 1.1 messages.
-This ratio would result in slow progress on queue message backlogs.
-
-In 3.6.13 we changed the consume to produce ratio to `2:1`, meaning that for every 1 new message, deliver at least 2 messages.
-
-We have experimented with removing the consumer bias, since it complicates the queue's hot code path and therefore reduces throughput, but PerfTest benchmarks proved that this has a detrimental effect [\[5\]](#rabbitmq-server-1378).
+* [RabbitMQ Management](https://ndq-1kb-mack.gcp.rabbitmq.com/)
+* [Netdata dashboard](https://0-netdata-ndq-1kb-mack.gcp.rabbitmq.com/)
+* [DataDog dashboard](https://p.datadoghq.com/sb/eac1d6667-5abde23a53)
 
 ### Notes
 
 * <a name="3.6.11-mem">\[1\]</a>: [ANN Default node RAM consumption calculation strategy will change in 3.6.11](https://groups.google.com/forum/#!msg/rabbitmq-users/TVZt45O3WzU/jkG4SK_rAQAJ)
 * <a name="queues-dont-fix-overload">\[2\]</a>: [Queues Don't Fix Overload](https://ferd.ca/queues-don-t-fix-overload.html)
-* <a name="2.6.1-performance-of-queues">\[3\]</a>: [Performance of Queues: when less is more](http://www.rabbitmq.com/blog/2011/10/27/performance-of-queues-when-less-is-more/)
-* <a name="3.3-consumer-bias">\[4\]</a>: [Consumer Bias in RabbitMQ 3.3](http://www.rabbitmq.com/blog/2014/04/10/consumer-bias-in-rabbitmq-3-3/)
-* <a name="rabbitmq-server-1378">\[5\]</a>: [Remove consumer bias & allow queues under max load to drain quickly](https://github.com/rabbitmq/rabbitmq-server/pull/1378)
