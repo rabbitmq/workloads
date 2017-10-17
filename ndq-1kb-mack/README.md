@@ -84,7 +84,7 @@ The producers will not be blocked, as would be the case if the memory alarm got 
 
 ### Links
 
-* [RabbitMQ Management](https://ndq-1kb-mack.gcp.rabbitmq.com/)
+* [RabbitMQ Management](https://ndq-1kb-mack.gcp.rabbitmq.com/) - username **demo** &amp; password **demo**
 * [Netdata dashboard](https://0-netdata-ndq-1kb-mack.gcp.rabbitmq.com/)
 * [DataDog dashboard](https://p.datadoghq.com/sb/eac1d6667-5abde23a53)
 
