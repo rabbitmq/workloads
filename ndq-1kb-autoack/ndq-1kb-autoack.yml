@@ -22,7 +22,7 @@ instance_groups:
         credit_flow_default_credit: "{400, 200}"
         debug: true
         delegate_count: 16
-        disk_free_limit: "{mem_relative, 1.0}"
+        disk_free_limit: "{mem_relative, 0.5}"
         distribution_buffer_size: 128000
         fhc_read_buffering: false
         fhc_write_buffering: true
@@ -44,7 +44,7 @@ instance_groups:
         queue_master_locator: client-local
         scheduler_bind_type: db
         vm_memory_high_watermark: 0.5
-        vm_memory_high_watermark_paging_ratio: 100.0 # never page messages to disk
+        vm_memory_high_watermark_paging_ratio: 100
       rabbitmq-trust-store:
         directory: "/var/vcap/store/rabbitmq-server/trust-store/whitelist"
     release: rabbitmq-server
@@ -92,7 +92,7 @@ instance_groups:
   stemcell: bosh-google-kvm-ubuntu-trusty-go_agent
   vm_extensions:
   - preemptible
-  vm_type: n1-highcpu-4
+  vm_type: n1-highcpu-8
 name: ndq-1kb-autoack
 releases:
 - name: rabbitmq-server

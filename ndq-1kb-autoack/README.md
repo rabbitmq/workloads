@@ -1,20 +1,50 @@
-## Non-durable queue, 1KB messages, consumer auto-ack
+## Use-case
 
-![](metrics.png)
+### Messages are ordered
 
-```
-| GCP INSTANCE TYPE    | n1-highcpu-4  |
-| -------------------- | ------------  |
+In order for message order to be preserved, we must use a single RabbitMQ queue.
+
+### Messages can be lost
+
+To achieve maximum throughput, we only keep messages in memory and use a single RabbitMQ node.
+We disable message paging to disk and limit the queue length so that memory growth is bounded.
+
+### Auto-confirms
+
+To achieve maximum throughput, we do not wait for consumers to confirm messages.
+
+## Setup
+
+We limit the size of messages to 1KB since it's a sensible default that is most likely to exist in real-world scenarios.
+
+To ensure messages are only kept in memory, we publish transient messages to a non-durable queue.
+We disable paging to disk via `vm_memory_high_watermark_paging_ratio` and limit the number of messages in the queue via `x-max-length`.
+As a precaution, we set the `vm_memory_high_watermark` to half the available RAM.
+Reaching the memory high watermark is unlikely, we set `x-max-length`.
+
+To achieve maximum message throughput, RabbitMQ will deliver messages as fast as possible and not wait for consumers to acknowledge when messages get processed.
+
+Our RabbitMQ node has 8 CPU cores, which translates to 8 Erlang schedulers.
+To achieve optimal Erlang scheduler utilization, we have 1 producer and 1 consumer with 1 connection & 1 channel each.
+This means that we have 2 connection processes, 2 channel processes & 1 queue process (5 processes in total), spread across 8 Erlang schedulers.
+Since our use-case is CPU & network-intensive, we chose an n1-highcpu-8 instance type.
+
+Here is a summary of our configuration:
+
+| PROPERTY             | VALUE         |
+| -------------------- | ------------- |
+| GCP INSTANCE TYPE    | n1-highcpu-8  |
 | QUEUE                | non-durable   |
-| MAX-LENGTH           | 250,000       |
-| -------------------- | ------------  |
+| QUEUE MAX-LENGTH     | 250,000       |
 | PUBLISHERS           | 1             |
-| PUBLISHER RATE MSG/S | ∞             |
+| PUBLISHER RATE MSG/S | unlimited     |
 | MSG SIZE             | 1000          |
-| -------------------- | ------------  |
 | CONSUMERS            | 1             |
-| CONSUMER RATE MSG/S  | ∞             |
-```
+| CONSUMER RATE MSG/S  | unlimited     |
+
+## Observations
+
+![](ndq-1kb-autoack.png)
 
 ### `vm_memory_high_watermark_paging_ratio`
 
@@ -46,6 +76,12 @@ We limit the number of messages in our queue to 250,000.
 Once there are 250,000 messages in the queue, the queue will start dropping messages from the head, meaning the oldest messages will be dropped first.
 This will reduce performance since the queue process has more work to do, but it will keep the system as a whole in a stable, non-blocked state.
 The producers will not be blocked, as would be the case if the memory alarm got triggered, so messages will continue flowing, even if at a reduced rate.
+
+### Links
+
+* [RabbitMQ Management](https://ndq-1kb-autoack.gcp.rabbitmq.com/)
+* [Netdata dashboard](https://0-netdata-ndq-1kb-autoack.gcp.rabbitmq.com/)
+* [DataDog dashboard](https://p.datadoghq.com/sb/eac1d6667-5abde23a53)
 
 ### Notes
 
