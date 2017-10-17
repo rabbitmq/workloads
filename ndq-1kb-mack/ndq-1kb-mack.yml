@@ -69,17 +69,17 @@ instance_groups:
     properties:
       route_registrar:
         routes:
-        - name: ndq-1kb-100qos-10mack
+        - name: ndq-1kb-mack
           port: 15672
           registration_interval: 30s
           uris:
-          - ndq-1kb-100qos-10mack.gcp.rabbitmq.com
-        - name: netdata-ndq-1kb-100qos-10mack
+          - ndq-1kb-mack.gcp.rabbitmq.com
+        - name: netdata-ndq-1kb-mack
           port: 19999
           prepend_instance_index: true
           registration_interval: 30s
           uris:
-          - netdata-ndq-1kb-100qos-10mack.gcp.rabbitmq.com
+          - netdata-ndq-1kb-mack.gcp.rabbitmq.com
     release: routing
   - name: tmux
     release: tmux
