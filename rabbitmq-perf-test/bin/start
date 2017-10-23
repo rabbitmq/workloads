@@ -24,6 +24,9 @@ declare -a perftest_opts
 [ -z "$QUEUE_ARGS" ] ||
   perftest_opts+=(--queueArgs "$QUEUE_ARGS")
 
+[ -z "$CONSUMER_RATE" ] ||
+  perftest_opts+=(--consumerRate "$CONSUMER_RATE")
+
 _start_command com.rabbitmq.perf.PerfTest \
   --uris "$(_amqp_urls)" \
   --size "${MSG_SIZE:?must be set}" \
