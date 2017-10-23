@@ -21,6 +21,9 @@ declare -a perftest_opts
 [ -z "$CHANNELS_PER_CONSUMER" ] ||
   perftest_opts+=(--consumerChannelCount "$CHANNELS_PER_CONSUMER")
 
+[ -z "$QUEUE_ARGS" ] ||
+  perftest_opts+=(--queueArgs "$QUEUE_ARGS")
+
 _start_command com.rabbitmq.perf.PerfTest \
   --uris "$(_amqp_urls)" \
   --size "${MSG_SIZE:?must be set}" \
@@ -30,6 +33,5 @@ _start_command com.rabbitmq.perf.PerfTest \
   --producers "${PRODUCERS:?must be set}" \
   --routingKey "${ROUTING_KEY:?must be set}" \
   --autoDelete "${AUTO_DELETE:=true}" \
-  --queueArgs "$QUEUE_ARGS" \
   "${perftest_opts[@]}" \
   --predeclared
