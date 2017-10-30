@@ -24,7 +24,7 @@ We cannot flood consumers with messages, consumers must acknowledge messages as 
 ## Setup
 
 This is a setup that maximizes availability and consistency.
-There are 3 layers of full redundancy that need to synchronize for all operations, which will reflect in message throughput.
+There are 3 nodes across which all operations need to synchornize. This will reflect in message throughput.
 
 We limit the size of messages to 1KB since it's a sensible default that is most likely to exist in real-world scenarios.
 
