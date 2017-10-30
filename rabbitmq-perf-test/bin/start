@@ -9,6 +9,9 @@ declare -a perftest_opts
 [ -z "$MULTI_ACK_EVERY" ] ||
   perftest_opts+=(--multiAckEvery "$MULTI_ACK_EVERY")
 
+[ -z "$CONFIRM_EVERY" ] ||
+  perftest_opts+=(--confirm "$CONFIRM_EVERY")
+
 [ -z "$QOS" ] ||
   perftest_opts+=(--qos "$QOS")
 
@@ -26,6 +29,9 @@ declare -a perftest_opts
 
 [ -z "$CONSUMER_RATE" ] ||
   perftest_opts+=(--consumerRate "$CONSUMER_RATE")
+
+[ -z "$MSG_FLAG" ] ||
+  perftest_opts+=(--flag "$MSG_FLAG")
 
 _start_command com.rabbitmq.perf.PerfTest \
   --uris "$(_amqp_urls)" \
