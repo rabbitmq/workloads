@@ -33,6 +33,9 @@ declare -a perftest_opts
 [ -z "$MSG_FLAG" ] ||
   perftest_opts+=(--flag "$MSG_FLAG")
 
+[ -z "$RESTART_INTERVAL" ] ||
+  perftest_opts+=(--time "$RESTART_INTERVAL")
+
 _start_command com.rabbitmq.perf.PerfTest \
   --uris "$(_amqp_urls)" \
   --size "${MSG_SIZE:?must be set}" \

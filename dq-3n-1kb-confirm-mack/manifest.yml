@@ -20,6 +20,7 @@ env:
   MULTI_ACK_EVERY: 50
   CONFIRM_EVERY: 200
   AUTO_DELETE: false
+  RESTART_INTERVAL: 300
 
 services:
   - rmq
