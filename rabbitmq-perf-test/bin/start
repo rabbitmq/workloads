@@ -12,6 +12,9 @@ declare -a perftest_opts
 [ -z "$CONFIRM_EVERY" ] ||
   perftest_opts+=(--confirm "$CONFIRM_EVERY")
 
+[ -z "$CONFIRM_TIMEOUT" ] ||
+  perftest_opts+=(--confirmTimeout "$CONFIRM_TIMEOUT")
+
 [ -z "$QOS" ] ||
   perftest_opts+=(--qos "$QOS")
 
