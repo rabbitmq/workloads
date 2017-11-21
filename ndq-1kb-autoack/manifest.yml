@@ -9,7 +9,7 @@ no-route: true
 health-check-type: none
 
 env:
-  METRICS_SAMPLING_INTEVAL: 30
+  METRICS_SAMPLING_INTEVAL: 60
   PRODUCERS: 0
   CONSUMERS: 0
   MSG_SIZE: 1000
@@ -18,7 +18,7 @@ env:
   AUTO_ACK: true
   AUTO_DELETE: false
   QUEUE_ARGS: "x-max-length=250000"
-  RESTART_INTERVAL: 300
+  RESTART_INTERVAL: 600
 
 services:
   - rmq
