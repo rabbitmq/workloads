@@ -21,7 +21,6 @@ env:
   CONFIRM_EVERY: 200
   CONFIRM_TIMEOUT: 30
   AUTO_DELETE: false
-  RESTART_INTERVAL: 600
 
 services:
   - rmq
