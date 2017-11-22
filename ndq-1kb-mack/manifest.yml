@@ -19,7 +19,6 @@ env:
   MULTI_ACK_EVERY: 50
   AUTO_DELETE: false
   QUEUE_ARGS: "x-max-length=250000"
-  RESTART_INTERVAL: 300
 
 services:
   - rmq
