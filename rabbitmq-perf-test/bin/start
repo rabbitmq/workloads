@@ -42,7 +42,7 @@ declare -a perftest_opts
 _start_command com.rabbitmq.perf.PerfTest \
   --uris "$(_amqp_urls)" \
   --size "${MSG_SIZE:?must be set}" \
-  --interval "${METRICS_SAMPLING_INTEVAL:?must be set}" \
+  --interval "${METRICS_SAMPLING_INTERVAL:?must be set}" \
   --queue "${QUEUE:?must be set}" \
   --consumers "${CONSUMERS:?must be set}" \
   --producers "${PRODUCERS:?must be set}" \

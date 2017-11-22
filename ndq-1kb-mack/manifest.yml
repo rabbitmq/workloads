@@ -9,7 +9,7 @@ no-route: true
 health-check-type: none
 
 env:
-  METRICS_SAMPLING_INTEVAL: 60
+  METRICS_SAMPLING_INTERVAL: 60
   PRODUCERS: 0
   CONSUMERS: 0
   MSG_SIZE: 1000
