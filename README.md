@@ -1,9 +1,7 @@
-## RabbitMQ configurations optimised for specific use-cases
+## RabbitMQ performance baseline
 
-We want to continuously validate RabbitMQ best-case behaviour in specific use-cases.
+All RabbitMQ users should know what to expect from RabbitMQ in terms of performance, and understand the impact of specific requirements on throughput. For example, durable queues with persistent messages that are replicated across N RabbitMQ nodes incur a certain throughput penalty that is poorly understood. Each directory in this repository represents a specific RabbitMQ configuration and contains:
 
-Each directory in this repository represents a specific use-case and contains:
-
-* README that describes the use-case, highlights specific RabbitMQ configurations and captures point-in-time observations
-* CloudFoundry manifest for [PerfTest](https://github.com/rabbitmq/rabbitmq-perf-test) that describes every producer and consumer configuration
-* BOSH manifest for [rabbitmq-server-boshrelease](https://github.com/rabbitmq/rabbitmq-server-boshrelease) the captures the RabbitMQ configuration in detail. The manifest requires [variable interpolation](http://bosh.io/docs/cli-int.html) for some credentials. It cannot be used as is.
+* RabbitMQ configuration description and point-in-time performance observations, as well as links to metrics dashboards and RabbitMQ Management UI
+* CloudFoundry manifest for [PerfTest](https://github.com/rabbitmq/rabbitmq-perf-test) that captures every producer and consumer configuration
+* BOSH manifest for [rabbitmq-server-boshrelease](https://github.com/rabbitmq/rabbitmq-server-boshrelease) the contains the complete RabbitMQ config. This BOSH manifest requires [variable interpolation](http://bosh.io/docs/cli-int.html) for the credentials, it cannot be used as is.
