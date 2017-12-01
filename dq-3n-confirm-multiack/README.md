@@ -6,7 +6,9 @@ In order for message order to be preserved, we must use a single RabbitMQ queue.
 
 ### Messages cannot be lost
 
-Messages will be persisted to disk, across multiple nodes.
+Publishers will receive confirmations when messages have been persisted to disk by all nodes in the cluster.
+
+Consumers will send acknowledgements to the broker when messages have been processed.
 
 ### Messages must have 3N redundancy
 
