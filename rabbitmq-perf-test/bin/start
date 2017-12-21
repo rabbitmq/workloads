@@ -42,6 +42,9 @@ declare -a perftest_opts
 [ -z "$RESTART_INTERVAL" ] ||
   perftest_opts+=(--time "$RESTART_INTERVAL")
 
+[ -z "$PREDECLARED" ] ||
+  perftest_opts+=(--predeclared)
+
 _start_command com.rabbitmq.perf.PerfTest \
   --uris "$(_amqp_urls)" \
   --size "${MSG_SIZE:?must be set}" \
@@ -51,5 +54,4 @@ _start_command com.rabbitmq.perf.PerfTest \
   --producers "${PRODUCERS:?must be set}" \
   --routingKey "${ROUTING_KEY:?must be set}" \
   --autoDelete "${AUTO_DELETE:=true}" \
-  "${perftest_opts[@]}" \
-  --predeclared
+  "${perftest_opts[@]}"
