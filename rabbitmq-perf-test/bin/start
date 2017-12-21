@@ -33,8 +33,8 @@ declare -a perftest_opts
 [ -z "$PRODUCE_RATE" ] ||
   perftest_opts+=(--rate "$PRODUCE_RATE")
 
-[ -z "$CONSUMER_RATE" ] ||
-  perftest_opts+=(--consumerRate "$CONSUMER_RATE")
+[ -z "$CONSUME_RATE" ] ||
+  perftest_opts+=(--consumerRate "$CONSUME_RATE")
 
 [ -z "$MSG_FLAG" ] ||
   perftest_opts+=(--flag "$MSG_FLAG")
