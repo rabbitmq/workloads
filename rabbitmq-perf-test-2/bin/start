@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+
+set -e
+
+export PATH=/home/vcap/app/bin:$PATH
+
+declare -a perftest_opts
+
+[ -z "$MULTI_ACK_EVERY" ] ||
+  perftest_opts+=(--multi-ack-every "$MULTI_ACK_EVERY")
+
+[ -z "$CONFIRM_EVERY" ] ||
+  perftest_opts+=(--confirm "$CONFIRM_EVERY")
+
+[ -z "$CONFIRM_TIMEOUT" ] ||
+  perftest_opts+=(--confirm-timeout "$CONFIRM_TIMEOUT")
+
+[ -z "$QOS" ] ||
+  perftest_opts+=(--qos "$QOS")
+
+[ -z "$AUTO_ACK" ] ||
+  perftest_opts+=(--autoack)
+
+[ -z "$CHANNELS_PER_PRODUCER" ] ||
+  perftest_opts+=(--producer-channel-count "$CHANNELS_PER_PRODUCER")
+
+[ -z "$CHANNELS_PER_CONSUMER" ] ||
+  perftest_opts+=(--consumer-channel-count "$CHANNELS_PER_CONSUMER")
+
+if [ -n "$QUEUE" ]
+then
+  [ -z "$CF_INSTANCE_AWARE" ] ||
+    QUEUE="$QUEUE.${CF_INSTANCE_INDEX}"
+
+  perftest_opts+=(--queue "$QUEUE")
+fi
+
+if [ -n "$ROUTING_KEY" ]
+then
+  [ -z "$CF_INSTANCE_AWARE" ] ||
+    ROUTING_KEY="$ROUTING_KEY.${CF_INSTANCE_INDEX}"
+
+  perftest_opts+=(--routing-key "$ROUTING_KEY")
+fi
+
+[ -z "$QUEUE_ARGS" ] ||
+  perftest_opts+=(--queue-args "$QUEUE_ARGS")
+
+[ -z "$PRODUCE_RATE" ] ||
+  perftest_opts+=(--rate "$PRODUCE_RATE")
+
+[ -z "$CONSUME_RATE" ] ||
+  perftest_opts+=(--consumer-rate "$CONSUME_RATE")
+
+[ -z "$RESTART_INTERVAL" ] ||
+  perftest_opts+=(--time "$RESTART_INTERVAL")
+
+[ -z "$PREDECLARED" ] ||
+  perftest_opts+=(--predeclared)
+
+_start_command com.rabbitmq.perf.PerfTest \
+  --uris "$(_amqp_urls)" \
+  --size "${MSG_SIZE:?must be set}" \
+  --interval "${METRICS_SAMPLING_INTERVAL:?must be set}" \
+  --consumers "${CONSUMERS:?must be set}" \
+  --producers "${PRODUCERS:?must be set}" \
+  --auto-delete "${AUTO_DELETE:=true}" \
+  "${MSG_FLAGS}" \
+  "${perftest_opts[@]}"
