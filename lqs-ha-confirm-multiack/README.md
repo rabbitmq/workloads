@@ -27,6 +27,6 @@ We cannot flood consumers with messages, consumers must acknowledge messages as 
 
 | RabbitMQ | Metrics                                                                     | Management URL (self-signed SSL cert)                                                   | Username | Password |
 | -        | -                                                                           | -                                                                                       | -        | -        |
-| v3.7.1   | [Netdata](https://0-netdata-lqs-ha-confirm-multiack-3-7-1.gcp.rabbitmq.com) | [lqs-ha-confirm-multiack-3-7-1](https://lqs-ha-confirm-multiack-3-7-1.gcp.rabbitmq.com) | **demo** | **demo** |
+| v3.7.2   | [Netdata](https://0-netdata-lqs-ha-confirm-multiack-3-7-2.gcp.rabbitmq.com) | [lqs-ha-confirm-multiack-3-7-2](https://lqs-ha-confirm-multiack-3-7-2.gcp.rabbitmq.com) | **demo** | **demo** |
 
 ## Point-in-time observations

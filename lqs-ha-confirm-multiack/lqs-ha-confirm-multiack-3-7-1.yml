@@ -26,7 +26,7 @@ instance_groups:
         distribution_buffer_size: 128000
         fhc_read_buffering: false
         fhc_write_buffering: true
-        generic-unix-url: https://github.com/rabbitmq/rabbitmq-server/releases/download/v3.7.1/rabbitmq-server-generic-unix-3.7.1.tar.xz
+        generic-unix-url: https://github.com/rabbitmq/rabbitmq-server/releases/download/v3.7.2/rabbitmq-server-generic-unix-3.7.2.tar.xz
         hipe_compile: false
         lazy_queue_explicit_gc_run_operation_threshold: 1000
         log_levels: info
@@ -69,17 +69,17 @@ instance_groups:
     properties:
       route_registrar:
         routes:
-        - name: lqs-ha-confirm-multiack-3-7-1
+        - name: lqs-ha-confirm-multiack-3-7-2
           port: 15672
           registration_interval: 30s
           uris:
-          - lqs-ha-confirm-multiack-3-7-1.gcp.rabbitmq.com
-        - name: netdata-lqs-ha-confirm-multiack-3-7-1
+          - lqs-ha-confirm-multiack-3-7-2.gcp.rabbitmq.com
+        - name: netdata-lqs-ha-confirm-multiack-3-7-2
           port: 19999
           prepend_instance_index: true
           registration_interval: 30s
           uris:
-          - netdata-lqs-ha-confirm-multiack-3-7-1.gcp.rabbitmq.com
+          - netdata-lqs-ha-confirm-multiack-3-7-2.gcp.rabbitmq.com
     release: routing
   - name: tmux
     release: tmux
@@ -93,7 +93,7 @@ instance_groups:
   vm_extensions:
   - preemptible
   vm_type: n1-standard-8
-name: lqs-ha-confirm-multiack-3-7-1
+name: lqs-ha-confirm-multiack-3-7-2
 releases:
 - name: rabbitmq-server
   version: 0.11.0+dev.1511978913
@@ -112,7 +112,7 @@ releases:
 stemcells:
 - alias: bosh-google-kvm-ubuntu-trusty-go_agent
   name: bosh-google-kvm-ubuntu-trusty-go_agent
-  version: '3468.13'
+  version: '3468.15'
 update:
   canaries: 3
   canary_watch_time: 10000-60000

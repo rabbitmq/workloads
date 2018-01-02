@@ -23,18 +23,18 @@ env:
   CONFIRM_TIMEOUT: 30
   AUTO_DELETE: false
   PRODUCE_RATE: 2
-  CONSUME_RATE: 0.2
+  CONSUME_RATE: 0.1
 
 services:
   - rmq
 
 applications:
   - name: produce
-    instances: 100
+    instances: 500
     env:
       PRODUCERS: 1
 
   - name: consume
-    instances: 100
+    instances: 500
     env:
       CONSUMERS: 3
