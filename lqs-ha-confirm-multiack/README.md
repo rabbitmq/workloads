@@ -85,9 +85,9 @@ Setup summary:
 ## Links
 
 
-| RabbitMQ | Metrics                                                                                                                                 | Management URL (self-signed SSL cert)                                                     | Username | Password |
-| -        | -                                                                                                                                       | -                                                                                         | -        | -        |
-| v3.6.14  | [Netdata](https://0-netdata-lqs-ha-confirm-multiack-3-6-14.gcp.rabbitmq.com) [Datadog](https://p.datadoghq.com/sb/eac1d6667-75ac04872a) | [lqs-ha-confirm-multiack-3-6-14](https://lqs-ha-confirm-multiack-3-6-14.gcp.rabbitmq.com) | **demo** | **demo** |
+| RabbitMQ | Node Metrics                                                                 | Cluster Metrics                                            | Management URL (self-signed SSL cert)                                                     | Username | Password |
+| -        | -                                                                            | -                                                          | -                                                                                         | -        | -        |
+| v3.6.14  | [Netdata](https://0-netdata-lqs-ha-confirm-multiack-3-6-14.gcp.rabbitmq.com) | [Datadog](https://p.datadoghq.com/sb/eac1d6667-75ac04872a) | [lqs-ha-confirm-multiack-3-6-14](https://lqs-ha-confirm-multiack-3-6-14.gcp.rabbitmq.com) | **demo** | **demo** |
 
 ## Point-in-time observations
 
