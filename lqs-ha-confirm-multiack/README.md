@@ -22,7 +22,7 @@ We cannot flood consumers with messages, consumers must acknowledge messages as 
 ### Old messages will start getting discarded when queues are full
 
 All queues have a maximum capacity defined as `max-length`.
-Once this limit is reached, old messages will start getting discarded.
+Once this limit is reached, old messages will start getting discarded to make room for the new messages.
 
 ### Messages in queues exceed the available node memory
 
@@ -49,7 +49,7 @@ Consumers are throttled so that a message backlog can build up without having th
 Since producers are always outpacing consumers, it is important to limit the size of the queues so that the disk alarm doesn't get triggered - this will block all publishing, cluster-wide.
 Worth pointing out, the disks are 100GB in size, so we must ensure that nodes do not run out of disk space.
 As a result, each queue has the `max-length` set to 100,000.
-This means that once there are 100,000 messages in a queue, old messages, the ones at the head of the queue, will start getting dropped.
+This means that once there are 100,000 messages in a queue, old messages, the ones at the head of the queue, will start getting dropped so that new messages can be accepted without exceeding the `max-length` limit.
 
 Our RabbitMQ node has 8 CPU cores and therefore 8 Erlang schedulers, our workload could easily overwhelm the Erlang VMs if not limited (another reason for throttling producers and consumers).
 Given that there are 2,000 connection processes, 2,000 channel processes &amp; 500 fully mirrored queues always workings, we have at least ~2,000 always active Erlang processes requiring wall time on 8 schedulers.
@@ -84,11 +84,10 @@ Setup summary:
 
 ## Links
 
-[DataDog dashboard](https://p.datadoghq.com/sb/eac1d6667-75ac04872a)
 
-| RabbitMQ | Metrics                                                                      | Management URL (self-signed SSL cert)                                                     | Username | Password |
-| -        | -                                                                            | -                                                                                         | -        | -        |
-| v3.6.14  | [Netdata](https://0-netdata-lqs-ha-confirm-multiack-3-6-14.gcp.rabbitmq.com) | [lqs-ha-confirm-multiack-3-6-14](https://lqs-ha-confirm-multiack-3-6-14.gcp.rabbitmq.com) | **demo** | **demo** |
+| RabbitMQ | Metrics                                                                                                                                 | Management URL (self-signed SSL cert)                                                     | Username | Password |
+| -        | -                                                                                                                                       | -                                                                                         | -        | -        |
+| v3.6.14  | [Netdata](https://0-netdata-lqs-ha-confirm-multiack-3-6-14.gcp.rabbitmq.com) [Datadog](https://p.datadoghq.com/sb/eac1d6667-75ac04872a) | [lqs-ha-confirm-multiack-3-6-14](https://lqs-ha-confirm-multiack-3-6-14.gcp.rabbitmq.com) | **demo** | **demo** |
 
 ## Point-in-time observations
 
