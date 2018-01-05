@@ -82,6 +82,11 @@ Setup summary:
 | QOS (PREFETCH)                   | 10             |
 | MULTI-ACK                        | every 10 msgs  |
 
+Policies:
+
+| Name | Pattern | Apply to | Definition |
+| lazy-ha-all-100k | .*	| queues | ha-mode:	all, ha-sync-mode:	automatic, max-length: 100000, queue-mode:	lazy |
+
 ## Links
 
 
