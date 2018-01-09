@@ -1,8 +1,8 @@
-path: ../rabbitmq-perf-test
+path: ../rabbitmq-perf-test-2
 command: ./bin/start
 
 buildpack: java_buildpack
-memory: 256M
+memory: 512M
 disk_quota: 256M
 
 no-route: true
@@ -14,9 +14,8 @@ env:
   CONSUMERS: 0
   MSG_SIZE: 1000
   MSG_FLAG: persistent
-  QUEUE: perf-test
-  ROUTING_KEY: perf-test
-  CF_INSTANCE_AWARE: true
+  QUEUE_PATTERN: 'perf-test-'
+  NUMBER_OF_QUEUES_PER_PERFTEST_INSTANCE: 100
   QOS: 10
   MULTI_ACK_EVERY: 10
   CONFIRM_EVERY: 10
@@ -30,11 +29,11 @@ services:
 
 applications:
   - name: produce
-    instances: 500
+    instances: 5
     env:
-      PRODUCERS: 1
+      PRODUCERS: 100
 
   - name: consume
-    instances: 500
+    instances: 5
     env:
-      CONSUMERS: 3
+      CONSUMERS: 300
