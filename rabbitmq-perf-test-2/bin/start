@@ -38,9 +38,9 @@ fi
 if [ -n "$QUEUE_PATTERN" ]
 then
   # shellcheck disable=SC2016
-  perftest_opts+=(--queue-pattern "$QUEUE_PATTERN"'\${i}')
-  perftest_opts+=(--from "$((CF_INSTANCE_INDEX * NUMBER_OF_QUEUES_PER_PERFTEST_INSTANCE + 1))")
-  perftest_opts+=(--to "$((CF_INSTANCE_INDEX * NUMBER_OF_QUEUES_PER_PERFTEST_INSTANCE + NUMBER_OF_QUEUES_PER_PERFTEST_INSTANCE))")
+  perftest_opts+=(--queue-pattern "$QUEUE_PATTERN")
+  perftest_opts+=(--queue-pattern-from "$((CF_INSTANCE_INDEX * NUMBER_OF_QUEUES_PER_PERFTEST_INSTANCE + 1))")
+  perftest_opts+=(--queue-pattern-to "$((CF_INSTANCE_INDEX * NUMBER_OF_QUEUES_PER_PERFTEST_INSTANCE + NUMBER_OF_QUEUES_PER_PERFTEST_INSTANCE))")
 fi
 
 if [ -n "$ROUTING_KEY" ]
