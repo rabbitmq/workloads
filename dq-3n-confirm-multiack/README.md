@@ -1,27 +1,24 @@
-## Requirements
+## User Goals
+
+This sample workload addresses a specific use case. The user requires a messaging system that meets the following goals:
 
 ### Messages are ordered
 
-In order for message order to be preserved, we must use a single RabbitMQ queue.
+If you want to preserve message order, you must use a single RabbitMQ queue.
 
-### Messages cannot be lost
+### Message persistence is a priority
 
-Publishers will receive confirmations when messages have been persisted to disk by all nodes in the cluster.
+Your publishers will receive confirmations when messages have been written to disk by all nodes in the cluster.
 
-Consumers will send acknowledgements to the broker when messages have been processed.
+Your consumers will send acknowledgements to the broker when messages have been processed.
 
 ### Messages must have 3N redundancy
 
-There will be 3 fully redundant copies for every message at all times.
-There will be no service impact if 2 out of 3 nodes fail.
-
-### Confirm message persistence and replication
-
-We want the broker to confirm messages once they are persisted to disk across all nodes.
+You will have 3 fully redundant copies of each message at all times.
 
 ### Consumers regulate message delivery rate
 
-We cannot flood consumers with messages, consumers must acknowledge messages as they get processed.
+Since consumers cannot be flooded with messages, your consumers must acknowledge messages as they are processed.
 
 ## Setup
 
