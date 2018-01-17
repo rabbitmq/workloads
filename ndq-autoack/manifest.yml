@@ -2,7 +2,7 @@ path: ../rabbitmq-perf-test
 command: ./bin/start
 
 buildpack: java_buildpack
-memory: 512M
+memory: 1G
 disk_quota: 256M
 
 no-route: true
