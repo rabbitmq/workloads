@@ -37,9 +37,9 @@ RabbitMQ nodes and the cluster as a whole continue to operate as expected during
 
 All messages are limited to 1,000 bytes and are flushed to disk as soon as possible (a.k.a. [lazy queues](https://www.rabbitmq.com/lazy-queues.html)).
 The goal is to only load messages in memory when requested by consumers, and otherwise keep them on disk.
-Lazy queues are ideal for very long queues, with many millions of messages, or for many long queues, e.g. `500 queues x 100,000 messages = 50,000,000 messages`.
-In our scenario, we have 500 queues across a 3 node cluster.
-Since all queues are automatically replicated across all nodes, there are ~166 queue masters and ~334 queue mirrors on every node.
+Lazy queues are ideal for very long queues, with many millions of messages, or for many long queues, e.g. `300 queues x 100,000 messages = 30,000,000 messages`.
+In our scenario, we have 300 queues across a 3 node cluster.
+Since all queues are automatically replicated across all nodes, there are ~100 queue masters and ~200 queue mirrors on every node.
 
 Every queue has 1 producer (or publisher) and 3 consumers.
 The goal is to have a single producer consistently outpace a few consumers so that we can build a message backlog larger than the available system memory.
@@ -52,7 +52,7 @@ As a result, each queue has the `max-length` set to 100,000.
 This means that once there are 100,000 messages in a queue, old messages, the ones at the head of the queue, will start getting dropped so that new messages can be accepted without exceeding the `max-length` limit.
 
 Our RabbitMQ node has 8 CPU cores and therefore 8 Erlang schedulers, our workload could easily overwhelm the Erlang VMs if not limited (another reason for throttling producers and consumers).
-Given that there are 2,000 connection processes, 2,000 channel processes &amp; 500 fully mirrored queues always workings, we have at least ~2,000 always active Erlang processes requiring wall time on 8 schedulers.
+Given that there are 300 connection processes, 300 channel processes &amp; 300 fully mirrored queues always workings, we have at least ~1,000 always active Erlang processes requiring wall time on 8 schedulers.
 We will keep a close eye on the Erlang run queue, since a value `> 10` is an indicator of Erlang scheduler contention.
 
 Setup summary:
@@ -69,24 +69,24 @@ Setup summary:
 | INSTANCE DISK READ MB/s          | 48             |
 | INSTANCE DISK WRITE MB/s         | 48             |
 | INSTANCE DISK MONTHLY COST       | $20.40         |
-| QUEUES                           | 500            |
+| QUEUES                           | 300            |
 | QUEUE                            | durable + lazy |
 | QUEUE MIRRORS                    | 3              |
 | QUEUE MAX-LENGTH                 | 100000         |
-| PUBLISHERS                       | 500            |
+| PUBLISHERS                       | 300            |
 | PUBLISHER RATE MSG/S             | 5              |
 | PUBLISHER CONFIRMS               | every 10 msgs  |
 | MSG SIZE bytes                   | 1000           |
-| CONSUMERS                        | 1500           |
+| CONSUMERS                        | 900            |
 | CONSUMER RATE MSG/S              | 0.1            |
 | QOS (PREFETCH)                   | 10             |
 | MULTI-ACK                        | every 10 msgs  |
 
 Policies:
 
-| Name | Pattern | Apply to | Definition |
-| - | - | - | - |
-| lazy-ha-all-100k | .* | queues | ha-mode: all, ha-sync-mode: automatic, max-length: 100000, queue-mode: lazy |
+| Name             | Pattern | Apply to | Definition                                                                  |
+| -                | -       | -        | -                                                                           |
+| lazy-ha-all-100k | .*      | queues   | ha-mode: all, ha-sync-mode: automatic, max-length: 100000, queue-mode: lazy |
 
 ## Links
 
