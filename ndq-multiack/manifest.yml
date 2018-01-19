@@ -1,14 +1,15 @@
-path: ../rabbitmq-perf-test
-command: ./bin/start
+defaults: &defaults
+  buildpack: java_buildpack
+  command: ./bin/start
+  disk_quota: 256M
+  health-check-type: none
+  memory: 1G
+  no-route: true
+  path: ../rabbitmq-perf-test
+  services:
+    - rmq
 
-buildpack: java_buildpack
-memory: 512M
-disk_quota: 256M
-
-no-route: true
-health-check-type: none
-
-env:
+env: &env
   METRICS_SAMPLING_INTERVAL: 60
   PRODUCERS: 0
   CONSUMERS: 0
@@ -20,14 +21,15 @@ env:
   AUTO_DELETE: false
   QUEUE_ARGS: "x-max-length=250000"
 
-services:
-  - rmq
-
 applications:
   - name: produce
+    <<: *defaults
     env:
+      <<: *env
       PRODUCERS: 1
 
   - name: consume
+    <<: *defaults
     env:
+      <<: *env
       CONSUMERS: 1
