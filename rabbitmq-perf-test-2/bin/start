@@ -68,10 +68,10 @@ fi
 
 _start_command com.rabbitmq.perf.PerfTest \
   --uris "$(_amqp_urls)" \
-  --size "${MSG_SIZE:?must be set}" \
-  --interval "${METRICS_SAMPLING_INTERVAL:?must be set}" \
-  --consumers "${CONSUMERS:?must be set}" \
-  --producers "${PRODUCERS:?must be set}" \
+  --size "${MSG_SIZE:=1000}" \
+  --interval "${METRICS_SAMPLING_INTERVAL:=30}" \
+  --consumers "${CONSUMERS:=0}" \
+  --producers "${PRODUCERS:=0}" \
   --auto-delete "${AUTO_DELETE:=true}" \
   "${MSG_FLAGS}" \
   "${perftest_opts[@]}"
