@@ -1,0 +1,125 @@
+---
+instance_groups:
+- azs:
+  - z1
+  instances: 1
+  jobs:
+  - name: rabbitmq-server
+    properties:
+      erlang:
+        cookie: ((erlang_cookie))
+        version: 20.1.7
+      rabbitmq-management:
+        rates_modes: basic
+      rabbitmq-server:
+        additional_erl_args: ''
+        admin_pass: ((rabbitmq_server_admin_pass))
+        admin_user: admin
+        cluster_keepalive_interval: 10000
+        cluster_partition_handling: ignore
+        collect_statistics: none
+        collect_statistics_interval: 5000
+        credit_flow_default_credit: "{400, 200}"
+        debug: true
+        delegate_count: 16
+        disk_free_limit: "{mem_relative, 0.5}"
+        distribution_buffer_size: 128000
+        fhc_read_buffering: false
+        fhc_write_buffering: true
+        generic-unix-url: https://github.com/rabbitmq/rabbitmq-server/releases/download/v3.7.2/rabbitmq-server-generic-unix-3.7.2.tar.xz
+        hipe_compile: false
+        lazy_queue_explicit_gc_run_operation_threshold: 1000
+        log_levels: info
+        mirroring_flow_control: true
+        mirroring_sync_batch_size: 4096
+        mnesia_base: "/var/vcap/store/rabbitmq-server/mnesia"
+        mnesia_table_loading_retry_limit: 10
+        mnesia_table_loading_retry_timeout: 30000
+        msg_store_credit_disc_bound: "{4000, 800}"
+        msg_store_file_size_limit: 16777216
+        msg_store_io_batch_size: 4096
+        num_tcp_acceptors: 10
+        queue_explicit_gc_run_operation_threshold: 1000
+        queue_index_embed_msgs_below: 4096
+        queue_master_locator: client-local
+        scheduler_bind_type: db
+        vm_memory_high_watermark: 0.5
+        vm_memory_high_watermark_paging_ratio: 100
+      rabbitmq-trust-store:
+        directory: "/var/vcap/store/rabbitmq-server/trust-store/whitelist"
+    release: rabbitmq-server
+  - name: datadog-agent
+    properties:
+      api_key: ((datadog_api_key))
+      include_bosh_tags: true
+      tags:
+        performance: ndq-10q-multiack
+      integrations:
+        rabbitmq:
+          init_config:
+          instances:
+          - rabbitmq_api_url: http://127.0.0.1:15672/api/
+            rabbitmq_pass: ((rabbitmq_server_admin_pass))
+            rabbitmq_user: admin
+      use_bosh_hostname: true
+    release: datadog-agent
+  - consumes:
+      nats:
+        deployment: cf-gcp-20170814
+        from: nats
+    name: route_registrar
+    properties:
+      route_registrar:
+        routes:
+        - name: ndq-10q-multiack-3-7-2
+          port: 15672
+          registration_interval: 30s
+          uris:
+          - ndq-10q-multiack-3-7-2.gcp.rabbitmq.com
+        - name: netdata-ndq-10q-multiack-3-7-2
+          port: 19999
+          prepend_instance_index: true
+          registration_interval: 30s
+          uris:
+          - netdata-ndq-10q-multiack-3-7-2.gcp.rabbitmq.com
+    release: routing
+  - name: tmux
+    release: tmux
+  - name: netdata
+    release: rabbitmq-server
+  name: rmq
+  networks:
+  - name: private
+  persistent_disk_type: 5GB
+  stemcell: bosh-google-kvm-ubuntu-trusty-go_agent
+  vm_extensions:
+  - preemptible
+  vm_type: n1-highcpu-8
+name: ndq-10q-multiack-3-7-2
+releases:
+- name: rabbitmq-server
+  sha1: bf69224a9d910da53342121e359c31353fc1a9e1
+  url: https://github.com/rabbitmq/rabbitmq-server-boshrelease/releases/download/v0.12.0/rabbitmq-server-0.12.0.tgz
+  version: 0.12.0
+- name: datadog-agent
+  sha1: fe8dc3e0a6dd058dfca81d2f927c3b93b4c92f80
+  url: https://github.com/onemedical/datadog-agent-boshrelease/releases/download/v5.8.5.5/datadog-agent-5.8.5.5.tgz
+  version: 5.8.5.5
+- name: routing
+  sha1: f17cf09d2414f5f486d18bbd57b17fd48fb69773
+  url: https://bosh.io/d/github.com/cloudfoundry-incubator/cf-routing-release?v=0.162.0
+  version: 0.162.0
+- name: tmux
+  sha1: 90a5a513cd1c19d810e58d3bdc74424b791c2dd3
+  url: https://github.com/emalm/tmux-boshrelease/releases/download/v0.2.0/tmux-v0.2.0.tgz
+  version: 0.2.0
+stemcells:
+- alias: bosh-google-kvm-ubuntu-trusty-go_agent
+  name: bosh-google-kvm-ubuntu-trusty-go_agent
+  version: '3468.1'
+update:
+  canaries: 1
+  canary_watch_time: 10000-60000
+  max_in_flight: 1
+  serial: false
+  update_watch_time: 10000-60000
