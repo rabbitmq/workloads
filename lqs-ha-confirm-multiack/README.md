@@ -51,6 +51,12 @@ Worth pointing out, the disks are 100GB in size, so we must ensure that nodes do
 As a result, each queue has the `max-length` set to 100,000.
 This means that once there are 100,000 messages in a queue, old messages, the ones at the head of the queue, will start getting dropped so that new messages can be accepted without exceeding the `max-length` limit.
 
+When using high number of queues which persist messages to the message store, each queue will use separate set of file
+descriptors. File descriptors are released only after message store delete files. This can cause high file descriptor
+usage by RabbitMQ process. It's recommended to [increase file limit to run RabbitMQ up to 500K](https://rabbitmq.com/production-checklist.html#resource-limits-file-handle-limit). It's also recommended to use bigger file sizes
+in the message store. You can increase the message store file size by setting `msg_store_file_size_limit`
+in rabbitmq configuration
+
 Our RabbitMQ node has 8 CPU cores and therefore 8 Erlang schedulers, our workload could easily overwhelm the Erlang VMs if not limited (another reason for throttling producers and consumers).
 Given that there are 300 connection processes, 300 channel processes &amp; 300 fully mirrored queues always workings, we have at least ~1,000 always active Erlang processes requiring wall time on 8 schedulers.
 We will keep a close eye on the Erlang run queue, since a value `> 10` is an indicator of Erlang scheduler contention.
@@ -87,6 +93,19 @@ Policies:
 | Name             | Pattern | Apply to | Definition                                                                  |
 | -                | -       | -        | -                                                                           |
 | lazy-ha-all-100k | .*      | queues   | ha-mode: all, ha-sync-mode: automatic, max-length: 100000, queue-mode: lazy |
+
+
+## Details
+
+### `x-max-length`
+
+Since producers will be outpacing consumers all the time, queues should be limited by `max-length=100000` configured
+in the policy.
+
+### `msg_store_file_size_limit`
+
+To limit number of open files, message store files should be bigger. `msg_store_file_size_limit` RabbitMQ
+application setting is set 8 times beger than default to 134217728.
 
 ## Links
 
