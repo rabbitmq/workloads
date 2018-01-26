@@ -3,7 +3,7 @@ defaults: &defaults
   command: ./bin/start
   disk_quota: 256M
   health-check-type: none
-  memory: 1G
+  memory: 800M
   no-route: true
   path: ../rabbitmq-perf-test-2
   services:
@@ -16,26 +16,26 @@ env: &env
   MSG_SIZE: 1000
   MSG_FLAG: persistent
   QUEUE_PATTERN: 'perf-test-%03d'
-  NUMBER_OF_QUEUES_PER_PERFTEST_INSTANCE: 100
+  NUMBER_OF_QUEUES_PER_PERFTEST_INSTANCE: 30
   QOS: 10
   MULTI_ACK_EVERY: 10
   CONFIRM_EVERY: 10
   CONFIRM_TIMEOUT: 30
   AUTO_DELETE: false
-  PRODUCE_RATE: 5
-  CONSUME_RATE: 0.1
+  PRODUCE_RATE: 1
+  CONSUME_RATE: 0.4
 
 applications:
   - name: produce
     <<: *defaults
-    instances: 3
+    instances: 10
     env:
       <<: *env
-      PRODUCERS: 100
+      PRODUCERS: 30
 
   - name: consume
     <<: *defaults
-    instances: 3
+    instances: 10
     env:
       <<: *env
-      CONSUMERS: 300
+      CONSUMERS: 90

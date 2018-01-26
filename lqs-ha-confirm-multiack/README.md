@@ -38,6 +38,10 @@ RabbitMQ nodes and the cluster as a whole continue to operate as expected during
 All messages are limited to 1,000 bytes and are flushed to disk as soon as possible (a.k.a. [lazy queues](https://www.rabbitmq.com/lazy-queues.html)).
 The goal is to only load messages in memory when requested by consumers, and otherwise keep them on disk.
 Lazy queues are ideal for very long queues, with many millions of messages, or for many long queues, e.g. `300 queues x 100,000 messages = 30,000,000 messages`.
+Because each message takes 1KB, the disk space taken by 3M messages will be at least ~30GB.
+RabbitMQ message store implementation compacts files when they have more than 50% of unused space,
+which means that in the worst case it can take up to ~60GB.
+
 In our scenario, we have 300 queues across a 3 node cluster.
 Since all queues are automatically replicated across all nodes, there are ~100 queue masters and ~200 queue mirrors on every node.
 
@@ -48,8 +52,8 @@ Consumers are throttled so that a message backlog can build up without having th
 
 Since producers are always outpacing consumers, it is important to limit the size of the queues so that the disk alarm doesn't get triggered - this will block all publishing, cluster-wide.
 Worth pointing out, the disks are 100GB in size, so we must ensure that nodes do not run out of disk space.
-As a result, each queue has the `max-length` set to 100,000.
-This means that once there are 100,000 messages in a queue, old messages, the ones at the head of the queue, will start getting dropped so that new messages can be accepted without exceeding the `max-length` limit.
+As a result, each queue has the `max-length` set to 50,000.
+This means that once there are 50,000 messages in a queue, old messages, the ones at the head of the queue, will start getting dropped so that new messages can be accepted without exceeding the `max-length` limit.
 
 When using high number of queues which persist messages to the message store, each queue will use separate set of file
 descriptors. File descriptors are released only after message store delete files. This can cause high file descriptor
@@ -84,7 +88,7 @@ Setup summary:
 | PUBLISHER CONFIRMS               | every 10 msgs  |
 | MSG SIZE bytes                   | 1000           |
 | CONSUMERS                        | 900            |
-| CONSUMER RATE MSG/S              | 0.1            |
+| CONSUMER RATE MSG/S              | 1              |
 | QOS (PREFETCH)                   | 10             |
 | MULTI-ACK                        | every 10 msgs  |
 
@@ -92,14 +96,14 @@ Policies:
 
 | Name             | Pattern | Apply to | Definition                                                                  |
 | -                | -       | -        | -                                                                           |
-| lazy-ha-all-100k | .*      | queues   | ha-mode: all, ha-sync-mode: automatic, max-length: 100000, queue-mode: lazy |
+| lazy-ha-all-100k | .*      | queues   | ha-mode: all, ha-sync-mode: automatic, max-length: 50000, queue-mode: lazy |
 
 
 ## Details
 
 ### `x-max-length`
 
-Since producers will be outpacing consumers all the time, queues should be limited by `max-length=100000` configured
+Since producers will be outpacing consumers all the time, queues should be limited by `max-length=50000` configured
 in the policy.
 
 ### `msg_store_file_size_limit`
