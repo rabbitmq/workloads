@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+set -e
+
+export PATH=/home/vcap/app/bin:$PATH
+
+eval "$(jq -r .start_command < ../staging_info.yml)" "$@"
