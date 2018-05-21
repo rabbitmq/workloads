@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+
+set -e
+
+[ -z "$DEBUG" ] || set -x
+
+export PATH=/home/vcap/app/bin:$PATH
+
+declare -a perftest_opts
+
+[ -z "$EXCLUSIVE_QUEUES" ] ||
+  perftest_opts+=(--exclusive)
+
+[ -z "$EXCHANGE_NAME" ] ||
+  perftest_opts+=(--exchange "$EXCHANGE_NAME")
+
+[ -z "$EXCHANGE_TYPE" ] ||
+  perftest_opts+=(--type "$EXCHANGE_TYPE")
+
+[ -z "$MULTI_ACK_EVERY" ] ||
+  perftest_opts+=(--multi-ack-every "$MULTI_ACK_EVERY")
+
+[ -z "$CONFIRM_EVERY" ] ||
+  perftest_opts+=(--confirm "$CONFIRM_EVERY")
+
+[ -z "$CONFIRM_TIMEOUT" ] ||
+  perftest_opts+=(--confirm-timeout "$CONFIRM_TIMEOUT")
+
+[ -z "$QOS" ] ||
+  perftest_opts+=(--qos "$QOS")
+
+[ -z "$AUTO_ACK" ] ||
+  perftest_opts+=(--autoack)
+
+[ -z "$CHANNELS_PER_PRODUCER" ] ||
+  perftest_opts+=(--producer-channel-count "$CHANNELS_PER_PRODUCER")
+
+[ -z "$CHANNELS_PER_CONSUMER" ] ||
+  perftest_opts+=(--consumer-channel-count "$CHANNELS_PER_CONSUMER")
+
+if [ -n "$QUEUE" ]
+then
+  [ -z "$CF_INSTANCE_AWARE" ] ||
+    QUEUE="$QUEUE.${CF_INSTANCE_INDEX}"
+
+  perftest_opts+=(--queue "$QUEUE")
+fi
+
+if [ -n "$QUEUE_PATTERN" ]
+then
+  # shellcheck disable=SC2016
+  perftest_opts+=(--queue-pattern "$QUEUE_PATTERN")
+  perftest_opts+=(--queue-pattern-from "$((CF_INSTANCE_INDEX * NUMBER_OF_QUEUES_PER_PERFTEST_INSTANCE + 1))")
+  perftest_opts+=(--queue-pattern-to "$((CF_INSTANCE_INDEX * NUMBER_OF_QUEUES_PER_PERFTEST_INSTANCE + NUMBER_OF_QUEUES_PER_PERFTEST_INSTANCE))")
+fi
+
+if [ -n "$ROUTING_KEY" ]
+then
+  [ -z "$CF_INSTANCE_AWARE" ] ||
+    ROUTING_KEY="$ROUTING_KEY.${CF_INSTANCE_INDEX}"
+
+  perftest_opts+=(--routing-key "$ROUTING_KEY")
+fi
+
+[ -z "$QUEUE_ARGS" ] ||
+  perftest_opts+=(--queue-args "$QUEUE_ARGS")
+
+[ -z "$PRODUCE_RATE" ] ||
+  perftest_opts+=(--rate "$PRODUCE_RATE")
+
+[ -z "$CONSUME_RATE" ] ||
+  perftest_opts+=(--consumer-rate "$CONSUME_RATE")
+
+[ -z "$RESTART_INTERVAL" ] ||
+  perftest_opts+=(--time "$RESTART_INTERVAL")
+
+[ -z "$PREDECLARED" ] ||
+  perftest_opts+=(--predeclared)
+
+_start_command com.rabbitmq.perf.PerfTest \
+  --uris "$(_amqp_urls)" \
+  --size "${MSG_SIZE:=1000}" \
+  --interval "${METRICS_SAMPLING_INTERVAL:=30}" \
+  --consumers "${CONSUMERS:=0}" \
+  --producers "${PRODUCERS:=0}" \
+  --auto-delete "${AUTO_DELETE:=true}" \
+  "${MSG_FLAGS}" \
+  "${perftest_opts[@]}"
