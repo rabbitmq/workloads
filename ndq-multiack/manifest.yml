@@ -1,35 +1,36 @@
-defaults: &defaults
+app_instance_defaults: &app_instance_defaults
   buildpack: java_buildpack
   command: ./bin/start
   disk_quota: 256M
   health-check-type: none
   memory: 1G
   no-route: true
-  path: ../rabbitmq-perf-test
+  path: ../rabbitmq-perf-test-2.1.2
   services:
     - rmq
 
-env: &env
-  METRICS_SAMPLING_INTERVAL: 60
-  PRODUCERS: 0
-  CONSUMERS: 0
-  MSG_SIZE: 1000
-  QUEUE: perf-test
-  QOS: 200
-  ROUTING_KEY: perf-test
-  MULTI_ACK_EVERY: 50
+perf_test_defaults: &perf_test_defaults
+  AUTO_ACK: true
   AUTO_DELETE: false
+  CONSUMERS: 0
+  METRICS_SAMPLING_INTERVAL: 60
+  MSG_SIZE: 1000
+  MULTI_ACK_EVERY: 50
+  PRODUCERS: 0
+  QOS: 200
+  QUEUE: perf-test
   QUEUE_ARGS: "x-max-length=250000"
+  ROUTING_KEY: perf-test
 
 applications:
   - name: produce
-    <<: *defaults
+    <<: *app_instance_defaults
     env:
-      <<: *env
+      <<: *perf_test_defaults
       PRODUCERS: 1
 
   - name: consume
-    <<: *defaults
+    <<: *app_instance_defaults
     env:
-      <<: *env
+      <<: *perf_test_defaults
       CONSUMERS: 1
