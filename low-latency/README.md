@@ -33,7 +33,79 @@ If everything is setup correctly, you would expect to see a new target in Promet
 
 Now that we have Prometheus integrated with perf-test, we can create a dashboard in Grafana to visualise perf-test metrics. Import the [RabbitMQ perf-test message latencies dashboard](https://grafana.com/dashboards/6566) straight from grafana.com.
 
+## What is the baseline message latency?
+
+RabbitMQ v3.7.6
+Erlang/OTP v20.3.8
+VM type was n1-highcpu-4
+
+We used a single perf-test instance for both publishing and consuming so that there would be no time difference between the hosts when calculating message latencies.
+perf-test was running on a separate host so that JVM wouldn't contend on CPU with Erlang, and so that we would use a real network, not the loopback interface.
+Perf-test was deployed to CloudFoundry using [rabbitmq-perf-test-for-cf](https://github.com/rabbitmq/rabbitmq-perf-test-for-cf).
+
+perf-test v2.2.0
+JDK 1.8.0_172 (java_buildpack v4.12)
+VM type was n1-standard-2
+
+1 publisher, no confirms
+1 consumer using autoack
+1 non-durable queue
+10K msg/s, non-persistent
+1K msg body
+
+The max 99th percentile is 1.56ms.
+The max 95th percentile is 1.23ms.
+The max 75th percentile is 1.04ms.
+
+## What are the effects of RabbitMQ's metrics collection interval on message latency?
+
+## What are the effects of RabbitMQ Management on message latency?
+
+## What are the effects of message rates on message latency?
+100 msg/s
+1000 msg/s
+10000 msg/s
+50000 msg/s
+
+## What are the effects of multiple consumers on message latency?
+1
+10
+100
+
+## What are the effects of multiple producers on message latency?
+1
+2
+5
+
+## What are the effects of different queue types on message latency?
+non-durable
+durable
+lazy
+
+## What are the effects of queue mirroring on message latency?
+1
+2
+3
+
+## What are the effects of publisher confirms on message latency?
+multi-publisher confirms
+
+## What are the effects of consumer acks on message latency?
+multi-acks
+
+## What are the effects of exchange type on message latency?
+direct
+topic
+fanout
+headers
+
+## What are the effects of running multiple queues on message latency?
+1
+2
+5
+
 ## Notes
 
 Running separate perf-test instances for producer & consumer
 If they are running on separate hosts, make sure that they use NTP and are in sync. Check for time drift.
+
