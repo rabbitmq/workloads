@@ -1,22 +1,29 @@
 # How to measure message latencies in RabbitMQ?
 
-Perf-test, the RabbitMQ throughput testing tool that is maintained by team RabbitMQ, was able to report message latencies for a long time now. The message latencies would be displayed on STDOUT, using the following format:
+PerfTest is a tool for testing throughput, developed by the RabbitMQ team. It’s based on the RabbitMQ Java client, and can be configured to simulate varying workload levels. Its output can range from plain text output to STDOUT, to static HTML graphs.
+
+
+PerfTest can be used in conjunction with other tools, such as Promethus and Grafana, for visual analysis of throughput, message latencies, and many other metrics.
+
+By default, Perftest’s message latencies are displayed on STDOUT, at regular intervals, using the following format:
 
 ```
 time: 5.000s, received: 999 msg/s, min/median/75th/95th/99th latency: 1/3/3/3 ms
 ```
 
-A new feature coming in perf-test v2.2.0 exposes message latencies to Prometheus via `GET /metrics` endpoint. To make use of this feature, take a look at the new flags that have been added by running `make run ARGS=-mh`.
+From version 2.2.0, PerfTest can also expose metrics, including message latencies, to Prometheus, an open-source systems monitoring and alerting toolkit hosted by the Cloud Native Computing Foundation.
 
-To enable this new feature, you could run the following command:
+To see a list of the new flags added from 2.2.0 onwards, run `make run ARGS=-mh`.
+
+To run Perftest with Prometheus metrics enabled, you can run the following command:
 
 ```
-make run ARGS="--metrics-prometheus --use-millis --producers 1 --consumers 1 --rate 100 --metrics-tags type=publisher,type=consumer"
+make run ARGS="--metrics-prometheus --producers 1 --consumers 1 --rate 100 --metrics-tags type=publisher,type=consumer"
 ```
 
-You will be able to access the metrics via `http://127.0.0.1:8080/metrics`
+To confirm that metrics work correctly, open `http://127.0.0.1:8080/metrics`
 
-Since we run a producer & a consumer in a single perf-test instance, we need to tag it with both types: `--metrics-tags type=publisher,type=consumer`.
+> Since a producer and a consumer are both run in a single perf-test instance, we need to tag it with both types: `--metrics-tags type=publisher,type=consumer`.
 
 > Make sure that no other process is bound to port 8080, otherwise perf-test will start, bind to the same port, and traffic will not be routed correctly. Talk to Arnaud about this.
 
@@ -108,4 +115,3 @@ headers
 
 Running separate perf-test instances for producer & consumer
 If they are running on separate hosts, make sure that they use NTP and are in sync. Check for time drift.
-
