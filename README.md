@@ -10,4 +10,4 @@ Each directory in this repository represents a specific RabbitMQ configuration a
 
 * RabbitMQ configuration description and point-in-time performance observations, as well as links to metrics dashboards and RabbitMQ Management UI
 * CloudFoundry manifest for [PerfTest](https://github.com/rabbitmq/rabbitmq-perf-test) that captures every producer and consumer configuration
-* BOSH manifest for [rabbitmq-server-boshrelease](https://github.com/rabbitmq/rabbitmq-server-boshrelease) the contains the complete RabbitMQ config. This BOSH manifest requires [variable interpolation](http://bosh.io/docs/cli-int.html) for the credentials, it cannot be used as is.
+* BOSH manifest for [rabbitmq-server-boshrelease](https://github.com/rabbitmq/rabbitmq-server-boshrelease) contains the complete RabbitMQ config. This BOSH manifest requires [variable interpolation](http://bosh.io/docs/cli-int.html) for the credentials; it cannot be used as-is.
