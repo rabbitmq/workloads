@@ -27,18 +27,30 @@ To confirm that Prometheus metrics are working correctly within PerfTest, you ca
 
 > Make sure that no other process is bound to port 8080, otherwise PerfTest will start, bind to the same port, and traffic will not be routed correctly. Talk to Arnaud about this.
 
-Once you've confirmed that metrics are running locally, you can configure Prometheus to scrape PerfTest on a pre-determined interval. The following static configuration can be used:
+Once you've confirmed that metrics are running locally, you can configure Prometheus to scrape PerfTest on a pre-determined interval. Create a file named `prometheus.yml`, containing the following:
 
 ```
-  scrape_configs:
+global:
+  scrape_interval:     15s
+  evaluation_interval: 15s
+
+rule_files: []
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
   - job_name: perf-test
     static_configs:
-      - targets: ['127.0.0.1:8080']
+      - targets: ['localhost:8080']
+
 ```
 
-If everything is set up correctly, you should see a new target in Prometheus by selecting "Status > Targets". You can then view  `perftest_latency_seconds` metrics, alongside other metrics, by going to "Graph" and searching for "perftest". Click "Execute" and then click "Graph" to view a visual performance chart.
+You can then run Prometheus by changing to the directory containing this configuration file, and running the `prometheus` command to start the Prometheus server.
 
-Now that we have Prometheus integrated with PerfTest, we can create a dashboard in Grafana to visualise PerfTest metrics. Import the [RabbitMQ perf-test message latencies dashboard](https://grafana.com/dashboards/6566) straight from grafana.com.
+To interact with Prometheus, you can now run a web browser and visit the URL http://localhost:9090. If everything is set up correctly, a Prometheus page will load. You should now see a new target, **perf-test (1/1 up)**, listed in Prometheus by selecting [Status > Targets](http://localhost:9090/targets). You can then view  `perftest_latency_seconds` metrics, alongside other metrics, by selecting [Graph](http://localhost:9090/graph), searching for "perftest", and selecting an item of interest, such as **perftest_latency_seconds**. Click the **Execute** button to see a list of metrics. You can then click the **Graph** tab to see a visual representation of the same metrics as a chart.
+
+Now that we have Prometheus integrated with PerfTest, we can create a dashboard in Grafana to visualise PerfTest metrics. Import the [RabbitMQ perf-test message latencies dashboard](https://grafana.com/dashboards/6566) straight from http://grafana.com.
 
 ## What is the baseline message latency?
 
