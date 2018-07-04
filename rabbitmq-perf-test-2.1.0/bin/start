@@ -71,6 +71,18 @@ fi
 [ -z "$CONSUME_RATE" ] ||
   perftest_opts+=(--consumer-rate "$CONSUME_RATE")
 
+[ -z "$PUBLISHING_INTERVAL" ] ||
+  perftest_opts+=(--publishing-interval "$PUBLISHING_INTERVAL")
+
+[ -z "$PRODUCER_SCHEDULER_THREADS" ] ||
+  perftest_opts+=(--producer-scheduler-threads "$PRODUCER_SCHEDULER_THREADS")
+
+[ -z "$PRODUCER_RANDOM_START_DELAY" ] ||
+  perftest_opts+=(--producer-random-start-delay "$PRODUCER_RANDOM_START_DELAY")
+
+[ -z "$NIO_THREADS" ] ||
+  perftest_opts+=(--nio-threads "$NIO_THREADS")
+
 [ -z "$RESTART_INTERVAL" ] ||
   perftest_opts+=(--time "$RESTART_INTERVAL")
 
