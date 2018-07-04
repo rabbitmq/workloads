@@ -44,7 +44,7 @@ Now that we have Prometheus integrated with PerfTest, we can create a dashboard 
 
 * RabbitMQ v3.7.6
 * Erlang/OTP v20.3.8
-* VM type was n1-highcpu-4
+* VM type was n1-highcpu-4 with Intel(R) Xeon(R) CPU @ 2.60GHz (cpu family 6 & model 45)
 
 We used a single PerfTest instance for both publishing and consuming so that there would be no time difference between the hosts when calculating message latencies.
 PerfTest was running on a separate host so that JVM wouldn't contend on CPU with Erlang, and so that we would use a real network, not the loopback interface.
@@ -52,7 +52,7 @@ PerfTest was deployed to CloudFoundry using [rabbitmq-perf-test-for-cf](https://
 
 * perf-test v2.2.0
 * JDK 1.8.0_172 (java_buildpack v4.12)
-* VM type was n1-standard-2
+* VM type was n1-standard-4 with Intel(R) Xeon(R) CPU @ 2.60GHz (cpu family 6 & model 45)
 
 * 1 publisher, no confirms
 * 1 consumer using autoack
@@ -162,37 +162,55 @@ Publish rate: 10000 msg/s
 
 ## What are the effects of running multiple queues?
 
-1
-10
-100
+Publish rate: 10000 msg/s
 
-## What are the effects of RabbitMQ's metrics collection interval?
+We use 1 producer & 1 consumer per queue, so there will be multiple producers, consumers & queues.
+
+Each producer and each consumer use their own connection & channel.
+
+| Queues<br /> Producers<br /> Consumers | Msg/s per queue | Max 99th | Max 95th | Max 75th |
+| -:                                     | -:              | -:       | -:       | -:       |
+| 1                                      | 10000           | 2.74ms   | 1.36ms   | 1.16ms   |
+| 2                                      | 5000            | 2.3ms    | 1.43ms   | 0.99ms   |
+| 5                                      | 2000            | 17.8ms   | 13.1ms   | 8.4ms    |
+| 10                                     | 1000            | 17.8ms   | 14.1ms   | 8.9ms    |
+| 100                                    | 100             | 28ms     | 18.9ms   | 11ms     |
+
+We changed the NIO_THREADS from 10 to 5 and the NIO_THREAD_POOL from 20 to 10 and observed lower latency, especially for the 100 & 10 tests.
+Having run this a couple of times later on the in day, we've observed 80% higher latency for the 2 test and stopped.
+The cloud is too unpredictable to be confident in latency readings.
+Having set up fping between the RabbitMQ node and the Diego cells, we've observed network latencies as high as 2.76ms.
+
+## What are the effects of different queue types?
+
+* non-durable
+* durable
+* lazy
+
+## What are the effects of publisher confirms?
+
+* multi-publisher confirms
+
+## What are the effects of consumer acks?
+
+* multi-acks
+
+## What are the effects of exchange type?
+
+* direct
+* topic
+* fanout
+* headers
+
+## What are the effects of queue mirroring?
+
+* 1
+* 2
+* 3
 
 ## What are the effects of RabbitMQ Management?
 
-## What are the effects of different queue types?
-non-durable
-durable
-lazy
-
-## What are the effects of queue mirroring?
-1
-2
-3
-
-## What are the effects of publisher confirms?
-multi-publisher confirms
-
-## What are the effects of consumer acks?
-multi-acks
-
-## What are the effects of exchange type?
-direct
-topic
-fanout
-headers
-
 ## Notes
 
-Running separate PerfTest instances for producer & consumer
-If they are running on separate hosts, make sure that they use NTP and are in sync. Check for time drift.
+* Add CF manifest & BOSH manifest
+* If producer & consumer instances are running on separate hosts, make sure that they use NTP and are in sync. Check for time drift.
