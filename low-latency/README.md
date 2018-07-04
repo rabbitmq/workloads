@@ -3,7 +3,7 @@
 PerfTest is a tool for testing throughput, developed by the RabbitMQ team. It’s based on the RabbitMQ Java client, and can be configured to simulate varying workload levels. Its output can range from plain text output to STDOUT, to static HTML graphs.
 
 
-PerfTest can be used in conjunction with other tools, such as Promethus and Grafana, for visual analysis of throughput, message latencies, and many other metrics.
+PerfTest can be used in conjunction with other tools, such as Prometheus and Grafana, for visual analysis of throughput, message latencies, and many other metrics.
 
 By default, Perftest’s message latencies are displayed on STDOUT, at regular intervals, using the following format:
 
@@ -13,21 +13,21 @@ time: 5.000s, received: 999 msg/s, min/median/75th/95th/99th latency: 1/3/3/3 ms
 
 From version 2.2.0, PerfTest can also expose metrics, including message latencies, to Prometheus, an open-source systems monitoring and alerting toolkit hosted by the Cloud Native Computing Foundation.
 
-To see a list of the new flags added from 2.2.0 onwards, run `make run ARGS=-mh`.
+To see a list of the new flags added from 2.2.0 onwards, download the latest RabbitMQ PerfTest source code release from [rabbitmq-perf-test Releases](https://github.com/rabbitmq/rabbitmq-perf-test/releases) locally, unarchive, change to that directory within your terminal, and then run `make run ARGS=-mh`.
 
-To run Perftest with Prometheus metrics enabled, you can run the following command:
+Once RabbitMQ is running locally, you'll be able to run PerfTest with Prometheus metrics enabled by using the following command:
 
 ```
 make run ARGS="--metrics-prometheus --producers 1 --consumers 1 --rate 100 --metrics-tags type=publisher,type=consumer"
 ```
 
-To confirm that metrics work correctly, open `http://127.0.0.1:8080/metrics`
+To confirm that Prometheus metrics are working correctly within PerfTest, you can visit `http://127.0.0.1:8080/metrics` in a browser.
 
-> Since a producer and a consumer are both run in a single perf-test instance, we need to tag it with both types: `--metrics-tags type=publisher,type=consumer`.
+> Since a producer and a consumer are both run in a single PerfTest instance, we need to tag it with both types: `--metrics-tags type=publisher,type=consumer`.
 
-> Make sure that no other process is bound to port 8080, otherwise perf-test will start, bind to the same port, and traffic will not be routed correctly. Talk to Arnaud about this.
+> Make sure that no other process is bound to port 8080, otherwise PerfTest will start, bind to the same port, and traffic will not be routed correctly. Talk to Arnaud about this.
 
-Once you confirm that Prometheus support has been configured in perf-test, you will need to configure Prometheus to scrape perf-test on a pre-determined interval. We use the following static configuration:
+Once you've confirmed that metrics are running locally, you can configure Prometheus to scrape PerfTest on a pre-determined interval. The following static configuration can be used:
 
 ```
   scrape_configs:
@@ -36,9 +36,9 @@ Once you confirm that Prometheus support has been configured in perf-test, you w
       - targets: ['127.0.0.1:8080']
 ```
 
-If everything is setup correctly, you would expect to see a new target in Prometheus and the `perftest_latency_seconds` metrics, alongside other metrics prefixed with `perftest_`.
+If everything is set up correctly, you should see a new target in Prometheus by selecting "Status > Targets". You can then view  `perftest_latency_seconds` metrics, alongside other metrics, by going to "Graph" and searching for "perftest". Click "Execute" and then click "Graph" to view a visual performance chart.
 
-Now that we have Prometheus integrated with perf-test, we can create a dashboard in Grafana to visualise perf-test metrics. Import the [RabbitMQ perf-test message latencies dashboard](https://grafana.com/dashboards/6566) straight from grafana.com.
+Now that we have Prometheus integrated with PerfTest, we can create a dashboard in Grafana to visualise PerfTest metrics. Import the [RabbitMQ perf-test message latencies dashboard](https://grafana.com/dashboards/6566) straight from grafana.com.
 
 ## What is the baseline message latency?
 
@@ -46,9 +46,9 @@ Now that we have Prometheus integrated with perf-test, we can create a dashboard
 * Erlang/OTP v20.3.8
 * VM type was n1-highcpu-4 with Intel(R) Xeon(R) CPU @ 2.60GHz (cpu family 6 & model 45)
 
-We used a single perf-test instance for both publishing and consuming so that there would be no time difference between the hosts when calculating message latencies.
-perf-test was running on a separate host so that JVM wouldn't contend on CPU with Erlang, and so that we would use a real network, not the loopback interface.
-Perf-test was deployed to CloudFoundry using [rabbitmq-perf-test-for-cf](https://github.com/rabbitmq/rabbitmq-perf-test-for-cf).
+We used a single PerfTest instance for both publishing and consuming so that there would be no time difference between the hosts when calculating message latencies.
+PerfTest was running on a separate host so that JVM wouldn't contend on CPU with Erlang, and so that we would use a real network, not the loopback interface.
+PerfTest was deployed to CloudFoundry using [rabbitmq-perf-test-for-cf](https://github.com/rabbitmq/rabbitmq-perf-test-for-cf).
 
 * perf-test v2.2.0
 * JDK 1.8.0_172 (java_buildpack v4.12)
@@ -212,7 +212,5 @@ Having set up fping between the RabbitMQ node and the Diego cells, we've observe
 
 ## Notes
 
-Add CF manifest & BOSH manifest.
-
-Running separate perf-test instances for producer & consumer
-If they are running on separate hosts, make sure that they use NTP and are in sync. Check for time drift.
+* Add CF manifest & BOSH manifest
+* If producer & consumer instances are running on separate hosts, make sure that they use NTP and are in sync. Check for time drift.
