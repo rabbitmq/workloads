@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+#echo "Wait an arbitrary amount of time for RabbitMQ to clean connections, channels & queues between PerfTest runs..."
+#echo "TODO: query the API until connections, channels & queues are 0 before running PerfTest"
+#echo "TODO: print the arguments for this test run"
+sleep 3
+
+${PERFTEST_PATH:?must be set}/bin/runjava com.rabbitmq.perf.PerfTest \
+--autoack \
+--interval 15 \
+--size 1000 \
+--queue-args 'x-max-length=10000' \
+--routing-key perf-test \
+--uri "amqp://admin:${RABBITMQ_PASS:?must be set}@${RABBITMQ_HOST:?must be set}:5672/%2F" \
+--metrics-prometheus \
+--metrics-tags 'type=publisher,type=consumer,deployment=low-latency' \
+--queue-pattern 'perf-test-%d' \
+--queue-pattern-from 1 \
+--queue-pattern-to ${QUEUES:?must be set} \
+--consumers ${CONSUMERS:?must be set} \
+--producers ${PRODUCERS:?must be set} \
+--rate ${RATE:?must be set} \
+--time ${TEST_DURATION:?must be set} 1>/dev/null

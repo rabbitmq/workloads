@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+curl -su "admin:${PROM_PASS:?must be set}" -k \
+  "https://prometheus.rabbitmq.pivotal.io/api/v1/query?query=max_over_time(perftest_latency_seconds%7Bquantile%3D%220.${QUANTILE:?must be set}%22%7D%5B${METRICS_WINDOW:?must be set}s%5D%20offset%20${METRICS_OFFSET:?must be set}s)%20*%201000" |
+  jq -r '.data.result[].value[1]' |
+  xargs printf "%.2f\\n"
