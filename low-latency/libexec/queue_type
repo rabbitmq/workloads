@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+export RATE=50000
+
+printf "%s\n" "" \
+	"## What are the effects of different queue types?" \
+	"" \
+	"Publish rate: $RATE msg/s" \
+	"| Queue type | Max 99th | Max 95th | Max 75th |" \
+	"| -:        | -:       | -:       | -:       |"
+
+printf "| %s " non-durable
+${PERFTEST_PATH:?must be set}/bin/runjava com.rabbitmq.perf.PerfTest \
+--autoack \
+--predeclared \
+--queue non-durable \
+--interval 15 \
+--size 10000 \
+--routing-key non-durable \
+--uri "amqp://admin:${RABBITMQ_PASS:?must be set}@${RABBITMQ_HOST:?must be set}:5672/%2F" \
+--metrics-prometheus \
+--metrics-tags 'type=publisher,type=consumer,deployment=low-latency' \
+--consumers ${CONSUMERS:?must be set} \
+--producers ${PRODUCERS:?must be set} \
+--rate ${RATE:?must be set} \
+--time ${TEST_DURATION:?must be set} $@ 1>/dev/null
+. _max_message_latency_quantiles
+
+printf "| %s " durable
+${PERFTEST_PATH:?must be set}/bin/runjava com.rabbitmq.perf.PerfTest \
+--autoack \
+--predeclared \
+--queue durable \
+--flag persistent \
+--interval 15 \
+--size 10000 \
+--routing-key durable \
+--uri "amqp://admin:${RABBITMQ_PASS:?must be set}@${RABBITMQ_HOST:?must be set}:5672/%2F" \
+--metrics-prometheus \
+--metrics-tags 'type=publisher,type=consumer,deployment=low-latency' \
+--consumers ${CONSUMERS:?must be set} \
+--producers ${PRODUCERS:?must be set} \
+--rate ${RATE:?must be set} \
+--time ${TEST_DURATION:?must be set} $@ 1>/dev/null
+. _max_message_latency_quantiles
+
+printf "| %s " lazy
+${PERFTEST_PATH:?must be set}/bin/runjava com.rabbitmq.perf.PerfTest \
+--autoack \
+--predeclared \
+--queue lazy \
+--flag persistent \
+--interval 15 \
+--size 10000 \
+--routing-key lazy \
+--uri "amqp://admin:${RABBITMQ_PASS:?must be set}@${RABBITMQ_HOST:?must be set}:5672/%2F" \
+--metrics-prometheus \
+--metrics-tags 'type=publisher,type=consumer,deployment=low-latency' \
+--consumers ${CONSUMERS:?must be set} \
+--producers ${PRODUCERS:?must be set} \
+--rate ${RATE:?must be set} \
+--time ${TEST_DURATION:?must be set} $@ 1>/dev/null
+. _max_message_latency_quantiles

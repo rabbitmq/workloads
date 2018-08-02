@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+printf "%s\n" "" \
+	"## How does publish rate affect message latency?" \
+	"" \
+	"| Publish Rate | Max 99th | Max 95th | Max 75th |" \
+	"| -:           | -:       | -:       | -:       |"
+
+for RATE in 100 1000 10000 20000 30000 50000 60000 70000; do
+  printf "| %s msg/s " $RATE
+  . _run_perf_test
+  . _max_message_latency_quantiles
+done

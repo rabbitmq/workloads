@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+export RATE=10000
+
+printf "%s\n" "" \
+	"## How do multiple consumers affect message latency?" \
+	"" \
+	"Publish rate: $RATE msg/s" \
+	"| Consumers | Max 99th | Max 95th | Max 75th |" \
+	"| -:        | -:       | -:       | -:       |"
+
+unset CONSUMERS
+for CONSUMERS in 1 2 5 10 100 500; do
+  printf "| %s " $CONSUMERS
+  . _run_perf_test
+  . _max_message_latency_quantiles
+done

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+export RATE=63000
+
+printf "%s\n" "" \
+	"## How does credit flow affect message latency (Erlang/OTP 21)?" \
+	"" \
+	"| Credits    | Max 99th | Max 95th | Max 75th |" \
+	"| -:         | -:       | -:       | -:       |"
+
+for CREDITS in "{100,50}" "{200,100}" "{400,200}"; do
+  read -rp "echo \"[{rabbit, [{credit_flow_default_credit, $CREDITS}]}].\" > /etc/rabbitmq/rabbitmq.config in $RABBITMQ_HOST and restart the node (press any key to confirm) " -n 1
+  printf "| %s " $CREDITS
+  . _run_perf_test
+  . _max_message_latency_quantiles
+done

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
 printf "| %s ms | %s ms | %s ms |\\n" \
-  $(QUANTILE=99 _max_message_latency_quantile)
-  $(QUANTILE=95 _max_message_latency_quantile)
-  $(QUANTILE=75 _max_message_latency_quantile)
+  $(QUANTILE=99 . _max_message_latency_quantile) \
+  $(QUANTILE=95 . _max_message_latency_quantile) \
+  $(QUANTILE=75 . _max_message_latency_quantile)

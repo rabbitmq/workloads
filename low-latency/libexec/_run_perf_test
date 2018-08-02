@@ -8,7 +8,7 @@ sleep 3
 ${PERFTEST_PATH:?must be set}/bin/runjava com.rabbitmq.perf.PerfTest \
 --autoack \
 --interval 15 \
---size 1000 \
+--size ${MSG_BODY_SIZE:?must be set} \
 --queue-args 'x-max-length=10000' \
 --routing-key perf-test \
 --uri "amqp://admin:${RABBITMQ_PASS:?must be set}@${RABBITMQ_HOST:?must be set}:5672/%2F" \
@@ -20,4 +20,4 @@ ${PERFTEST_PATH:?must be set}/bin/runjava com.rabbitmq.perf.PerfTest \
 --consumers ${CONSUMERS:?must be set} \
 --producers ${PRODUCERS:?must be set} \
 --rate ${RATE:?must be set} \
---time ${TEST_DURATION:?must be set} 1>/dev/null
+--time ${TEST_DURATION:?must be set} $@ 1>/dev/null
