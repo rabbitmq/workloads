@@ -65,108 +65,18 @@ bin/runjava com.rabbitmq.perf.PerfTest \
 
 ## How does publish rate affect message latency?
 
-| Publish Rate      | Max 99th | Max 95th | Max 75th |
-| -:                | -:       | -:       | -:       |
-| 100 msg/s         | 1.75ms   | 1.49ms   | 1.47ms   |
-| 1000 msg/s        | 0.87ms   | 0.74ms   | 0.67ms   |
-| 10000 msg/s       | 3ms      | 1.89ms   | 1ms      |
-| 20000 msg/s       | 15.7ms   | 6.5ms    | 0.97ms   |
-| 30000 msg/s       | 36ms     | 21ms     | 1.37ms   |
-| 50000 msg/s       | 40ms     | 8.1ms    | 1.17ms   |
-| 70000 msg/s       | 319ms    | 302ms    | 285ms    |
-| 73000 msg/s (MAX) | 193ms    | 184ms    | 168ms    |
+| Publish Rate      | Max 99th  | Max 95th  | Max 75th  |
+| -:                | -:        | -:        | -:        |
+| 100 msg/s         | 0.80 ms   | 0.67 ms   | 0.64 ms   |
+| 1000 msg/s        | 0.47 ms   | 0.39 ms   | 0.31 ms   |
+| 10000 msg/s       | 6.29 ms   | 1.18 ms   | 0.72 ms   |
+| 20000 msg/s       | 16.25 ms  | 1.31 ms   | 0.78 ms   |
+| 30000 msg/s       | 23.06 ms  | 2.36 ms   | 0.98 ms   |
+| 50000 msg/s       | 39.84 ms  | 11.01 ms  | 1.83 ms   |
+| 70000 msg/s       | 92.27 ms  | 88.08 ms  | 54.52 ms  |
+| 73000 msg/s (MAX) | 234.86 ms | 226.48 ms | 209.70 ms |
 
-### 20k msg/s
-
-| Publish Rate | Max 99th | Max 95th | Max 75th |
-| -:           | -:       | -:       | -:       |
-| 20000 msg/s  | 15.7ms   | 6.5ms    | 0.97ms   |
-
-At 20k msg/s, the producer channel would intermittently enter flow for a brief period of time.
-CPU user was at 20%, CPU system was at 1% & Erlang scheduler utilization was at ~30%:
-
-```erlang
-
-recon:scheduler_usage(5000).
-[{1,0.32127064777042974},
- {2,0.19421909177056895},
- {3,0.276789464705123},
- {4,5.61117772151292e-6},
- {5,2.8452664909501565e-6},
- {6,2.872080559732737e-6},
- {7,2.643504629596315e-6},
- {8,2.4995208790033458e-6},
- {9,0.0},
- {10,0.0},
- {11,0.0},
- {12,0.0},
- {13,0.0},
- {14,0.0},
- {15,0.0},
- {16,0.0}]
-```
-
-### 50k msg/s
-
-| Publish Rate | Max 99th | Max 95th | Max 75th |
-| -:           | -:       | -:       | -:       |
-| 50000 msg/s  | 40ms     | 8.1ms    | 1.17ms   |
-
-At 50k msg/s, the producer channel would intermittently enter flow.
-CPU user was at 32%, CPU system was at 3% & Erlang scheduler utilization was at ~44%:
-
-```erlang
-recon:scheduler_usage(5000).
-[{1,0.5141759984360637},
- {2,0.45835134168684916},
- {3,0.4446946843590661},
- {4,0.3624757672451614},
- {5,3.004022702537944e-6},
- {6,2.684283906691537e-6},
- {7,2.8790446178979844e-6},
- {8,2.5593061828957327e-6},
- {9,0.0},
- {10,0.0},
- {11,0.0},
- {12,0.0},
- {13,0.0},
- {14,0.0},
- {15,0.0},
- {16,0.0}]
-```
-
-### 80k msg/s & above
-
-| Publish Rate      | Max 99th | Max 95th | Max 75th |
-| -:                | -:       | -:       | -:       |
-| 80000 msg/s       | 210ms    | 193ms    | 185ms    |
-| 83000 msg/s (MAX) | 302ms    | 302ms    | 285ms    |
-
-At 80k msg/s @ 1000 bytes msg body we are saturating the 2Gbps network.
-Lowering the msg body to 500 bytes resulted in a peak of 83k msgs/s. Both producer connection & channel were in a permanent flow state.
-CPU user was at 40%, CPU system was at 3% & scheduler utilization was at ~54%:
-
-```erlang
-recon:scheduler_usage(5000).
-[{1,0.45632246662108844},
- {2,0.6696720902621559},
- {3,0.5261055287839728},
- {4,0.5886865800022822},
- {5,0.44606700844562114},
- {6,3.2406325893914185e-6},
- {7,4.5946789441100864e-6},
- {8,3.1390420895599905e-6},
- {9,0.0},
- {10,0.0},
- {11,0.0},
- {12,0.0},
- {13,0.0},
- {14,0.0},
- {15,0.0},
- {16,0.0}]
-```
-
-We suspect that the flow is artificial, the consumer is able to cope with the message rate, but the queue process is slowing down the producer unnecessarily.
+At 73k msg/s we are hitting ...
 
 ## How does credit flow affect message latency (Erlang/OTP 21)?
 
