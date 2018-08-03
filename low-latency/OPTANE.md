@@ -174,6 +174,8 @@ Message body size: 10000 bytes
 
 ### Publish rate: 50000 msg/s
 
+|  Queue type | Max 99th | Max 95th | Max 75th |
+|          -: |       -: |       -: |       -: |
 | non-durable | 113.24 ms | 92.27 ms | 83.88 ms |
 |     durable | 109.04 ms | 96.46 ms | 92.27 ms |
 |        lazy | 100.66 ms | 96.46 ms | 83.88 ms |
