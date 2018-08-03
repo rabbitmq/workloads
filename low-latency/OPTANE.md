@@ -1,6 +1,6 @@
 # Environment setup
 
-(Intel Optane](https://www.acceleratewithoptane.com/access/) running Ubuntu 16.04 LTS & Linux 4.13.0-41-generic SMP x86_64.
+[Intel Optane](https://www.acceleratewithoptane.com/access/) running Ubuntu 16.04 LTS & Linux 4.13.0-41-generic SMP x86_64.
 
 Each host had two [Intel Xeon Gold 6142](https://ark.intel.com/products/120487/Intel-Xeon-Gold-6142-Processor-22M-Cache-2_60-GHz) & 20Gbps Bonded Network (2 × 10Gbps w/ LACP).
 
