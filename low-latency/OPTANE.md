@@ -6,7 +6,7 @@ Each host had two [Intel Xeon Gold 6142](https://ark.intel.com/products/120487/I
 
 We were running the following versions:
 
-1. RabbitMQ v3.7.7 on Erlang/OTP v21.0.3
+1. RabbitMQ v3.7.7 on Erlang/OTP v21.0.4
 1. [PerfTest v2.2.0.M1](https://github.com/rabbitmq/rabbitmq-perf-test/releases/download/v2.2.0.M1/rabbitmq-perf-test-2.2.0.M1-bin.tar.gz) on Open JDK v1.8.0_171, RabbitMQ AMQP Java Client v5.3.0
 
 ```
