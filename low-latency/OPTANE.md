@@ -100,20 +100,36 @@ Publish rate: 63000 msg/s
 
 ## How do multiple consumers affect message latency?
 
-Publish rate: 10000 msg/s
+### Publish rate: 10000 msg/s
 
 | Consumers | Max 99th | Max 95th | Max 75th |
 |        -: |       -: |       -: |       -: |
-|         1 |  3.93 ms |  0.85 ms |  0.59 ms |
-|         2 |  3.01 ms |  0.75 ms |  0.47 ms |
-|         5 |  2.75 ms |  0.65 ms |  0.44 ms |
-|        10 |  1.90 ms |  0.65 ms |  0.39 ms |
-|       100 |  1.24 ms |  0.65 ms |  0.39 ms |
-|       500 |  0.98 ms |  0.65 ms |  0.41 ms |
+|         1 |  4.98 ms |  1.01 ms |  0.65 ms |
+|         2 |  4.45 ms |  0.82 ms |  0.52 ms |
+|         5 |  2.09 ms |  0.68 ms |  0.44 ms |
+|        10 |  3.14 ms |  0.68 ms |  0.41 ms |
+|       100 |  1.18 ms |  0.62 ms |  0.41 ms |
+|       500 |  1.11 ms |  0.65 ms |  0.42 ms |
 
-Publish rate: 50000 msg/s ?
+### Publish rate: 20000 msg/s
+
+| Consumers | Max 99th | Max 95th | Max 75th |
+|        -: |       -: |       -: |       -: |
+|         1 |  1.50 ms |  1.24 ms |  0.82 ms |
+|         2 |  1.37 ms |  0.95 ms |  0.68 ms |
+|         5 |  4.45 ms |  0.82 ms |  0.55 ms |
+|        10 |  6.03 ms |  0.75 ms |  0.50 ms |
+|       100 | 10.48 ms |  0.82 ms |  0.55 ms |
+|       500 |  4.19 ms |  0.78 ms |  0.55 ms |
+
+### Publish rate: 30000 msg/s
+
+### Publish rate: 40000 msg/s
+
+### Publish rate: 50000 msg/s
 
 ## How do multiple producers affect message latency?
+
 ## How do multiple queues affect message latency?
 
 ## What are the effects of running multiple queues?
