@@ -124,9 +124,36 @@ Publish rate: 63000 msg/s
 
 ### Publish rate: 30000 msg/s
 
+| Consumers | Max 99th | Max 95th | Max 75th |
+|        -: |       -: |       -: |       -: |
+|         1 |  1.83 ms |  1.31 ms |  0.98 ms |
+|         2 | 11.53 ms |  1.11 ms |  0.75 ms |
+|         5 |  8.12 ms |  0.91 ms |  0.65 ms |
+|        10 |  7.07 ms |  0.88 ms |  0.65 ms |
+|       100 |  8.91 ms |  1.04 ms |  0.72 ms |
+|       500 |  9.43 ms |  0.98 ms |  0.65 ms |
+
 ### Publish rate: 40000 msg/s
 
+| Consumers | Max 99th | Max 95th | Max 75th |
+|        -: |       -: |       -: |       -: |
+|         1 | 13.63 ms |  1.57 ms |  1.11 ms |
+|         2 | 13.10 ms |  1.24 ms |  0.91 ms |
+|         5 |  1.70 ms |  1.11 ms |  0.78 ms |
+|        10 | 16.25 ms |  1.18 ms |  0.82 ms |
+|       100 |  1.70 ms |  1.37 ms |  1.01 ms |
+|       500 | 22.02 ms |  1.37 ms |  0.85 ms |
+
 ### Publish rate: 50000 msg/s
+
+| Consumers | Max 99th | Max 95th | Max 75th |
+|        -: |       -: |       -: |       -: |
+|         1 | 15.20 ms |  1.77 ms |  1.18 ms |
+|         2 | 19.92 ms |  1.77 ms |  1.04 ms |
+|         5 | 22.02 ms |  1.63 ms |  1.11 ms |
+|        10 | 19.92 ms |  1.50 ms |  1.11 ms |
+|       100 | 48.23 ms | 39.84 ms |  6.55 ms |
+|       500 | 54.52 ms | 44.04 ms |  8.91 ms |
 
 ## How do multiple producers affect message latency?
 
