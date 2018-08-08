@@ -1,17 +1,17 @@
 # Environment setup
 
-(Intel Optane](https://www.acceleratewithoptane.com/access/) running Ubuntu 16.04 LTS & Linux 4.13.0-41-generic SMP x86_64.
+[Intel Optane](https://www.acceleratewithoptane.com/access/) running Ubuntu 16.04 LTS & Linux 4.13.0-41-generic SMP x86_64.
 
 Each host had two [Intel Xeon Gold 6142](https://ark.intel.com/products/120487/Intel-Xeon-Gold-6142-Processor-22M-Cache-2_60-GHz) & 20Gbps Bonded Network (2 × 10Gbps w/ LACP).
 
 We were running the following versions:
 
-1. RabbitMQ v3.7.7 on Erlang/OTP v21.0.3
+1. RabbitMQ v3.7.7 on Erlang/OTP v21.0.4
 1. [PerfTest v2.2.0.M1](https://github.com/rabbitmq/rabbitmq-perf-test/releases/download/v2.2.0.M1/rabbitmq-perf-test-2.2.0.M1-bin.tar.gz) on Open JDK v1.8.0_171, RabbitMQ AMQP Java Client v5.3.0
 
 ```
-wget -O - 'https://dl.bintray.com/rabbitmq/Keys/rabbitmq-release-signing-key.asc' | apt-key add -
 apt install apt-transport-https
+wget -O - 'https://dl.bintray.com/rabbitmq/Keys/rabbitmq-release-signing-key.asc' | apt-key add -
 cat > /etc/apt/sources.list.d/rabbitmq.list <<EOF
 deb https://dl.bintray.com/rabbitmq/debian $(lsb_release -c | awk '{ print $2 }') rabbitmq-server-v3.7.x
 deb https://dl.bintray.com/rabbitmq/debian $(lsb_release -c | awk '{ print $2 }') erlang-21.x
@@ -19,7 +19,7 @@ deb https://dl.bintray.com/rabbitmq/debian $(lsb_release -c | awk '{ print $2 }'
 EOF
 apt update
 apt upgrade -y
-apt install vim-nox dstat htop vnstat tmux -y
+apt install vim-nox dstat htop vnstat tmux git-core -y
 apt install rabbitmq-server -y
 rabbitmqctl add_user admin PASSWORD
 rabbitmqctl set_user_tags admin administrator
@@ -30,12 +30,19 @@ rabbitmq-plugins enable rabbitmq_management
 ```
 apt update
 apt upgrade -y
+apt install vim-nox dstat htop vnstat tmux git-core -y
 apt install openjdk-8-jre -y
-apt install vim-nox dstat htop vnstat tmux -y
 wget https://github.com/rabbitmq/rabbitmq-perf-test/releases/download/v2.2.0.M1/rabbitmq-perf-test-2.2.0.M1-bin.tar.gz
 tar zxvf rabbitmq-perf-test-2.2.0.M1-bin.tar.gz
 cd rabbitmq-perf-test-2.2.0.M1
-export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64/
+export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+```
+
+```
+mkfs.ext4 -F /dev/nvme1n1
+mkdir -p /rabbitmq
+mount /dev/nvme1n1 /rabbitmq
+chmod a+w /rabbitmq
 ```
 
 We started with the following configuration:
@@ -65,88 +72,91 @@ bin/runjava com.rabbitmq.perf.PerfTest \
 
 ## How does publish rate affect message latency?
 
-| Publish Rate      | Max 99th  | Max 95th  | Max 75th  |
-| -:                | -:        | -:        | -:        |
-| 100 msg/s         | 0.80 ms   | 0.67 ms   | 0.64 ms   |
-| 1000 msg/s        | 0.47 ms   | 0.39 ms   | 0.31 ms   |
-| 10000 msg/s       | 6.29 ms   | 1.18 ms   | 0.72 ms   |
-| 20000 msg/s       | 16.25 ms  | 1.31 ms   | 0.78 ms   |
-| 30000 msg/s       | 23.06 ms  | 2.36 ms   | 0.98 ms   |
-| 50000 msg/s       | 39.84 ms  | 11.01 ms  | 1.83 ms   |
-| 70000 msg/s       | 92.27 ms  | 88.08 ms  | 54.52 ms  |
-| 73000 msg/s (MAX) | 234.86 ms | 226.48 ms | 209.70 ms |
+|      Publish Rate |  Max 99th |  Max 95th |  Max 75th |
+|                -: |        -: |        -: |        -: |
+|         100 msg/s |   0.52 ms |   0.48 ms |   0.45 ms |
+|        1000 msg/s |   0.59 ms |   0.49 ms |   0.41 ms |
+|       10000 msg/s |   3.14 ms |   0.85 ms |   0.55 ms |
+|       20000 msg/s |   3.53 ms |   1.18 ms |   0.78 ms |
+|       30000 msg/s |   4.71 ms |   1.31 ms |   0.98 ms |
+|       40000 msg/s |  13.10 ms |   1.57 ms |   1.01 ms |
+|       50000 msg/s |  18.87 ms |   1.90 ms |   1.11 ms |
+|       60000 msg/s |  25.16 ms |   2.22 ms |   1.37 ms |
+| 63000 msg/s (MAX) | 335.54 ms | 318.76 ms | 301.98 ms |
 
-At 73k msg/s we are hitting ...
+At 63k msg/s the producer channel is in a constant flow state.
 
-## How does credit flow affect message latency (Erlang/OTP 21)?
+We suspect that the flow is artificial, the consumer is able to cope with the message rate, but the queue process is slowing down the producer unnecessarily.
 
-Publish rate: 80000 msg/s
+## How does credit flow affect message latency?
 
-| Credits    | Max 99th | Max 95th | Max 75th |
-| -:         | -:       | -:       | -:       |
-| {100, 50}  | 23.1ms   | 19.9ms   | 4.97ms   |
-| {200, 100} | 25.2ms   | 14.7ms   | 3.53ms   |
-| {400, 200} | 210ms    | 193ms    | 185ms    |
+Publish rate: 63000 msg/s
 
-### {200, 100}
-
-Erlang scheduler utilization was highest at `{200, 100}`:
-
-```erlang
-recon:scheduler_usage(5000).
-[{1,0.6423917112158622},
- {2,0.7163237673642957},
- {3,0.7692058040286527},
- {4,0.6308404592514513},
- {5,5.355899933531696e-5},
- {6,3.345150568985605e-6},
- {7,2.7830244208355204e-6},
- {8,3.135576866444181e-6},
- {9,0.0},
- {10,0.0},
- {11,0.0},
- {12,0.0},
- {13,0.0},
- {14,0.0},
- {15,0.0},
- {16,3.045235457910485e-4}]
-```
-
-### {400, 200} (default)
-
-| Credits    | Max 99th | Max 95th | Max 75th |
-| -:         | -:       | -:       | -:       |
-| {400, 200} | 210ms    | 193ms    | 185ms    |
-
-Erlang scheduler utilization at `{400, 200}`:
-
-```erlang
-recon:scheduler_usage(5000).
-[{1,0.45632246662108844},
- {2,0.6696720902621559},
- {3,0.5261055287839728},
- {4,0.5886865800022822},
- {5,0.44606700844562114},
- {6,3.2406325893914185e-6},
- {7,4.5946789441100864e-6},
- {8,3.1390420895599905e-6},
- {9,0.0},
- {10,0.0},
- {11,0.0},
- {12,0.0},
- {13,0.0},
- {14,0.0},
- {15,0.0},
- {16,0.0}]
-```
-
-Going above the default `{400, 200}` credits resulted in over 200ms latency for 99th, 95th & 75th.
-We suspect that this is related to Erlang/OTP 21 which removes the reduction penalty when sending messages to processes with large mailboxes.
-
-## How does credit flow affect message latency (Erlang/OTP 20)?
+|    Credits | Max 99th | Max 95th | Max 75th |
+|         -: |       -: |       -: |       -: |
+|  {100, 50} | 37.74 ms |  5.76 ms |  1.31 ms |
+| {200, 100} | 29.36 ms |  2.09 ms |  1.24 ms |
+| {400, 200} | 25.16 ms | 20.97 ms |  1.63 ms |
 
 ## How do multiple consumers affect message latency?
+
+### Publish rate: 10000 msg/s
+
+| Consumers | Max 99th | Max 95th | Max 75th |
+|        -: |       -: |       -: |       -: |
+|         1 |  4.98 ms |  1.01 ms |  0.65 ms |
+|         2 |  4.45 ms |  0.82 ms |  0.52 ms |
+|         5 |  2.09 ms |  0.68 ms |  0.44 ms |
+|        10 |  3.14 ms |  0.68 ms |  0.41 ms |
+|       100 |  1.18 ms |  0.62 ms |  0.41 ms |
+|       500 |  1.11 ms |  0.65 ms |  0.42 ms |
+
+### Publish rate: 20000 msg/s
+
+| Consumers | Max 99th | Max 95th | Max 75th |
+|        -: |       -: |       -: |       -: |
+|         1 |  1.50 ms |  1.24 ms |  0.82 ms |
+|         2 |  1.37 ms |  0.95 ms |  0.68 ms |
+|         5 |  4.45 ms |  0.82 ms |  0.55 ms |
+|        10 |  6.03 ms |  0.75 ms |  0.50 ms |
+|       100 | 10.48 ms |  0.82 ms |  0.55 ms |
+|       500 |  4.19 ms |  0.78 ms |  0.55 ms |
+
+### Publish rate: 30000 msg/s
+
+| Consumers | Max 99th | Max 95th | Max 75th |
+|        -: |       -: |       -: |       -: |
+|         1 |  1.83 ms |  1.31 ms |  0.98 ms |
+|         2 | 11.53 ms |  1.11 ms |  0.75 ms |
+|         5 |  8.12 ms |  0.91 ms |  0.65 ms |
+|        10 |  7.07 ms |  0.88 ms |  0.65 ms |
+|       100 |  8.91 ms |  1.04 ms |  0.72 ms |
+|       500 |  9.43 ms |  0.98 ms |  0.65 ms |
+
+### Publish rate: 40000 msg/s
+
+| Consumers | Max 99th | Max 95th | Max 75th |
+|        -: |       -: |       -: |       -: |
+|         1 | 13.63 ms |  1.57 ms |  1.11 ms |
+|         2 | 13.10 ms |  1.24 ms |  0.91 ms |
+|         5 |  1.70 ms |  1.11 ms |  0.78 ms |
+|        10 | 16.25 ms |  1.18 ms |  0.82 ms |
+|       100 |  1.70 ms |  1.37 ms |  1.01 ms |
+|       500 | 22.02 ms |  1.37 ms |  0.85 ms |
+
+### Publish rate: 50000 msg/s
+
+| Consumers | Max 99th | Max 95th | Max 75th |
+|        -: |       -: |       -: |       -: |
+|         1 | 15.20 ms |  1.77 ms |  1.18 ms |
+|         2 | 19.92 ms |  1.77 ms |  1.04 ms |
+|         5 | 22.02 ms |  1.63 ms |  1.11 ms |
+|        10 | 19.92 ms |  1.50 ms |  1.11 ms |
+|       100 | 48.23 ms | 39.84 ms |  6.55 ms |
+|       500 | 54.52 ms | 44.04 ms |  8.91 ms |
+
 ## How do multiple producers affect message latency?
+
 ## How do multiple queues affect message latency?
 
 ## What are the effects of running multiple queues?
@@ -171,9 +181,47 @@ We believe that the reason why 2 producers & 2 consumers have half the latency o
 
 ## What are the effects of different queue types?
 
-* non-durable
-* durable
-* lazy
+Message body size: 10000 bytes
+
+### Publish rate: 10000 msg/s
+
+|  Queue type | Max 99th | Max 95th | Max 75th |
+|          -: |       -: |       -: |       -: |
+| non-durable |  4.19 ms |  1.04 ms |  0.88 ms |
+|     durable |  1.43 ms |  1.04 ms |  0.91 ms |
+|        lazy |  1.83 ms |  1.17 ms |  0.97 ms |
+
+### Publish rate: 20000 msg/s
+
+|  Queue type | Max 99th | Max 95th | Max 75th |
+|          -: |       -: |       -: |       -: |
+| non-durable |  3.66 ms |  1.37 ms |  0.88 ms |
+|     durable |  2.22 ms |  1.30 ms |  0.84 ms |
+|        lazy |  3.14 ms |  1.56 ms |  1.11 ms |
+
+### Publish rate: 30000 msg/s
+
+|  Queue type | Max 99th | Max 95th | Max 75th |
+|          -: |       -: |       -: |       -: |
+| non-durable | 13.62 ms |  2.61 ms |  1.43 ms |
+|     durable |  7.86 ms |  2.09 ms |  1.11 ms |
+|        lazy |  5.23 ms |  2.09 ms |  1.01 ms |
+
+### Publish rate: 40000 msg/s
+
+|  Queue type | Max 99th | Max 95th | Max 75th |
+|          -: |       -: |       -: |       -: |
+| non-durable | 33.55 ms |  6.81 ms |  1.96 ms |
+|     durable | 39.84 ms | 11.53 ms |  3.79 ms |
+|        lazy | 50.32 ms |  8.90 ms |  3.01 ms |
+
+### Publish rate: 50000 msg/s
+
+|  Queue type | Max 99th | Max 95th | Max 75th |
+|          -: |       -: |       -: |       -: |
+| non-durable | 113.24 ms | 92.27 ms | 83.88 ms |
+|     durable | 109.04 ms | 96.46 ms | 92.27 ms |
+|        lazy | 100.66 ms | 96.46 ms | 83.88 ms |
 
 ## What are the effects of publisher confirms?
 
@@ -192,8 +240,28 @@ We believe that the reason why 2 producers & 2 consumers have half the latency o
 
 ## What are the effects of queue mirroring?
 
-* 1
-* 2
-* 3
+### Publish rate: 10000 msg/s
+
+| Queue mirrors | Max 99th | Max 95th | Max 75th |
+|            -: |       -: |       -: |       -: |
+|             1 |  3.40 ms |  0.95 ms |  0.62 ms |
+|             2 |  2.75 ms |  0.75 ms |  0.52 ms |
+|             3 |  3.93 ms |  0.88 ms |  0.59 ms |
+
+### Publish rate: 20000 msg/s
+
+| Queue mirrors | Max 99th | Max 95th | Max 75th |
+|            -: |       -: |       -: |       -: |
+|             1 |  2.75 ms |  1.18 ms |  0.78 ms |
+|             2 |  7.34 ms |  1.18 ms |  0.75 ms |
+|             3 | 17.82 ms |  1.31 ms |  0.82 ms |
+
+### Publish rate: 30000 msg/s
+
+| Queue mirrors | Max 99th | Max 95th | Max 75th |
+|            -: |       -: |       -: |       -: |
+|             1 | 11.53 ms |  1.31 ms |  0.88 ms |
+|             2 | 19.92 ms |  5.24 ms |  0.98 ms |
+|             3 | 39.84 ms | 20.97 ms |  1.24 ms |
 
 ## What are the effects of RabbitMQ Management?
