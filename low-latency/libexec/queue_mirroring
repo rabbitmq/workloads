@@ -3,23 +3,23 @@
 set -e
 set -o pipefail
 
-export RATE=10000
+export RATE=${RATE:-10000}
 
 printf "%s\n" "" \
-	"## What are the effects of different queue types?" \
+	"## What are the effects of queue mirroring?" \
 	"" \
 	"Publish rate: $RATE msg/s" \
-	"| Queue type | Max 99th | Max 95th | Max 75th |" \
+	"| Queue mirrors | Max 99th | Max 95th | Max 75th |" \
 	"| -:        | -:       | -:       | -:       |"
 
-printf "| %s " non-durable
+printf "| %s " 1
 ${PERFTEST_PATH:?must be set}/bin/runjava com.rabbitmq.perf.PerfTest \
 --autoack \
 --predeclared \
---queue non-durable \
+--queue 1m \
 --interval 15 \
---size 10000 \
---routing-key non-durable \
+--size 1000 \
+--routing-key 1m \
 --uri "amqp://admin:${RABBITMQ_PASS:?must be set}@${RABBITMQ_HOST:?must be set}:5672/%2F" \
 --metrics-prometheus \
 --metrics-tags 'type=publisher,type=consumer,deployment=low-latency' \
@@ -29,15 +29,14 @@ ${PERFTEST_PATH:?must be set}/bin/runjava com.rabbitmq.perf.PerfTest \
 --time ${TEST_DURATION:?must be set} $@ 1>/dev/null
 . _max_message_latency_quantiles
 
-printf "| %s " durable
+printf "| %s " 2
 ${PERFTEST_PATH:?must be set}/bin/runjava com.rabbitmq.perf.PerfTest \
 --autoack \
 --predeclared \
---queue durable \
---flag persistent \
+--queue 2m \
 --interval 15 \
---size 10000 \
---routing-key durable \
+--size 1000 \
+--routing-key 2m \
 --uri "amqp://admin:${RABBITMQ_PASS:?must be set}@${RABBITMQ_HOST:?must be set}:5672/%2F" \
 --metrics-prometheus \
 --metrics-tags 'type=publisher,type=consumer,deployment=low-latency' \
@@ -47,15 +46,14 @@ ${PERFTEST_PATH:?must be set}/bin/runjava com.rabbitmq.perf.PerfTest \
 --time ${TEST_DURATION:?must be set} $@ 1>/dev/null
 . _max_message_latency_quantiles
 
-printf "| %s " lazy
+printf "| %s " 3
 ${PERFTEST_PATH:?must be set}/bin/runjava com.rabbitmq.perf.PerfTest \
 --autoack \
 --predeclared \
---queue lazy \
---flag persistent \
+--queue 3m \
 --interval 15 \
---size 10000 \
---routing-key lazy \
+--size 1000 \
+--routing-key 3m \
 --uri "amqp://admin:${RABBITMQ_PASS:?must be set}@${RABBITMQ_HOST:?must be set}:5672/%2F" \
 --metrics-prometheus \
 --metrics-tags 'type=publisher,type=consumer,deployment=low-latency' \
@@ -64,3 +62,4 @@ ${PERFTEST_PATH:?must be set}/bin/runjava com.rabbitmq.perf.PerfTest \
 --rate ${RATE:?must be set} \
 --time ${TEST_DURATION:?must be set} $@ 1>/dev/null
 . _max_message_latency_quantiles
+

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+export TOTAL_RATE="${RATE:-10000}"
+
+printf "%s\n" "" \
+	"## How do multiple producers affect message latency?" \
+	"" \
+	"Publish rate: $RATE msg/s" \
+	"" \
+	"| Producers | Max 99th | Max 95th | Max 75th |" \
+	"| -:        | -:       | -:       | -:       |"
+
+unset PRODUCERS
+for PRODUCERS in 1 2 5 10 100 500; do
+  printf "| %s " $PRODUCERS
+  RATE=$((TOTAL_RATE/PRODUCERS))
+  . _run_perf_test
+  . _max_message_latency_quantiles
+done

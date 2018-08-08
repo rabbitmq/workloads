@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+export TOTAL_RATE="${RATE:-50000}"
+
+printf "%s\n" "" \
+	"## What are the effects of exchange type?" \
+	"" \
+	"Publish rate: $RATE msg/s" \
+	"" \
+	"| Exchange Type | Msg/s | Max 99th | Max 95th | Max 75th |" \
+	"| -: | -: | -: | -: | -: |"
+
+printf "| %s " direct
+${PERFTEST_PATH:?must be set}/bin/runjava com.rabbitmq.perf.PerfTest \
+--autoack \
+--interval 15 \
+--size ${MSG_BODY_SIZE:?must be set} \
+--exchange direct \
+--type direct \
+--routing-key perf-test \
+--uri "amqp://admin:${RABBITMQ_PASS:?must be set}@${RABBITMQ_HOST:?must be set}:5672/%2F" \
+--metrics-prometheus \
+--metrics-tags 'type=publisher,type=consumer,deployment=low-latency' \
+--queue-pattern 'perf-test-%d' \
+--queue-pattern-from 1 \
+--queue-pattern-to ${QUEUES:?must be set} \
+--consumers ${CONSUMERS:?must be set} \
+--producers ${PRODUCERS:?must be set} \
+--rate ${RATE:?must be set} \
+--time ${TEST_DURATION:?must be set} $@ 1>/dev/null
+. _max_message_latency_quantiles
+
+printf "| %s " fanout
+${PERFTEST_PATH:?must be set}/bin/runjava com.rabbitmq.perf.PerfTest \
+--autoack \
+--interval 15 \
+--size ${MSG_BODY_SIZE:?must be set} \
+--exchange fanout \
+--type fanout \
+--routing-key perf-test \
+--uri "amqp://admin:${RABBITMQ_PASS:?must be set}@${RABBITMQ_HOST:?must be set}:5672/%2F" \
+--metrics-prometheus \
+--metrics-tags 'type=publisher,type=consumer,deployment=low-latency' \
+--queue-pattern 'perf-test-%d' \
+--queue-pattern-from 1 \
+--queue-pattern-to ${QUEUES:?must be set} \
+--consumers ${CONSUMERS:?must be set} \
+--producers ${PRODUCERS:?must be set} \
+--rate ${RATE:?must be set} \
+--time ${TEST_DURATION:?must be set} $@ 1>/dev/null
+. _max_message_latency_quantiles
+
+printf "| %s " topic
+${PERFTEST_PATH:?must be set}/bin/runjava com.rabbitmq.perf.PerfTest \
+--autoack \
+--interval 15 \
+--size ${MSG_BODY_SIZE:?must be set} \
+--exchange topic \
+--type topic \
+--routing-key 'perf.test' \
+--uri "amqp://admin:${RABBITMQ_PASS:?must be set}@${RABBITMQ_HOST:?must be set}:5672/%2F" \
+--metrics-prometheus \
+--metrics-tags 'type=publisher,type=consumer,deployment=low-latency' \
+--queue-pattern 'perf-test-%d' \
+--queue-pattern-from 1 \
+--queue-pattern-to ${QUEUES:?must be set} \
+--consumers ${CONSUMERS:?must be set} \
+--producers ${PRODUCERS:?must be set} \
+--rate ${RATE:?must be set} \
+--time ${TEST_DURATION:?must be set} $@ 1>/dev/null
+. _max_message_latency_quantiles
+
+printf "| %s " headers
+${PERFTEST_PATH:?must be set}/bin/runjava com.rabbitmq.perf.PerfTest \
+--autoack \
+--interval 15 \
+--size ${MSG_BODY_SIZE:?must be set} \
+--exchange headers \
+--type headers \
+--message-properties foo=foo,bar=bar \
+--queue-args x-match=all,foo=foo,bar=bar \
+--uri "amqp://admin:${RABBITMQ_PASS:?must be set}@${RABBITMQ_HOST:?must be set}:5672/%2F" \
+--metrics-prometheus \
+--metrics-tags 'type=publisher,type=consumer,deployment=low-latency' \
+--queue-pattern 'perf-test-%d' \
+--queue-pattern-from 1 \
+--queue-pattern-to ${QUEUES:?must be set} \
+--consumers ${CONSUMERS:?must be set} \
+--producers ${PRODUCERS:?must be set} \
+--rate ${RATE:?must be set} \
+--time ${TEST_DURATION:?must be set} $@ 1>/dev/null
+. _max_message_latency_quantiles

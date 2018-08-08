@@ -3,12 +3,13 @@
 set -e
 set -o pipefail
 
-export RATE=10000
+export RATE="${RATE:-10000}"
 
 printf "%s\n" "" \
 	"## How do multiple consumers affect message latency?" \
 	"" \
 	"Publish rate: $RATE msg/s" \
+	"" \
 	"| Consumers | Max 99th | Max 95th | Max 75th |" \
 	"| -:        | -:       | -:       | -:       |"
 

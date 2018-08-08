@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -e
+set -o pipefail
+
+export RATE="${RATE:-50000}"
+
+printf "%s\n" "" \
+	"## What are the effects of RabbitMQ Management?" \
+	"" \
+	"| Management | Max 99th | Max 95th | Max 75th |" \
+	"| -: | -: | -: | -: |"
+
+read -rp "Run 'rabbitmq-plugins enable rabbitmq_management' on $RABBITMQ_HOST (press any key to continue) " -n 1
+printf "| %s " enabled
+. _run_perf_test
+. _max_message_latency_quantiles
+
+read -rp "Run 'rabbitmq-plugins disable rabbitmq_management' on $RABBITMQ_HOST (press any key to continue) " -n 1
+printf "| %s " disabled
+. _run_perf_test
+. _max_message_latency_quantiles
