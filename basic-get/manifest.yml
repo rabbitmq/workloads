@@ -1,0 +1,37 @@
+buildpack: ruby_buildpack
+command: ruby synchronous_consumer.rb
+path: .
+disk_quota: 128M
+health-check-type: none
+instances: 1
+memory: 256M
+no-route: true
+services:
+- rmq
+stack: cflinuxfs2
+
+env:
+  BASIC_GET_RATE_PER_QUEUE_PER_SECOND: 10
+  CONSUMERS_PER_QUEUE: 1
+  CONSUMER_THREADS: 10
+  DEBUG: false
+  PUBLISH: true
+  PUBLISHERS_PER_QUEUE: 1
+  PUBLISHER_THREADS: 1
+  PUBLISH_RATE_PER_QUEUE_PER_SECOND: 5
+
+applications:
+- name: synchronous_consumer
+  env:
+    QUEUE_NAME: synchronous_consumer
+    FROM_QUEUE_INDEX: 1
+    TO_QUEUE_INDEX: 100
+    PUBLISH: false
+  instances: 1
+- name: producer
+  env:
+    QUEUE_NAME: synchronous_consumer
+    FROM_QUEUE_INDEX: 1
+    TO_QUEUE_INDEX: 100
+    CONSUME: false
+  instances: 1
