@@ -34,7 +34,7 @@ This script will only simulate consumers no producers (see `PUBLISH=false` in th
 The script prints out every second an statement like this one:
 `2018-09-03T13:44:22.67+0200 [APP/PROC/WEB/0] OUT C[6] Finished @ 1535975062 in 0 sec 10 basic.get(s) using 10 consumers`  
 
-`C[6]` indicates that this is the consumer thread 6
+`C[6]` indicates that this is the consumer thread 6  
 `Finished @ 1535975062 in 0 sec ` indicates when it finished and how long it took in seconds to do its job, in this case, it has done `10 x 1` `basic.get` calls (`BASIC_GET_RATE_PER_QUEUE_PER_SECOND=10` and `CONSUMERS_PER_QUEUE=1`).
 
 
