@@ -45,14 +45,14 @@ Before you push the application make sure you have a *service instance* with the
 To help setting up the *service instance* run these commands:
 
 1. Use your RMQ's cluster credentials in this file `ups-rmq.json`
-2. Run `cf cups -p ups-rmq.json`
+2. Run `cf cups rmq -p ups-rmq.json`
 
 To push 2 applications (1 consumer and 1 publisher app) run `cf push`.  Or `cf push synchronous_consumer` if you only want to run the consumers.
 
 The default workload configured in the `manifest.yml` used by `cf push` will do this:
-```
-Creates 100 queues named synchronous_consumer-<0 to 99> with 1 consumer connection and 1 producer connection per queue. The consumer connection calls basic.get 10 times per second and the publisher connection publishes 5 messages per second. We will use 10 threads to spread the 100 consumers and 1 thread to spread the 100 producers.
-```
+
+> Creates 100 queues named synchronous_consumer-<0 to 99> with 1 consumer connection and 1 producer connection per queue. The consumer connection calls basic.get 10 times per second and the publisher connection publishes 5 messages per second. We will use 10 threads to spread the 100 consumers and 1 thread to spread the 100 producers.
+
 
 `cf logs producer` produces statements like this one:
 ```
@@ -88,13 +88,14 @@ To increase the load on the existing queues, i.e. on `synchronous_consumer-<0 to
 
 ## Gather message statistics
 
-To monitor message stats we use the Rabbitmq Management `/overview` Endpoint and we extract the json node `message_stats` and look for the following metrics. Below we can see that we are calling `basic.get` at least `2318.4` times per second:
+To monitor message stats we use the Rabbitmq Management `/overview` Endpoint and we extract the json node `message_stats` and search for the metrics below.
 ```
 "get_no_ack": 40708564,
   "get_no_ack_details": {
     "rate": 2318.4
   },
 ```
+The metric above shows that we are calling `basic.get` at least `2318.4` times per second
 
 Our synchronous consumer is using `basic.get` with *no-ack* (automatic acknowledgements). When we call `get-ok`, we can expect 2 type of response messages:
 - `get-ok` if we get back a message
@@ -108,10 +109,12 @@ Our synchronous consumer is using `basic.get` with *no-ack* (automatic acknowled
 >
 > If we want to keep the current semantics of `get_no_ack` which only reports `basic.get` that return a message, we could add another `message_stats` metric like `get_empty` with its corresponding `get_empty_details.rate` metric too that reports the number of `basic.get` requests that returned `get-empty` messages.
 
-On the other hand, we can observe via `tcpdump` that the broker is receiving those `basic.get` calls. The command below will capture the incoming traffic for 1 second and a maximum of 100000 tcp packets on port 5672. It will only capture the request messages not the response (i.e. `get-ok` or `get-empty` messages):
+On the other hand, we can observe via `tcpdump` that the broker is receiving those `basic.get` calls. The command below will capture the incoming traffic for 1 second and a maximum of 100000 tcp packets on port 5672. It will only capture the request messages not the response (i.e. it will not capture `get-ok` or `get-empty` messages):  
+
 `timeout 1 tcpdump -A -s9001 -v -c 100000 dst port 5672 -w /tmp/rmq.pcap`
 
-If we want to capture incoming and outgoing traffic (i.e. the reply messages) use this other command:
+If we want to capture incoming and outgoing traffic (i.e. the reply messages too) use this other command:  
+
 `timeout 1 tcpdump -A -s9001 -v -c 100000 port 5672 -w /tmp/rmq.pcap`
 
 You can use [Wireshark](https://www.rabbitmq.com/amqp-wireshark.html) to inspect the file `/tmp/rmq.pcap`.
