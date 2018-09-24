@@ -13,6 +13,20 @@ client -> broker : xmt/rcv/%loss = 100/100/0%, min/avg/max = 0.06/0.12/0.17
 broker -> client : xmt/rcv/%loss = 100/100/0%, min/avg/max = 0.04/0.07/0.16
 ```
 
+```
+hdparm -tT --direct /dev/nvme1n1
+
+/dev/nvme1n1:
+ Timing O_DIRECT cached reads:   4798 MB in  2.00 seconds = 2403.87 MB/sec
+ Timing O_DIRECT disk reads: 6966 MB in  3.00 seconds = 2321.41 MB/sec
+
+dd if=/dev/zero of=/rabbitmq/out bs=4k count=256k
+
+262144+0 records in
+262144+0 records out
+1073741824 bytes (1.1 GB, 1.0 GiB) copied, 1.41719 s, 758 MB/s
+```
+
 We were running the following versions:
 
 1. RabbitMQ v3.7.7 on Erlang/OTP v21.0.4
