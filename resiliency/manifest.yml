@@ -1,0 +1,42 @@
+defaults: &defaults
+  buildpack: java_buildpack
+  command: ./bin/start
+  disk_quota: 256M
+  health-check-type: none
+  memory: 1G
+  no-route: true
+  path: ../rabbitmq-perf-test-2.1.2
+  services:
+    - rmq
+
+env: &env
+  METRICS_SAMPLING_INTERVAL: 60
+  PRODUCERS: 0
+  CONSUMERS: 0
+  MSG_SIZE: 1000
+  MSG_FLAG: persistent
+  QUEUE: perf-test
+  ROUTING_KEY: perf-test
+  AUTO_DELETE: false
+
+services:
+  - rmq
+
+applications:
+  - name: producer
+    <<: *defaults
+    env:
+      <<: *env
+      PRODUCERS: 1
+
+  - name: consumer
+    <<: *defaults
+    env:
+      <<: *env
+      CONSUMERS: 1
+
+  - name: resilient
+    memory: 1G
+    path: resilient-java-rabbitmq/target/resilient-java-rabbitmq-0.0.1-SNAPSHOT.jar
+    services:
+      - rmq
