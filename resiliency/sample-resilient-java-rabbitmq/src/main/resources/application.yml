@@ -1,5 +1,5 @@
 management.endpoints.web.exposure.include: health, metrics
 
 logging.level:
-  com.pivotal.resilient: debug
-  com.rabbitmq: debug
+  com.pivotal.resilient: DEBUG
+  com.rabbitmq: DEBUG
