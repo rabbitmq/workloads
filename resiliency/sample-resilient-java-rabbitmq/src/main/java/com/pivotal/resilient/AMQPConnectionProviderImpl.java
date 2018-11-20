@@ -153,6 +153,13 @@ public class AMQPConnectionProviderImpl implements AMQPConnectionProvider, Recov
 
     private Connection connection;
 
+    private String getImmediateReasonOrRootCause(Throwable exception){
+        if (exception == null) return "No reason";
+
+        return exception.getMessage() == null || exception.getMessage().isEmpty() ?
+                ( exception.getCause() != null ? getImmediateReasonOrRootCause(exception.getCause()) : "No reason") :
+                exception.getMessage();
+    }
     private void handleAMQPConnectionRequesters() {
         if (isAMQPConnectionNeeded()) {
             try {
@@ -168,8 +175,7 @@ public class AMQPConnectionProviderImpl implements AMQPConnectionProvider, Recov
                         connection.getPort(),
                         connection.getHeartbeat());
             } catch (final Exception e) {
-                logger.error("Failed to establish AMQP connection", e);
-                Collections.shuffle(amqpAddresses);
+                logger.error("Failed to establish AMQP connection due to {}", getImmediateReasonOrRootCause(e));
                 return;
             }
 
