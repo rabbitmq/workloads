@@ -157,13 +157,22 @@ public class AMQPConnectionProviderImpl implements AMQPConnectionProvider, Recov
         if (isAMQPConnectionNeeded()) {
             try {
                 logger.info("Establishing AMQP connection using {}", amqpAddresses);
-                connection = connectionFactory.newConnection(amqpAddresses);
+                connection = connectionFactory.newConnection(amqpAddresses, name);
                 connection.addShutdownListener(this);
-                logger.info("Established AMQP connection with {}:{}", connection.getAddress(), connection.getPort());
+                connection.addBlockedListener((reason) -> {
+                    logger.warn("Connection {} is blocked due to {} !", name, reason);
+                }, () ->{
+                    logger.warn("Connection {} is unblocked", name);
+                });
+                logger.info("Established AMQP connection with {}:{}  [heartbeat:{}]", connection.getAddress(),
+                        connection.getPort(),
+                        connection.getHeartbeat());
             } catch (final Exception e) {
                 logger.error("Failed to establish AMQP connection", e);
                 Collections.shuffle(amqpAddresses);
+                return;
             }
+
         }
 
         try {
@@ -181,10 +190,6 @@ public class AMQPConnectionProviderImpl implements AMQPConnectionProvider, Recov
 
     public void start() {
         scheduleAMQPConnectionRequestHandler();
-    }
-
-    private void stopTryingToReconnect() {
-        tryToConnect.cancel(true);
     }
 
     private void scheduleAMQPConnectionRequestHandler() {

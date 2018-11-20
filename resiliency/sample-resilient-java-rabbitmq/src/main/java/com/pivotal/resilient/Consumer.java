@@ -90,6 +90,21 @@ class Consumer implements AMQPConnectionRequester {
         return this;
     }
 
+    public Consumer withConsumptionRate(long rateMillis) {
+        messageConsumer.addConsumer((envelope, properties, body, channel) -> {
+            try {
+                long deliveryTag = envelope.getDeliveryTag();
+                String correlationId = properties.getCorrelationId();
+                logger.debug("{} delaying message [{}, {}] consumption with {} msec", name, deliveryTag, correlationId, rateMillis);
+                Thread.sleep(rateMillis);
+                logger.debug("{} finished delaying message [{}, {}]", name, deliveryTag, correlationId);
+            } catch (InterruptedException e) {
+
+            }
+        });
+        return this;
+    }
+
     class MessageConsumerChain implements MessageConsumer {
         List<MessageConsumer> consumers;
 
@@ -166,6 +181,16 @@ class Consumer implements AMQPConnectionRequester {
     }
 
     @Override
+    public void connectionBlocked(String reason) {
+
+    }
+
+    @Override
+    public void connectionUnblocked(Connection connection) {
+
+    }
+
+    @Override
     public boolean isHealthy() {
         return subscriptionChannel.get() != null;
     }
@@ -175,8 +200,8 @@ class Consumer implements AMQPConnectionRequester {
         String routingKey = envelope.getRoutingKey();
         long deliveryTag = envelope.getDeliveryTag();
         String correlationId = delivery.getProperties().getCorrelationId();
-        logger.debug("{} received message on {} with routingKey {}, deliveryTag {}, correlationId {} -  Thread {}",
-                getName(), queue.getName(), routingKey, deliveryTag, correlationId, Thread.currentThread().getId());
+        logger.debug("{} received message on {} with routingKey {}, deliveryTag {}, correlationId {} -  Thread {} {}",
+                getName(), queue.getName(), routingKey, deliveryTag, correlationId, Thread.currentThread().getId(), Thread.currentThread().getName());
 
         delegateToMessageConsumer(envelope, delivery.getProperties(), delivery.getBody(), channel);
 

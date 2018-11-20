@@ -63,6 +63,16 @@ class Producer implements AMQPConnectionRequester {
     }
 
     @Override
+    public void connectionBlocked(String reason) {
+       delegate.connectionBlocked(reason);
+    }
+
+    @Override
+    public void connectionUnblocked(Connection connection) {
+        delegate.connectionUnblocked(connection);
+    }
+
+    @Override
     public boolean isHealthy() {
         return delegate.isHealthy();
     }
@@ -154,7 +164,7 @@ class Sender {
             logger.error("{} Failed to send a message with correlationId {} due to {}", name, properties.getCorrelationId(), e.getMessage());
             channelHandler.drainChannel();
         } catch(InterruptedException e) {
-            logger.error("{} Failed to receive a publisher confirmation");
+            logger.error("{} Failed to receive a publisher confirmation", name);
         }
         return false;
 
@@ -240,6 +250,16 @@ class SendAtFixedRate implements AMQPConnectionRequester {
     }
 
     @Override
+    public void connectionBlocked(String reason) {
+        // probably we want to stop the timer
+    }
+
+    @Override
+    public void connectionUnblocked(Connection connection) {
+        // reschedule the timer when we stopped it upon connectionBlocked event arrival
+    }
+
+    @Override
     public boolean isHealthy() {
         return sendMessageAtFixedRate != null && !failedToSendLastMessage.get();
     }
@@ -271,6 +291,16 @@ class SendOnce implements AMQPConnectionRequester {
     @Override
     public void connectionLost() {
         logger.info("{} has received a connection. Scheduling producer timer", getName());
+    }
+
+    @Override
+    public void connectionBlocked(String reason) {
+
+    }
+
+    @Override
+    public void connectionUnblocked(Connection connection) {
+
     }
 
     @Override

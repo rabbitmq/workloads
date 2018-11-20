@@ -120,6 +120,16 @@ class NoOpAMQPConnectionRequester implements AMQPConnectionRequester {
     }
 
     @Override
+    public void connectionBlocked(String reason) {
+
+    }
+
+    @Override
+    public void connectionUnblocked(Connection connection) {
+
+    }
+
+    @Override
     public boolean isHealthy() {
         return true;
     }
@@ -128,6 +138,8 @@ interface AMQPConnectionRequester {
     String getName();
     void connectionAvailable(Connection connection);
     void connectionLost();
+    void connectionBlocked(String reason);
+    void connectionUnblocked(Connection connection);
     boolean isHealthy();
 }
 

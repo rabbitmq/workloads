@@ -312,6 +312,16 @@ abstract class ChaosMonicAbstract implements Runnable, AMQPConnectionRequester {
     }
 
     @Override
+    public void connectionBlocked(String reason) {
+
+    }
+
+    @Override
+    public void connectionUnblocked(Connection connection) {
+
+    }
+
+    @Override
     public boolean isHealthy() {
         return true;
     }

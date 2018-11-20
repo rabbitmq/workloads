@@ -15,16 +15,18 @@ public class ProducerConsumerWithDurableQueue {
         String serviceName = "durableProducer";
         Producer producer = Producer.sender(serviceName,"durable-test")
                 .withPublisherConfirmation()
-                .atFixedRate(taskScheduler, 10000);
+                .atFixedRate(taskScheduler, 5000);
         amqpConnectionProvider.manageConnectionFor(serviceName, producer.getRequiredAMQPResources(), producer);
         return producer;
     }
 
     @Bean
-    public Consumer durableConsumer(@Qualifier("consumer") AMQPConnectionProvider amqpConnectionProvider) {
+    public Consumer durableConsumer(/*@Qualifier("consumer")*/ AMQPConnectionProvider amqpConnectionProvider) {
         String serviceName = "durableConsumer";
         Consumer consumer =  new Consumer(serviceName, new QueueDescriptor("durable-test", true))
-                    .withAutoack();
+                .withConsumptionRate(30000) // delay
+                .ackEveryMessage()          // before acking
+                .withPrefetch(1);           // keeping a maximum of 1 unacknowledged message
         amqpConnectionProvider.manageConnectionFor(serviceName, consumer.getRequiredAMQPResources(), consumer);
         return consumer;
     }
