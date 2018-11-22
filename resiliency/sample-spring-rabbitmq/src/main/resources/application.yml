@@ -1,0 +1,12 @@
+spring.application.name: sample-spring-rabbitmq
+non-durable:
+  enabled: true
+  producer.enabled: true
+  consumer:
+    enabled: true
+    requeueRejectedMessages: false
+
+durable:
+  enabled: true
+  producer.enabled: true
+  consumer.enabled: true

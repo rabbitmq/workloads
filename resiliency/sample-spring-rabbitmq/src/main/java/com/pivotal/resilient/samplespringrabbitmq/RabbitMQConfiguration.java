@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionNameStrategy;
 import org.springframework.amqp.rabbit.connection.SimplePropertyValueConnectionNameStrategy;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cloud.Cloud;
@@ -52,11 +53,14 @@ public class RabbitMQConfiguration {
     public RabbitTemplate template(@Qualifier("producer") ConnectionFactory factory) {
         return new RabbitTemplate(factory);
     }
+
+
     @Bean
-    public RabbitTemplate durable_test(@Qualifier("producer") ConnectionFactory connectionFactory) {
-        RabbitTemplate template = new RabbitTemplate(connectionFactory);
-        template.setRoutingKey("durable-test");
-        return template;
+    public RabbitAdmin rabbitAdmin(ConnectionFactory factory) {
+        RabbitAdmin admin  = new RabbitAdmin(factory);
+        admin.setIgnoreDeclarationExceptions(true);  // This is key if we only have just on RabbitAdmin otherwise one
+                                                     // failure could cause the rest of the declarations to fail
+        return admin;
     }
 }
 
