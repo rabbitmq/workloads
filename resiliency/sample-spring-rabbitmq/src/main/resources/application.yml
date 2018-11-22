@@ -1,4 +1,14 @@
-spring.application.name: sample-spring-rabbitmq
+spring:
+  application.name: sample-spring-rabbitmq
+  rabbitmq:
+    cache:
+      channel:
+        size: 15
+
+
+management.endpoints.web.exposure.include: "*"
+management.endpoints.web.exposure.exclude:
+
 non-durable:
   enabled: true
   producer.enabled: true

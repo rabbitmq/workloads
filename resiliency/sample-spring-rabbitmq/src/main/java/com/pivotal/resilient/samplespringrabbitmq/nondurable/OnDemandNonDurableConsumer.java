@@ -38,11 +38,11 @@ public class OnDemandNonDurableConsumer {
     @Qualifier("templateForNonDurableProducer")
     RabbitTemplate template;
 
-    @PutMapping("/start")
+    @PutMapping("/startListener")
     public void startListeningOn(@RequestParam("id") String listenerId) {
         startListener(listenerId, chaosMonkey.newListener(listenerId));
     }
-    @PutMapping("/stop")
+    @PutMapping("/stopListener")
     public void stopListeningOn(@RequestParam("id") String listenerId) {
         stopListener(listenerId);
     }
@@ -50,9 +50,13 @@ public class OnDemandNonDurableConsumer {
     @Autowired
     private ChaosMonkey chaosMonkey;
 
-    @PutMapping
-    public void sendChaosMessage(@RequestParam("type") ChaosMonkey.ChaosMessageType type) {
+    @PutMapping("/sendMessage")
+    public void sendChaosMessage(@RequestParam ChaosMonkey.ChaosMessageType type) {
         template.send(chaosMonkey.newMessage(type));
+    }
+    @GetMapping("/messageTypes")
+    public String[] listMessageTypes() {
+        return ChaosMonkey.ChaosMessageType.names();
     }
 
     @Bean
