@@ -1,0 +1,7 @@
+
+applications:
+  - name: resilient
+    memory: 1G
+    path: target/sample-spring-rabbitmq-0.0.1-SNAPSHOT.jar
+    services:
+      - rmq
