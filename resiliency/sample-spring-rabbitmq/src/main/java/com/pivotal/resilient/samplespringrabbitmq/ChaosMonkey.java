@@ -75,7 +75,7 @@ public class ChaosMonkey {
             receivedMessageCount++;
             ChaosMonkey.ChaosMessageType type = extractType(message);
 
-            logger.info("{}/{} received (#{}/#{}) {} from {}/{} of type {}",
+            logger.info("{}/{} received (#{}/#{}) {} from {}/{} with app/type {}/{}",
                     name,
                     Thread.currentThread().getId(),
                     receivedMessageCount,
@@ -83,6 +83,7 @@ public class ChaosMonkey {
                     message.getMessageProperties().getMessageId(),
                     message.getMessageProperties().getConsumerQueue(),
                     message.getMessageProperties().getConsumerTag(),
+                    message.getMessageProperties().getAppId(),
                     type
             );
             SimpleAsyncTaskExecutor executor;

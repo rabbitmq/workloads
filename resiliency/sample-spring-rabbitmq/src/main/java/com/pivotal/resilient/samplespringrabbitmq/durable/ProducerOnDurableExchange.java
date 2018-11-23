@@ -1,5 +1,6 @@
 package com.pivotal.resilient.samplespringrabbitmq.durable;
 
+import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -17,12 +18,16 @@ public class ProducerOnDurableExchange {
     RabbitTemplate template;
 
 
-    @Scheduled(fixedRate = 5000)
     public void sendMessage() {
         template.invoke(t -> {
             t.convertAndSend("hello");
             return true;
         });
 
+    }
+
+    @Scheduled(fixedRate = 5000)
+    public void sendMessageUsingCachedChannel() {
+        template.send(MessageBuilder.withBody("hello".getBytes()).build());
     }
 }

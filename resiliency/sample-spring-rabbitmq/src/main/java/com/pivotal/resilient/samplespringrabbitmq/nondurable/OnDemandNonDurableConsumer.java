@@ -3,6 +3,7 @@ package com.pivotal.resilient.samplespringrabbitmq.nondurable;
 import com.pivotal.resilient.samplespringrabbitmq.ChaosMonkey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageListener;
 import org.springframework.amqp.rabbit.annotation.RabbitListenerConfigurer;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerEndpoint;
@@ -20,6 +21,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.stream.IntStream;
 
 @RestController
 @RequestMapping("/non-durable")
@@ -34,10 +37,6 @@ public class OnDemandNonDurableConsumer {
 
     @Value("${non-durable-consumer.queue:non-durable-q}") String queueName;
 
-    private @Autowired
-    @Qualifier("templateForNonDurableProducer")
-    RabbitTemplate template;
-
     @PutMapping("/startListener")
     public void startListeningOn(@RequestParam("id") String listenerId) {
         startListener(listenerId, chaosMonkey.newListener(listenerId));
@@ -48,11 +47,33 @@ public class OnDemandNonDurableConsumer {
     }
 
     @Autowired
+    private ProducerOnNonDurableExchange producer;
+
+    @PutMapping("/producer/{name}")
+    public List<String> scheduleProducer(@PathVariable String name, @RequestParam(defaultValue = "5000") long fixedRate,
+                                 @RequestParam(defaultValue =  "1") int count) {
+        List<String> producers = new ArrayList<>();
+        IntStream.range(0, count).forEach(index-> {
+            String pName = String.format("%s-%d", name, index);
+            logger.info("Scheduling producer {} with rate {}", pName, fixedRate);
+            producer.scheduleProducer(pName, fixedRate);
+            producers.add(pName);
+        });
+        return producers;
+    }
+    @DeleteMapping("/producer/{name}")
+    public void unscheduleProducer(@PathVariable String name) {
+        if (!producer.unscheduleProducer(name)) {
+            throw new NoSuchElementException();
+        }
+    }
+
+    @Autowired
     private ChaosMonkey chaosMonkey;
 
-    @PutMapping("/sendMessage")
+    @PutMapping("/message")
     public void sendChaosMessage(@RequestParam ChaosMonkey.ChaosMessageType type) {
-        template.send(chaosMonkey.newMessage(type));
+        producer.send(chaosMonkey.newMessage(type));
     }
     @GetMapping("/messageTypes")
     public String[] listMessageTypes() {

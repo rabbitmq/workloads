@@ -27,6 +27,7 @@ public class ConsumerOnNonDurableQueueConfiguration {
     @Value("${non-durable-consumer.directExchange:non-durable-e}") String exchangeName;
     @Value("${non-durable-consumer.routingKey:non-durable-q}") String routingKey;
     @Value("${non-durable-consumer.requeueRejectedMessages:true}") boolean requeueRejectedMessages;
+    @Value("${non-durable-consumer.possibleAuthenticationFailureFatal:true}") boolean possibleAuthenticationFailureFatal;
 
     @Autowired @Qualifier("consumer") ConnectionFactory connectionFactory;
 
@@ -83,6 +84,7 @@ public class ConsumerOnNonDurableQueueConfiguration {
         container.setConnectionFactory(connectionFactory);
         container.setQueueNames(queueName);
         container.setDefaultRequeueRejected(requeueRejectedMessages);
+        container.setPossibleAuthenticationFailureFatal(possibleAuthenticationFailureFatal); // it set to true, it will fail nad not recover if we get access refused
 
         ChaosMonkey.ChaosListener listener = chaosMonkey.newListener();
         container.setMessageListener(listener);

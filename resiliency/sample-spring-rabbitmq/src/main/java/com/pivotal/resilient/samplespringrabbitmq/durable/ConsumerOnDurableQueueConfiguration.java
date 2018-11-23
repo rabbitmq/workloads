@@ -26,8 +26,8 @@ public class ConsumerOnDurableQueueConfiguration {
     @Value("${durable-consumer.directExchange:durable-e}") String exchangeName;
     @Value("${durable-consumer.routingKey:durable-q}") String routingKey;
     @Value("${durable-consumer.requeueRejectedMessages:true}") boolean requeueRejectedMessages;
+    @Value("${durable-consumer.possibleAuthenticationFailureFatal:true}") boolean possibleAuthenticationFailureFatal;
 
-    @Autowired @Qualifier("consumer") ConnectionFactory connectionFactory;
 
     private AtomicLong failedMessageCount = new AtomicLong();
 
@@ -42,13 +42,6 @@ public class ConsumerOnDurableQueueConfiguration {
     @Bean("durable-consumer.binding")
     public Binding consumerBinding() {
         return new Binding(queueName, Binding.DestinationType.QUEUE, exchangeName, routingKey, null);
-    }
-    public Binding consumerQueueBoundToDurableExchange(@Qualifier("durable-consumer.queue") Queue queue,
-                                                       @Qualifier("durable-consumer.directExchange") Exchange exchange) {
-        logger.info("Binding {} to {} with {}", queue.getName(), exchange.getName(), routingKey);
-        Binding binding =  BindingBuilder.bind(queue).to(exchange).with(routingKey).noargs();
-        logger.info("Binding {} to {} with {} => {}", queue.getName(), exchange.getName(), routingKey, binding);
-        return binding;
     }
 
     @Autowired
@@ -75,14 +68,14 @@ public class ConsumerOnDurableQueueConfiguration {
 
     @Bean
     @ConditionalOnProperty(prefix = "durable.consumer", value= "enabled", matchIfMissing = true)
-    public SimpleMessageListenerContainer consumerOnDurableQueue() {
+    public SimpleMessageListenerContainer consumerOnDurableQueue(@Qualifier("consumer") ConnectionFactory connectionFactory) {
         logger.info("Creating consumerOnDurableQueue ...");
 
         SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
         container.setQueueNames(queueName);
         container.setDefaultRequeueRejected(requeueRejectedMessages); // if set to true, it will discard messages that throws an exception
-
+        container.setPossibleAuthenticationFailureFatal(possibleAuthenticationFailureFatal); // it set to true, it will fail nad not recover if we get access refused
         container.setMissingQueuesFatal(false); // this is key in order to survive should the hosting queue node disappeared.
                                                 // without this flag=false, the container will simply give up after 3 attempts
         container.setErrorHandler( throwable -> {
