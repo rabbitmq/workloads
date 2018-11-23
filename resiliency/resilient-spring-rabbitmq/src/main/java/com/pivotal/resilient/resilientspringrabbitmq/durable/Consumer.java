@@ -14,6 +14,7 @@ public class Consumer {
     private Logger logger = LoggerFactory.getLogger(Consumer.class);
 
     @Value("${durable-consumer.possibleAuthenticationFailureFatal:false}") boolean possibleAuthenticationFailureFatal;
+    @Value("${durable-consumer.missingQueuesFatal:false}") boolean missingQueuesFatal;
 
     @Bean
     public SimpleMessageListenerContainer consumerOnDurableQueue(Queue queue, ConnectionFactory connectionFactory) {
@@ -26,6 +27,10 @@ public class Consumer {
 
         // it set to true, it will fail nad not recover if we get access refused
         container.setPossibleAuthenticationFailureFatal(possibleAuthenticationFailureFatal);
+
+        // this is key in order to survive should the hosting queue node disappeared.
+        // without this flag=false, the container will simply give up after 3 attempts
+        container.setMissingQueuesFatal(missingQueuesFatal);
 
         return container;
     }
