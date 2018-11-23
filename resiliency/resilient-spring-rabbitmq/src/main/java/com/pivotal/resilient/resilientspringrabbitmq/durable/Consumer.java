@@ -5,11 +5,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
+@ConditionalOnProperty(prefix = "durable.consumer", value = "enabled", matchIfMissing = true)
 public class Consumer {
     private Logger logger = LoggerFactory.getLogger(Consumer.class);
 
@@ -17,7 +20,7 @@ public class Consumer {
     @Value("${durable-consumer.missingQueuesFatal:false}") boolean missingQueuesFatal;
 
     @Bean
-    public SimpleMessageListenerContainer consumerOnDurableQueue(Queue queue, ConnectionFactory connectionFactory) {
+    public SimpleMessageListenerContainer consumerOnDurableQueue(@Qualifier("durable-consumer.queue") Queue queue, ConnectionFactory connectionFactory) {
         logger.info("Creating consumer on {} ...", queue.getName());
 
         SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
