@@ -8,9 +8,11 @@ import org.springframework.cloud.CloudFactory;
 import org.springframework.cloud.service.messaging.RabbitConnectionFactoryConfig;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 
 @Configuration
+@EnableScheduling
 public class RabbitMQConfiguration {
     private Logger logger = LoggerFactory.getLogger(RabbitMQConfiguration.class);
 
