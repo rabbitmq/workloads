@@ -10,11 +10,6 @@ The type of failures we are going to handle are:
 - Channel failure  
 - Fatal consumer errors (e.g. poisonous message)
 
-## Test Environment
-
-(PCF RabbitMQ 1.13.8) RabbitMQ 3.7.7  -> RabbitMQ 3.7.8 (PCF RabbitMQ 1.13.7)
-
-## Patterns for applications that uses RabbitMQ Java client
 
 ## Patterns for applications that uses Spring AMQP client
 
@@ -94,7 +89,7 @@ A RabbitMQ node may become unavailable should any of these events occurred:
   - node crashes
   - operator stops the node
   - operator closes the connection
-  - operator is performing a rolling upgrade
+  - operator is performing a rolling upgrade (e.g. Upgrade *PCF RabbitMQ 1.13.8 / RabbitMQ 3.7.7* to *RabbitMQ 3.7.8 (PCF RabbitMQ 1.13.7*)
 
 Provided we have configured the application with a list of addresses to the RabbitMQ cluster, Spring AMQP will automatically try to connect to the other nodes. This is the case when we use On-Demand PCF RabbitMQ offering with a cluster.
 In the case of Pre-Provision PCF RabbitMQ, where we only have one address, the HA-proxy's address, Spring AMQP will keep trying to connect to that single address.
@@ -140,3 +135,12 @@ We should create separate connections for consumption and publishing messages. S
 It would also be great if we could identify which connection is which when we look at the management UI. Spring AMQP allows us to inject our own `ConnectionNamingStrategy` but we can leverage the existing strategy. We can give it a meaningful name to the `@Bean` of each `ConnectionFactory` and Spring AMQP will use it.
 
 [550f6ec](https://github.com/rabbitmq/workloads/commit/550f6ec)
+
+
+## Patterns for applications that uses RabbitMQ Java client
+
+### Set up
+
+### Reference application
+
+### Types of failures/situations
