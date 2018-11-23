@@ -9,6 +9,7 @@ import org.springframework.cloud.CloudFactory;
 import org.springframework.cloud.service.messaging.RabbitConnectionFactoryConfig;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 
@@ -34,6 +35,21 @@ public class RabbitMQConfiguration {
         ConnectionFactory factory = cloud.getSingletonServiceConnector(ConnectionFactory.class,
                 null);
         return factory;
+    }
+
+    @Bean("consumer")
+    public org.springframework.amqp.rabbit.connection.ConnectionFactory consumer(Cloud cloud) {
+        ConnectionFactory factory = cloud.getSingletonServiceConnector(org.springframework.amqp.rabbit.connection.ConnectionFactory.class,
+                null);
+        return factory;
+    }
+
+    @Bean("producer")
+    @Primary
+    public org.springframework.amqp.rabbit.connection.ConnectionFactory producer(Cloud cloud) {
+        ConnectionFactory factory = cloud.getSingletonServiceConnector(org.springframework.amqp.rabbit.connection.ConnectionFactory.class,
+                null);
+        return factory.getPublisherConnectionFactory();
     }
 
     @Bean

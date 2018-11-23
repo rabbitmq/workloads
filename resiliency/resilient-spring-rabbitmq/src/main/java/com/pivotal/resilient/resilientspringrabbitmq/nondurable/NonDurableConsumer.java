@@ -20,7 +20,8 @@ public class NonDurableConsumer {
     @Value("${non-durable-consumer.missingQueuesFatal:false}") boolean missingQueuesFatal;
 
     @Bean
-    public SimpleMessageListenerContainer consumerOnNonDurableQueue(@Qualifier("non-durable-consumer.queue") Queue queue, ConnectionFactory connectionFactory) {
+    public SimpleMessageListenerContainer consumerOnNonDurableQueue(@Qualifier("non-durable-consumer.queue") Queue queue,
+                                                                    @Qualifier("consumer") ConnectionFactory connectionFactory) {
         logger.info("Creating consumer on {} ...", queue.getName());
 
         SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();

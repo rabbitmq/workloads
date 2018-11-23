@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.*;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -36,7 +37,7 @@ public class NonDurableResourcesConfiguration {
     }
 
     @Bean
-    public RabbitTemplate templateForNonDurableProducer(ConnectionFactory connectionFactory) {
+    public RabbitTemplate templateForNonDurableProducer(@Qualifier("producer") ConnectionFactory connectionFactory) {
         logger.info("Creating templateForDurableProducer ...");
 
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
