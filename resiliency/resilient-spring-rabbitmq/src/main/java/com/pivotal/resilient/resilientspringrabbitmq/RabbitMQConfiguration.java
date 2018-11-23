@@ -3,6 +3,7 @@ package com.pivotal.resilient.resilientspringrabbitmq;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.cloud.Cloud;
 import org.springframework.cloud.CloudFactory;
 import org.springframework.cloud.service.messaging.RabbitConnectionFactoryConfig;
@@ -35,5 +36,15 @@ public class RabbitMQConfiguration {
         return factory;
     }
 
+    @Bean
+    public RabbitAdmin rabbitAdmin(ConnectionFactory factory) {
+        RabbitAdmin admin  = new RabbitAdmin(factory);
+
+        // This is key if we only have just on RabbitAdmin otherwise one
+        // failure could cause the rest of the declarations to fail
+        admin.setIgnoreDeclarationExceptions(true);
+
+        return admin;
+    }
 }
 
