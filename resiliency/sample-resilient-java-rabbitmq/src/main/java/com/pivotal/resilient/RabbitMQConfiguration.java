@@ -1,6 +1,9 @@
 package com.pivotal.resilient;
 
-import com.rabbitmq.client.*;
+import com.pivotal.resilient.amqp.AMQPConnectionProvider;
+import com.pivotal.resilient.amqp.AMQPConnectionProviderImpl;
+import com.rabbitmq.client.Address;
+import com.rabbitmq.client.ConnectionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,10 +17,7 @@ import org.springframework.scheduling.TaskScheduler;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -44,7 +44,7 @@ public class RabbitMQConfiguration {
     }
 
     @Bean
-    public ConnectionFactory amqpConnectionFactory(Cloud cloud) throws NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
+    public ConnectionFactory amqpConnectionFactory(Cloud cloud) {
         ConnectionFactory factory = new ConnectionFactory();
 
         initConnetionFactoryWithAMQPCredentials(cloud, factory);
@@ -58,6 +58,25 @@ public class RabbitMQConfiguration {
 
         return factory;
     }
+
+    @Bean(destroyMethod = "shutdown", name = "consumer")
+    public AMQPConnectionProvider consumer(Cloud cloud, ConnectionFactory factory, TaskScheduler scheduler) {
+        logger.info("Creating AMQPConnectionProvider:consumer");
+        AMQPConnectionProviderImpl provider =  new AMQPConnectionProviderImpl("consumer", factory, getAmqpAddressesFrom(cloud), scheduler);
+        provider.start();
+        return provider;
+    }
+
+    @Bean(destroyMethod = "shutdown")
+    @Primary
+    public AMQPConnectionProvider producer(Cloud cloud, ConnectionFactory factory, TaskScheduler scheduler) {
+        logger.info("Creating AMQPConnectionProvider:producer");
+        AMQPConnectionProviderImpl provider =  new AMQPConnectionProviderImpl("producer", factory, getAmqpAddressesFrom(cloud), scheduler);
+        provider.start();
+        return provider;
+    }
+
+
     private void initConnetionFactoryWithAMQPCredentials(Cloud cloud, ConnectionFactory factory) {
         AmqpServiceInfo amqp = cloud.getSingletonServiceInfoByType(AmqpServiceInfo.class);
         factory.setUsername(amqp.getUserName());
@@ -82,184 +101,5 @@ public class RabbitMQConfiguration {
             }
         }).collect(Collectors.toList());
     }
-
-    @Bean(destroyMethod = "shutdown", name = "consumer")
-    public AMQPConnectionProvider consumer(Cloud cloud, ConnectionFactory factory, TaskScheduler scheduler) {
-        logger.info("Creating AMQPConnectionProvider:consumer");
-        AMQPConnectionProviderImpl provider =  new AMQPConnectionProviderImpl("consumer", factory, getAmqpAddressesFrom(cloud), scheduler);
-        provider.start();
-        return provider;
-    }
-
-    @Bean(destroyMethod = "shutdown")
-    @Primary
-    public AMQPConnectionProvider producer(Cloud cloud, ConnectionFactory factory, TaskScheduler scheduler) {
-        logger.info("Creating AMQPConnectionProvider:producer");
-        AMQPConnectionProviderImpl provider =  new AMQPConnectionProviderImpl("producer", factory, getAmqpAddressesFrom(cloud), scheduler);
-        provider.start();
-        return provider;
-    }
-
 }
 
-class NoOpAMQPConnectionRequester implements AMQPConnectionRequester {
-
-    @Override
-    public String getName() {
-        return "NoOp";
-    }
-
-    @Override
-    public void connectionAvailable(Connection channel) {
-
-    }
-
-    @Override
-    public void connectionLost() {
-
-    }
-
-    @Override
-    public void connectionBlocked(String reason) {
-
-    }
-
-    @Override
-    public void connectionUnblocked(Connection connection) {
-
-    }
-
-    @Override
-    public boolean isHealthy() {
-        return true;
-    }
-}
-interface AMQPConnectionRequester {
-    String getName();
-    void connectionAvailable(Connection connection);
-    void connectionLost();
-    void connectionBlocked(String reason);
-    void connectionUnblocked(Connection connection);
-    boolean isHealthy();
-}
-
-interface AMQPConnectionProvider {
-    void manageConnectionFor(String name, List<AMQPResource> resources, AMQPConnectionRequester claimer);
-    void manageConnectionFor(String name, List<AMQPResource> resources);
-    void unmanageConnectionsFor(String name);
-}
-
-abstract class AMQPResource {
-    private String name;
-
-    public AMQPResource(String name) {
-        this.name = name;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-}
-class BindingDescriptor extends AMQPResource {
-    private QueueDescriptor queue;
-    private ExchangeDescriptor exchange;
-    private String routingKey;
-
-    public BindingDescriptor(QueueDescriptor queue, ExchangeDescriptor exchange, String routingKey) {
-        super(String.format("binding:%s,%s,%s", exchange.getName(), queue.getName(), routingKey));
-        this.queue = queue;
-        this.exchange = exchange;
-        this.routingKey = routingKey;
-    }
-
-    @Override
-    public String toString() {
-        return "{" +
-                "queue=" + queue +
-                ", exchange=" + exchange +
-                ", routingKey='" + routingKey + '\'' +
-                '}';
-    }
-
-    public QueueDescriptor getQueue() {
-        return queue;
-    }
-
-    public ExchangeDescriptor getExchange() {
-        return exchange;
-    }
-
-    public String getRoutingKey() {
-        return routingKey;
-    }
-}
-class ExchangeDescriptor extends AMQPResource {
-    private BuiltinExchangeType type;
-    boolean durable;
-
-    public ExchangeDescriptor(String name, BuiltinExchangeType type, boolean durable) {
-        super(name);
-        this.type = type;
-        this.durable = durable;
-    }
-
-    public BuiltinExchangeType getType() {
-        return type;
-    }
-
-    public boolean isDurable() {
-        return durable;
-    }
-
-    @Override
-    public String toString() {
-        return "{" +
-                " name=" + getName() +
-                " type=" + type +
-                ", durable=" + durable +
-                '}';
-    }
-}
-
-class QueueDescriptor extends AMQPResource {
-    boolean durable = false;
-    boolean passive = false;
-    boolean exclusive = false;
-
-
-    public QueueDescriptor(String name, boolean durable, boolean passive, boolean exclusive) {
-        super(name);
-        this.durable = durable;
-        this.passive = passive;
-        this.exclusive = exclusive;
-    }
-    public QueueDescriptor(String name, boolean durable) {
-        this(name, durable, false, false);
-    }
-
-    public boolean isDurable() {
-        return durable;
-    }
-
-    public boolean isPassive() {
-        return passive;
-    }
-
-    public boolean isExclusive() {
-        return exclusive;
-    }
-
-    @Override
-    public String toString() {
-        return "{" +
-                " name=" + getName() +
-                " durable=" + durable +
-                ", passive=" + passive +
-                ", exclusive=" + exclusive +
-                '}';
-    }
-    public BindingDescriptor bindWith(ExchangeDescriptor exchange, String routingKey) {
-        return new BindingDescriptor(this, exchange, routingKey);
-    }
-}

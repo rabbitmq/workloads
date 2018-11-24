@@ -1,4 +1,4 @@
-package com.pivotal.resilient;
+package com.pivotal.resilient.amqp;
 
 import com.rabbitmq.client.*;
 import org.slf4j.Logger;
@@ -39,7 +39,7 @@ public class AMQPConnectionProviderImpl implements AMQPConnectionProvider, Recov
     }
 
     @Override
-    public void manageConnectionFor(String requesterName, List<AMQPResource> resources, AMQPConnectionRequester requester) {
+    public void requestConnectionFor(String requesterName, List<AMQPResource> resources, AMQPConnectionRequester requester) {
         if (connectionRequests.putIfAbsent(requesterName, new AMQPConnectionRequest(requesterName, resources, requester)) != null) {
             throw new IllegalStateException(String.format("%s: Duplicate AMQPConnectionRequester. %s is already being managed", name, requesterName));
         }
@@ -47,7 +47,7 @@ public class AMQPConnectionProviderImpl implements AMQPConnectionProvider, Recov
     }
 
     @Override
-    public void manageConnectionFor(String requesterName, List<AMQPResource> resources) {
+    public void requestConnectionFor(String requesterName, List<AMQPResource> resources) {
         if (connectionRequests.putIfAbsent(requesterName, new AMQPConnectionRequest(requesterName, resources, noOpAMQPConnectionRequester)) != null) {
             throw new IllegalStateException(String.format("%s: Duplicate AMQPConnectionRequester. %s is already being managed", name, requesterName));
         }
@@ -55,7 +55,7 @@ public class AMQPConnectionProviderImpl implements AMQPConnectionProvider, Recov
     }
 
     @Override
-    public void unmanageConnectionsFor(String requesterName) {
+    public void releaseConnectionsFor(String requesterName) {
         connectionRequests.remove(requesterName);
         logger.info("Stop managing connections for {}", requesterName);
     }

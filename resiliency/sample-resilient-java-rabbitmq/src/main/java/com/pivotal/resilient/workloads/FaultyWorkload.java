@@ -1,25 +1,36 @@
-package com.pivotal.resilient;
+package com.pivotal.resilient.workloads;
 
-import com.rabbitmq.client.*;
+import com.pivotal.resilient.amqp.AMQPConnectionProvider;
+import com.pivotal.resilient.amqp.BindingDescriptor;
+import com.pivotal.resilient.amqp.ExchangeDescriptor;
+import com.pivotal.resilient.amqp.QueueDescriptor;
+import com.pivotal.resilient.chaos.ChaosBunny;
+import com.pivotal.resilient.chaos.RandomChannelCloser;
+import com.rabbitmq.client.AMQP;
+import com.rabbitmq.client.BuiltinExchangeType;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Envelope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.TaskScheduler;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.Executor;
 
 @Configuration
 public class FaultyWorkload {
 
     private Logger logger = LoggerFactory.getLogger(FaultyWorkload.class);
+
+    @Autowired
+    private ChaosBunny chaosBunny;
 
     // This producer will never be able to publish once the exchange is deleted because
     // the logic that declares the amqp resources will only trigger when we connect
@@ -30,12 +41,12 @@ public class FaultyWorkload {
         Producer producer = Producer.sender(serviceName, faultyExchange, "faulty")
                                     .atFixedRate(taskScheduler, 10000);
 
-        amqpConnectionProvider.manageConnectionFor(serviceName, producer.getRequiredAMQPResources(), producer);
+        amqpConnectionProvider.requestConnectionFor(serviceName, producer.getRequiredAMQPResources(), producer);
 
         // WARNING: When exchange is deleted, all bindings referring to the exchange are also deleted
-
-        ExchangeDeleter exchangeDeleter = new ExchangeDeleter(taskScheduler, 20000, "faulty-exchange");
-        amqpConnectionProvider.manageConnectionFor("ExchangeDeleter", Collections.emptyList(), exchangeDeleter);
+        amqpConnectionProvider.requestConnectionFor("ExchangeDeleter",
+                Collections.emptyList(),
+                chaosBunny.deleteExchangeAtFixedRate("faulty-exchange", 20000));
 
         return producer;
     }
@@ -48,9 +59,11 @@ public class FaultyWorkload {
     @Profile("consumerBindingWithNullRountingKey")
     public Consumer consumerBindingWithNullRountingKey(AMQPConnectionProvider amqpConnectionProvider) {
         String serviceName = "consumerBindingWithNullRountingKey";
-        Consumer consumer =  new Consumer(serviceName, faultyConsumerQ,
-                new BindingDescriptor(faultyConsumerQ, faultyExchange, null));
-        amqpConnectionProvider.manageConnectionFor(serviceName, consumer.getRequiredAMQPResources(), consumer);
+        Consumer consumer =  ConsumerBuilder.named(serviceName)
+                    .consumeFrom(faultyConsumerQ, new BindingDescriptor(faultyConsumerQ, faultyExchange, null))
+                    .build();
+
+        amqpConnectionProvider.requestConnectionFor(serviceName, consumer.getRequiredAMQPResources(), consumer);
         return consumer;
     }
 
@@ -58,9 +71,10 @@ public class FaultyWorkload {
     @Profile("consumerOnQueueWithDeletedExchange")
     public Consumer consumerOnQueueWithDeletedExchange(AMQPConnectionProvider amqpConnectionProvider) {
         String serviceName = "consumerOnQueueWithDeletedExchange";
-        Consumer consumer =  new Consumer(serviceName, faultyConsumerQ,
-                new BindingDescriptor(faultyConsumerQ, faultyExchange, ""));
-        amqpConnectionProvider.manageConnectionFor(serviceName, consumer.getRequiredAMQPResources(), consumer);
+        Consumer consumer = ConsumerBuilder.named(serviceName)
+                            .consumeFrom(faultyConsumerQ, new BindingDescriptor(faultyConsumerQ, faultyExchange, ""))
+                            .build();
+        amqpConnectionProvider.requestConnectionFor(serviceName, consumer.getRequiredAMQPResources(), consumer);
         return consumer;
     }
 
@@ -71,11 +85,11 @@ public class FaultyWorkload {
         String serviceName = "producerThatGetITsChannelClosedByOthersDueToFailedChannelOperation";
         Producer producer = Producer.sender(serviceName, faultyExchange, "faulty")
                 .atFixedRate(taskScheduler, 10000);
-        amqpConnectionProvider.manageConnectionFor(serviceName, producer.getRequiredAMQPResources(), producer);
+        amqpConnectionProvider.requestConnectionFor(serviceName, producer.getRequiredAMQPResources(), producer);
 
         RandomChannelCloser randomChannelCloser = new RandomChannelCloser(taskScheduler, 50000);
         producer.setChannelListener(randomChannelCloser);
-        amqpConnectionProvider.manageConnectionFor("RandomChannelCloser", Collections.emptyList(), randomChannelCloser);
+        amqpConnectionProvider.requestConnectionFor("RandomChannelCloser", Collections.emptyList(), randomChannelCloser);
         return producer;
     }
 
@@ -85,13 +99,18 @@ public class FaultyWorkload {
     @Bean
     @Profile("consumerThatGetITsChannelClosedByOthersDueToFailedChannelOperation")
     public Consumer consumerThatGetITsChannelClosedByOthersDueToFailedChannelOperation(TaskScheduler taskScheduler, AMQPConnectionProvider amqpConnectionProvider) {
-        String serviceName = "consumerThatGetITsChannelClosedByOthersDueToFailedChannelOperation";
-        Consumer consumer =  new Consumer(serviceName, faultyConsumerQOne); // default binding
-        amqpConnectionProvider.manageConnectionFor(serviceName, consumer.getRequiredAMQPResources(), consumer);
 
-        RandomChannelCloser randomChannelCloser = new RandomChannelCloser(taskScheduler, 15000);
-        consumer.setChannelListener(randomChannelCloser);
-        amqpConnectionProvider.manageConnectionFor("RandomChannelCloser", Collections.emptyList(), randomChannelCloser);
+        RandomChannelCloser randomChannelCloser = chaosBunny.randomChannelCloser(15000);
+
+        String serviceName = "consumerThatGetITsChannelClosedByOthersDueToFailedChannelOperation";
+        Consumer consumer =  ConsumerBuilder.named(serviceName)
+                    .consumeFrom(faultyConsumerQOne)            // default binding
+                    .withChannelListener(randomChannelCloser)   // so that channelCloser knows when a channel gets created
+                    .build();
+
+        amqpConnectionProvider.requestConnectionFor(serviceName, consumer.getRequiredAMQPResources(), consumer);
+        amqpConnectionProvider.requestConnectionFor("RandomChannelCloser", Collections.emptyList(), randomChannelCloser);
+
         return consumer;
     }
 
@@ -103,20 +122,21 @@ public class FaultyWorkload {
     public Consumer consumerThatGetsItsChannelClosedDueToFailedChannelOperation(TaskScheduler taskScheduler, AMQPConnectionProvider amqpConnectionProvider) {
         String serviceName = "consumerThatGetsItsChannelClosedDueToFailedChannelOperation";
 
-        Consumer consumer =  new Consumer(serviceName,
-                buggyConsumerQ, buggyConsumerQ.bindWith(faultyExchange, "faulty"))
+        Consumer consumer =  ConsumerBuilder.named(serviceName)
+                    .consumeFrom(buggyConsumerQ, buggyConsumerQ.bindWith(faultyExchange, "faulty"))
                     .withAutoack()
-                    .handleMessagesWith((Envelope envelope, AMQP.BasicProperties properties, byte[] body, Channel channel) -> {
+                    .handleMessagesWith((String consumerTag, Envelope envelope, AMQP.BasicProperties properties, byte[] body, Channel channel) -> {
                         try {
                             logger.warn("Intentionally producing channel failure by publishing to wrong exchange");
                             channel.basicPublish("na", "na", properties, body);
                         } catch (IOException | RuntimeException e) {
                             logger.warn("Intentionally failed to publish . Reason {} {}", e.getClass().getName(), e.getMessage());
                         }
-                    });
+                    })
+                    .build();
 
 
-        amqpConnectionProvider.manageConnectionFor(serviceName, consumer.getRequiredAMQPResources(), consumer);
+        amqpConnectionProvider.requestConnectionFor(serviceName, consumer.getRequiredAMQPResources(), consumer);
 
         return consumer;
     }
@@ -129,11 +149,13 @@ public class FaultyWorkload {
     public Consumer consumerThatThrowsException(TaskScheduler taskScheduler, AMQPConnectionProvider amqpConnectionProvider) {
         BindingDescriptor binding = buggyConsumerQTwo.bindWith(faultyExchange, "faulty");
         String serviceName = "consumerThatThrowsException";
-        Consumer consumer =  new Consumer(serviceName, buggyConsumerQTwo, binding)
+        Consumer consumer =  ConsumerBuilder.named(serviceName)
+                    .consumeFrom(buggyConsumerQTwo, binding)
                     .withAutoack()
-                    .throwExceptionAfter("Simulated failure", 2);
+                    .throwExceptionAfter("Simulated failure", 2)
+                    .build();
 
-        amqpConnectionProvider.manageConnectionFor(serviceName, consumer.getRequiredAMQPResources(), consumer);
+        amqpConnectionProvider.requestConnectionFor(serviceName, consumer.getRequiredAMQPResources(), consumer);
 
         return consumer;
     }
@@ -141,15 +163,8 @@ public class FaultyWorkload {
 
     private void waitUntilAnotherThreadAbruptedlyClosesTheChannel(Executor executor, Channel channel, QueueDescriptor queue) throws IOException {
         // simulate a buggy component -running outside of the consumer's thread- that causes this consumer channel to close
-        ChannelCloser channelCloser = new ChannelCloser(channel);
+        chaosBunny.closeChannelOnSeparateThread(channel);
 
-        new Thread(channelCloser).start();
-
-        try {
-            channelCloser.waitUntilChannelCloserRuns(5000);
-        } catch (InterruptedException e) {
-
-        }
     }
     @Bean
     @Profile("consumerGetsItsChannelUnexpectedlyClosedWithUndeliveredMessages")
@@ -159,24 +174,26 @@ public class FaultyWorkload {
 
         BindingDescriptor binding = buggyConsumerQTwo.bindWith(faultyExchange, "faulty");
         String serviceName = "consumerGetsItsChannelUnexpectedlyClosedWithUndeliveredMessages";
-        Consumer consumer =  new Consumer(serviceName, buggyConsumerQTwo, binding)
+        Consumer consumer =  ConsumerBuilder.named(serviceName)
+                                .consumeFrom(buggyConsumerQTwo, binding)
                                 .withPrefetch(3)
                                 .handleMessagesWith(
-                                        (envelope, properties, body, channel) -> {
+                                        (consumerTag, envelope, properties, body, channel) -> {
                                             logReadyMessagesInBroker(channel, buggyConsumerQTwo.getName());
                                             waitUntilAnotherThreadAbruptedlyClosesTheChannel(null, channel, buggyConsumerQTwo);
                                         },
-                                        (envelope, properties, body, channel) -> {
+                                        (consumerTag, envelope, properties, body, channel) -> {
 
                                         })
-                                .ackEveryMessage();
+                                .ackEveryMessage()
+                                .build();
 
-        amqpConnectionProvider.manageConnectionFor(serviceName, consumer.getRequiredAMQPResources(), consumer);
+        amqpConnectionProvider.requestConnectionFor(serviceName, consumer.getRequiredAMQPResources(), consumer);
 
         serviceName = "senderForConsumerGetsItsChannelUnexpectedlyClosedWithUndeliveredMessages";
         Producer producer = Producer.sender(serviceName, faultyExchange, binding.getRoutingKey())
                 .once(3);
-        amqpConnectionProvider.manageConnectionFor(serviceName, Arrays.asList(faultyExchange), producer);
+        amqpConnectionProvider.requestConnectionFor(serviceName, Arrays.asList(faultyExchange), producer);
 
         return consumer;
     }
@@ -200,18 +217,20 @@ public class FaultyWorkload {
         BindingDescriptor binding = buggyConsumerQThree.bindWith(faultyExchange, "faulty-two");
         String consumerServiceName = "cancelledAutoAckConsumerWithMessagesInBuffer";
 
-        Consumer consumer =  new Consumer(consumerServiceName, buggyConsumerQThree, binding)
-                .withAutoack()
-                .cancelAfterFirstMessage();
+        Consumer consumer =  ConsumerBuilder.named(consumerServiceName)
+                            .consumeFrom(buggyConsumerQThree, binding)
+                            .withAutoack()
+                            .cancelAfterFirstMessage()
+                            .build();
 
-        amqpConnectionProvider.manageConnectionFor("DeclareResourcesFor:" + consumerServiceName, consumer.getRequiredAMQPResources());
+        amqpConnectionProvider.requestConnectionFor("DeclareResourcesFor:" + consumerServiceName, consumer.getRequiredAMQPResources());
 
         String producerServiceName = "senderForcancelledAutoAckConsumerWithMessagesInBuffer";
         Producer producer = Producer.sender(producerServiceName, faultyExchange, binding.getRoutingKey())
                 .once(10);
-        amqpConnectionProvider.manageConnectionFor(producerServiceName, Arrays.asList(faultyExchange), producer);
+        amqpConnectionProvider.requestConnectionFor(producerServiceName, Arrays.asList(faultyExchange), producer);
 
-        amqpConnectionProvider.manageConnectionFor(consumerServiceName, Collections.emptyList(), consumer);
+        amqpConnectionProvider.requestConnectionFor(consumerServiceName, Collections.emptyList(), consumer);
 
 
         return consumer;
@@ -223,23 +242,25 @@ public class FaultyWorkload {
     @Bean
     @Profile("cancelledManualAckConsumerWithMessagesInBuffer")
     public Consumer cancelledManualAckConsumerWithMessagesInBuffer(TaskScheduler taskScheduler,
-                                                                 AMQPConnectionProvider amqpConnectionProvider) {
+                                                                   AMQPConnectionProvider amqpConnectionProvider) {
         BindingDescriptor binding = buggyConsumerQFour.bindWith(faultyExchange, "faulty-two");
         String consumerServiceName = "cancelledManualAckConsumerWithMessagesInBuffer";
 
-        Consumer consumer =  new Consumer(consumerServiceName, buggyConsumerQFour, binding)
+        Consumer consumer =  ConsumerBuilder.named(consumerServiceName)
+                .consumeFrom(buggyConsumerQFour, binding)
                 .withPrefetch(5)
                 .cancelAfterFirstMessage()
-                .ackEveryMessage();
+                .ackEveryMessage()
+                .build();
 
-        amqpConnectionProvider.manageConnectionFor("DeclareResourcesFor:" + consumerServiceName, consumer.getRequiredAMQPResources());
+        amqpConnectionProvider.requestConnectionFor("DeclareResourcesFor:" + consumerServiceName, consumer.getRequiredAMQPResources());
 
         String producerServiceName = "senderForcancelledManualAckConsumerWithMessagesInBuffer";
         Producer producer = Producer.sender(producerServiceName, faultyExchange, binding.getRoutingKey())
                 .once(10);
-        amqpConnectionProvider.manageConnectionFor(producerServiceName, Arrays.asList(faultyExchange), producer);
+        amqpConnectionProvider.requestConnectionFor(producerServiceName, Arrays.asList(faultyExchange), producer);
 
-        amqpConnectionProvider.manageConnectionFor(consumerServiceName, Collections.emptyList(), consumer);
+        amqpConnectionProvider.requestConnectionFor(consumerServiceName, Collections.emptyList(), consumer);
 
 
         return consumer;
@@ -251,164 +272,22 @@ public class FaultyWorkload {
         BindingDescriptor binding = buggyConsumerQFour.bindWith(faultyExchange, "faulty-two");
         String consumerServiceName = "shutdownConsumer";
 
-        final Consumer consumer =  new Consumer(consumerServiceName, buggyConsumerQFour, binding)
-                .withAutoack();
-        amqpConnectionProvider.manageConnectionFor("ExchangeDeclarer",  Arrays.asList(faultyExchange));
-        amqpConnectionProvider.manageConnectionFor(consumerServiceName, consumer.getRequiredAMQPResources(), consumer);
+        final Consumer consumer = ConsumerBuilder.named(consumerServiceName)
+                            .consumeFrom(buggyConsumerQFour, binding)
+                            .withAutoack()
+                            .build();
 
+        amqpConnectionProvider.requestConnectionFor("ExchangeDeclarer",  Arrays.asList(faultyExchange));
+        amqpConnectionProvider.requestConnectionFor(consumerServiceName, consumer.getRequiredAMQPResources(), consumer);
+
+        // schedule consumer shutdown 20 seconds from now
         taskScheduler.schedule(() -> {
-            amqpConnectionProvider.unmanageConnectionsFor(consumerServiceName);
+            amqpConnectionProvider.releaseConnectionsFor(consumerServiceName);
             consumer.shutdown();
-            }, Instant.now().plusSeconds(20));
+        }, Instant.now().plusSeconds(20));
 
         return consumer;
     }
+
 }
 
-abstract class ChaosMonicAbstract implements Runnable, AMQPConnectionRequester {
-
-    private TaskScheduler scheduler;
-    private Connection connection;
-    private ScheduledFuture<?> chaosScheduler;
-
-    private long frequency;
-
-    public ChaosMonicAbstract(TaskScheduler scheduler, long frequency) {
-        this.frequency = frequency;
-        this.scheduler = scheduler;
-    }
-
-    protected void executeOnChannel(ChannelOperation operation) {
-        Channel channel;
-        try {
-            channel = connection.createChannel();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        try {
-            operation.executeOn(channel);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } finally {
-            try {
-                channel.close();
-            } catch (IOException | TimeoutException e) {
-
-            }
-        }
-    }
-
-    @Override
-    public void connectionAvailable(Connection connection) {
-        this.connection = connection;
-        chaosScheduler = scheduler.scheduleAtFixedRate(this, Instant.now().plusMillis(frequency), Duration.ofMillis(frequency));
-    }
-
-    @Override
-    public void connectionLost() {
-        if (chaosScheduler != null) {
-            chaosScheduler.cancel(true);
-        }
-    }
-
-    @Override
-    public void connectionBlocked(String reason) {
-
-    }
-
-    @Override
-    public void connectionUnblocked(Connection connection) {
-
-    }
-
-    @Override
-    public boolean isHealthy() {
-        return true;
-    }
-}
-@FunctionalInterface
-interface ChannelOperation {
-    void executeOn(Channel t) throws IOException;
-}
-class ExchangeDeleter extends ChaosMonicAbstract {
-    private String exchangeName;
-    private Logger logger = LoggerFactory.getLogger(ExchangeDeleter.class);
-
-    public ExchangeDeleter(TaskScheduler scheduler, long frequency, String exchangeName) {
-        super(scheduler, frequency);
-        this.exchangeName = exchangeName;
-    }
-
-    @Override
-    public void run() {
-        logger.warn("ChaosMonic deleting exchange {}", exchangeName);
-        executeOnChannel((channel) -> channel.exchangeDelete(exchangeName));
-    }
-
-
-    @Override
-    public String getName() {
-        return "ExchangeDeleter-" + exchangeName;
-    }
-}
-class RandomChannelCloser extends ChaosMonicAbstract implements ChannelListener  {
-
-    protected AtomicReference<Channel> lastCreatedChannel = new AtomicReference<>();
-    private Logger logger = LoggerFactory.getLogger(RandomChannelCloser.class);
-
-    public RandomChannelCloser(TaskScheduler scheduler, long frequency) {
-        super(scheduler, frequency);
-    }
-
-    @Override
-    public void run() {
-        Channel channel = lastCreatedChannel.getAndSet(null);
-        if (channel != null) {
-            try {
-                logger.warn("RandomChannelCloser forcing channel {} to close", channel.getChannelNumber());
-                channel.queueBind("na", "na" , "na");
-            } catch (IOException | RuntimeException e) {
-                if (!channel.isOpen()) {
-                    logger.info("RandomChannelCloser closed channel {}", channel.getChannelNumber());
-                }
-            }
-        }
-    }
-
-    @Override
-    public void createdChannel(Channel channel) {
-        logger.warn("{} received a channel", getName());
-        lastCreatedChannel.set(channel);
-    }
-
-    @Override
-    public String getName() {
-        return "RandomChannelCloser";
-    }
-}
-class ChannelCloser extends RandomChannelCloser {
-
-    private Semaphore semaphore;
-
-    public ChannelCloser(Channel channel) {
-        super(null, 0);
-        lastCreatedChannel.set(channel);
-        this.semaphore = new Semaphore(0);
-    }
-
-    @Override
-    public void run() {
-        try {
-            super.run();
-        }finally {
-            semaphore.release();
-        }
-    }
-    public void waitUntilChannelCloserRuns(long timeout) throws InterruptedException {
-        this.semaphore.tryAcquire(timeout, TimeUnit.MILLISECONDS);
-    }
-    @Override
-    public String getName() {
-        return "ChannelCloser";
-    }
-}

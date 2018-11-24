@@ -1,4 +1,4 @@
-package com.pivotal.resilient;
+package com.pivotal.resilient.amqp;
 
 import com.rabbitmq.client.Channel;
 

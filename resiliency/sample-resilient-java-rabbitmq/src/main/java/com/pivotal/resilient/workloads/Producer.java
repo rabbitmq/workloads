@@ -1,5 +1,9 @@
-package com.pivotal.resilient;
+package com.pivotal.resilient.workloads;
 
+import com.pivotal.resilient.amqp.AMQPConnectionRequester;
+import com.pivotal.resilient.amqp.AMQPResource;
+import com.pivotal.resilient.amqp.ChannelListener;
+import com.pivotal.resilient.amqp.ExchangeDescriptor;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.AlreadyClosedException;
 import com.rabbitmq.client.Channel;
@@ -14,10 +18,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
-class Producer implements AMQPConnectionRequester {
+public class Producer implements AMQPConnectionRequester {
     private Logger logger = LoggerFactory.getLogger(Producer.class);
 
     private String name;
@@ -136,8 +138,8 @@ class Sender {
     private ExchangeDescriptor exchange;
     private String routingKey;
     private byte[] messageBodyBytes = "Hello, world!".getBytes();
-    private int correlationId;
-    private String correlationIdPrefix = String.valueOf(System.currentTimeMillis());
+    private int messageId;
+    private String messageIdPrefix = String.valueOf(System.currentTimeMillis());
     private ChannelHandler channelHandler;
 
     public Sender(String name, ChannelHandler channelHandler, ExchangeDescriptor exchange, String routingKey) {
@@ -153,15 +155,15 @@ class Sender {
 
     public boolean sendMessage(Connection connection) {
         AMQP.BasicProperties properties = new AMQP.BasicProperties.Builder().
-                correlationId(nextCorrelationId()).build();
+                messageId(nextMessageId()).build();
         try {
             String exchangeName = exchange != null ? exchange.getName() : "";
             channelHandler.getOrCreateChannel(connection, usePublisherConfirms).basicPublish(exchangeName, routingKey, properties, messageBodyBytes);
-            logger.debug("{} Sent message with correlationId {}", name, properties.getCorrelationId());
+            logger.debug("{} Sent message with messageId {}", name, properties.getMessageId());
             confirmMessageWasSent();
             return true;
         } catch(AlreadyClosedException | IOException e) {
-            logger.error("{} Failed to send a message with correlationId {} due to {}", name, properties.getCorrelationId(), e.getMessage());
+            logger.error("{} Failed to send a message with messageId {} due to {}", name, properties.getMessageId(), e.getMessage());
             channelHandler.drainChannel();
         } catch(InterruptedException e) {
             logger.error("{} Failed to receive a publisher confirmation", name);
@@ -171,10 +173,10 @@ class Sender {
     }
     private void confirmMessageWasSent() throws InterruptedException {
         if (usePublisherConfirms) channelHandler.waitForConfirmation();
-        correlationId++;
+        messageId++;
     }
-    private String nextCorrelationId() {
-        return String.format("%s-%d", correlationIdPrefix, correlationId);
+    private String nextMessageId() {
+        return String.format("%s-%d", messageIdPrefix, messageId);
     }
 
     public Producer atFixedRate(TaskScheduler scheduler, long rateMillis) {
