@@ -454,7 +454,9 @@ Be aware that Java RabbitMQ client has a feature called [Topology recovery](http
 
 The advise here is the same one we did for the Spring AMQP application; that is, dedicate a connection to consume messages and another one to publish.
 
-The `RabbitMQConfiguration` class builds not just one `AMQPConnectionProvider` but two; one called *producer* and another *consumer*. And these names will be used to name the connection too so that we can clearly identify them in the management UI. Being the *producer* the default one.
+The `RabbitMQConfiguration` class builds not just one `AMQPConnectionProvider` but two; one called *producer* and another *consumer*. And these names will be used to name the connection too so that we can clearly identify them in the management UI. Being the *producer* the default one. See that the *consumer* connection is in `Blocking` mode as opposed to `Blocked` in the *producer* connection. 
+
+![named connections](assets/blockedConnection.png)
 
 All we need to do is to inject or wire the right `AMQPConnectionProvider` to the application component.
 
@@ -473,5 +475,6 @@ Whereas, the consumer gets injected the *consumer*:
     public Consumer durableConsumer(@Qualifier("consumer") AMQPConnectionProvider amqpConnectionProvider) {
         ...
 ```
+
 
 A second advise is to detect when the connection is blocked and use it in the application. For instance, we could implement a back-pressure mechanism. Publisher will not send and block but fail-fast and report upstreams that it is not available. Or record this situation via its health status which we can expose it thru the actuator `/health` endpoint.   
