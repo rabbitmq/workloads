@@ -124,7 +124,7 @@ We could have chosen to crash the application instead and let Cloud Foundry rest
 Right now, our application (commit_id [e88a705](https://github.com/rabbitmq/workloads/commit/e88a705)) can start without RabbitMQ cluster down. Spring AMQP will continuously try to connect indefinitely right out of the box.
 
 However, be aware that if we try to use RabbitMQ while Spring is initializing the application, the application will crash.
-We introduced this small buggy component to our application to demonstrate it : [6601573](https://github.com/rabbitmq/workloads/commit/6601573)
+We introduced this small buggy component to our application to demonstrate it : [8ec0c97](https://github.com/rabbitmq/workloads/commit/8ec0c97)
 
 #### Application cannot connect due to authentication failures
 It is an application design decision whether our application should crash if it cannot connect due to access control failures like this one :
