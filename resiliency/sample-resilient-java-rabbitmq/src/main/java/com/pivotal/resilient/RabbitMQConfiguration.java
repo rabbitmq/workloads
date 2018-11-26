@@ -17,6 +17,8 @@ import org.springframework.scheduling.TaskScheduler;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -44,7 +46,7 @@ public class RabbitMQConfiguration {
     }
 
     @Bean
-    public ConnectionFactory amqpConnectionFactory(Cloud cloud) {
+    public ConnectionFactory amqpConnectionFactory(Cloud cloud) throws NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
         ConnectionFactory factory = new ConnectionFactory();
 
         initConnetionFactoryWithAMQPCredentials(cloud, factory);
@@ -77,11 +79,12 @@ public class RabbitMQConfiguration {
     }
 
 
-    private void initConnetionFactoryWithAMQPCredentials(Cloud cloud, ConnectionFactory factory) {
+    private void initConnetionFactoryWithAMQPCredentials(Cloud cloud, ConnectionFactory factory) throws NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
         AmqpServiceInfo amqp = cloud.getSingletonServiceInfoByType(AmqpServiceInfo.class);
-        factory.setUsername(amqp.getUserName());
-        factory.setPassword(amqp.getPassword());
-        factory.setVirtualHost(amqp.getVirtualHost());
+        //factory.setUsername(amqp.getUserName());
+        //factory.setPassword(amqp.getPassword());
+        //factory.setVirtualHost(amqp.getVirtualHost());
+        factory.setUri(amqp.getUri());
     }
     private List<Address> getAmqpAddressesFrom(Cloud cloud) {
         AmqpServiceInfo amqp = cloud.getSingletonServiceInfoByType(AmqpServiceInfo.class);
