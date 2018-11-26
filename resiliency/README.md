@@ -206,6 +206,31 @@ It would also be great if we could identify which connection is which when we lo
 In the diagram below we can see the two named connections. The first number after the connection label (`consumer`, `producer`) is the `ConnectionFactory` reference and the second number is the number associated to this connection. The value is `0` but a value of `10` would mean that this is the 11th connection created by `ConnectionFactory`.
 ![named connections](assets/namedConnections.png)
 
+### Message resiliency
+
+So far we have covered failures scenarios of RabbitMQ nodes and how we can improve our applications so that we are resilient to them and hence they remain available until the RabbitMQ nodes' service is restored.
+But there is another type of failure we need to deal with which is related to message resiliency, and in simple words, prevent message loss.
+
+RabbitMQ provides mechanisms to prevent message loss for publishers and consumers.
+
+**Publishers** shall use:
+- [Publisher confirmation](https://www.rabbitmq.com/confirms.html). It could happen that the broker dies just before it received the message.
+- [Alternate Exchange](https://www.rabbitmq.com/ae.html). It could happen that the producer application sends messages before the consumer application has declared its queue and bound it to the exchange. Or simply, the hosting non-mirrored durable queue node is not available and we are not using the `mandatory` flag.
+
+**Consumers** shall use:
+- [Client acknowledgement](https://www.rabbitmq.com/confirms.html#acknowledgement-modes)
+
+This is as far as RabbitMQ is concerned and regardless of the RabbitMQ client library we use.
+
+But what happens when our message consumer logic throws an exception while processing the message? or what happens with [poisonous messages](https://docs.microsoft.com/en-us/dotnet/framework/wcf/feature-details/poison-message-handling)? Spring AMQP will automatically reject and requeue all the messages the consumer failed to consume (i.e. threw an exception) except for those poisonous messages which are discarded. [Spring AMQP docs](https://docs.spring.io/spring-amqp/reference/html/_reference.html#exception-handling) explains which failures are treated as poisonous message.
+It is recommended that you configure the queue with [dead-letter exchange](https://www.rabbitmq.com/dlx.html) so that they are not entire lost.
+
+Be aware that a poisonous message originated due to some business exception will be constantly delivered draining lots of resources in the broker, in the network and in the consumer application.
+Here we have 2 options:
+- Either configure the `SimpleMessageListenerContainer` to always discard messages (`SimpleMessageListenerContainer.DefaultRequeueRejected(false)`).
+- Or instead throw `AmqpRejectAndDontRequeueException`
+- Or implement your own `ErrorHandler` maybe extending the current implementation `ConditionalRejectingErrorHandler`.
+
 ## Patterns for applications that uses RabbitMQ Java client
 
 This time we start with an application which is already resilient. We are going to challenge it with a number of failures and point to the code how it handles those failures.
@@ -454,7 +479,7 @@ Be aware that Java RabbitMQ client has a feature called [Topology recovery](http
 
 The advise here is the same one we did for the Spring AMQP application; that is, dedicate a connection to consume messages and another one to publish.
 
-The `RabbitMQConfiguration` class builds not just one `AMQPConnectionProvider` but two; one called *producer* and another *consumer*. And these names will be used to name the connection too so that we can clearly identify them in the management UI. Being the *producer* the default one. See that the *consumer* connection is in `Blocking` mode as opposed to `Blocked` in the *producer* connection. 
+The `RabbitMQConfiguration` class builds not just one `AMQPConnectionProvider` but two; one called *producer* and another *consumer*. And these names will be used to name the connection too so that we can clearly identify them in the management UI. Being the *producer* the default one. See that the *consumer* connection is in `Blocking` mode as opposed to `Blocked` in the *producer* connection.
 
 ![named connections](assets/blockedConnection.png)
 
