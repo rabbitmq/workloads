@@ -250,21 +250,35 @@ This application also uses [Spring Cloud Connectors](https://cloud.spring.io/spr
 
 We should delay all AMQP operations, be it publishing, declaring resources or consuming from queue, until we have a connection. We follow the **Hollywood Principle** : *Don't call us, we'll call you*.
 
-An application component that needs to publish a message will have to request a `com.rabbitmq.client.Connection` and only when the connection is available, it gets notified.
+An application component that needs to publish a message will have to request a `com.rabbitmq.client.Connection` to an `AMPQConnectionProvider` and only when the connection is available, it gets notified.
 
-An application component requests a `com.rabbitmq.client.Connection` to  an [AMQPConnectionProvider](https://github.com/rabbitmq/workloads/blob/master/resiliency/sample-resilient-java-rabbitmq/src/main/java/com/pivotal/resilient/amqp/AMQPConnectionProvider.java) like this:
-```
-  Producer producer = ...
-  List<AMQPResource> producerResources =  ...
-  amqpConnectionProvider.requestConnectionFor("my producer", producerResources, producer);
 ```
 
-Any application component that needs a `com.rabbitmq.client.Connection` must implement the interface [AMQPConnectionRequester](https://github.com/rabbitmq/workloads/blob/master/resiliency/sample-resilient-java-rabbitmq/src/main/java/com/pivotal/resilient/amqp/AMQPConnectionRequester.java). When a connection becomes available, it will get called via the `void connectionAvailable(Connection connection)` method.
+        [App.Component]---(requestConnnection)--->[AMQPConnectionProviderImpl]
+              /\                                    |     |      /\   |
+               |                                    |     |       |   |
+               |                                    |     |       +---+ mainLoop
+               +----------(connectionAvailable)-----+     |
+                                                          |
+                                                    (newConnection)
+                                                          |
+                                                          \/
+                                        [com.rabbitmq.client.ConnectionFactory]
 
-Ultimately, an application needs an AMQP resource. A publisher will need an exchange and a consumer a queue, and the option to bind the queue to the exchange too.
-It sounds logical that when an application component requests a connection, it could also specify a list with all the AMQP resources it needs. Furthermore, the application component should not get a connection if those AMQP resources are not available.
+```
 
-[AMQPConnectionProviderImpl](https://github.com/rabbitmq/workloads/blob/master/resiliency/sample-resilient-java-rabbitmq/src/main/java/com/pivotal/resilient/amqp/AMQPConnectionProviderImpl.java), the implementation of [AMQPConnectionProvider](https://github.com/rabbitmq/workloads/blob/master/resiliency/sample-resilient-java-rabbitmq/src/main/java/com/pivotal/resilient/amqp/AMQPConnectionProvider.java),  is constantly making sure that all [AMQPConnectionRequester](https://github.com/rabbitmq/workloads/blob/master/resiliency/sample-resilient-java-rabbitmq/src/main/java/com/pivotal/resilient/amqp/AMQPConnectionRequester.java)(s) are fully resolved.
+1. An application component requests a `com.rabbitmq.client.Connection` to  an [AMQPConnectionProvider](https://github.com/rabbitmq/workloads/blob/master/resiliency/sample-resilient-java-rabbitmq/src/main/java/com/pivotal/resilient/amqp/AMQPConnectionProvider.java) by calling `requestConnectionFor` method like this:
+  ```
+    Producer producer = ...
+    List<AMQPResource> producerResources =  ...
+    amqpConnectionProvider.requestConnectionFor("my producer", producerResources, producer);
+  ```
+2. An application component that needs a `com.rabbitmq.client.Connection` must implement the interface [AMQPConnectionRequester](https://github.com/rabbitmq/workloads/blob/master/resiliency/sample-resilient-java-rabbitmq/src/main/java/com/pivotal/resilient/amqp/AMQPConnectionRequester.java).
+3. [AMQPConnectionProviderImpl](https://github.com/rabbitmq/workloads/blob/master/resiliency/sample-resilient-java-rabbitmq/src/main/java/com/pivotal/resilient/amqp/AMQPConnectionProviderImpl.java), the implementation of [AMQPConnectionProvider](https://github.com/rabbitmq/workloads/blob/master/resiliency/sample-resilient-java-rabbitmq/src/main/java/com/pivotal/resilient/amqp/AMQPConnectionProvider.java),  is constantly making sure that all [AMQPConnectionRequester](https://github.com/rabbitmq/workloads/blob/master/resiliency/sample-resilient-java-rabbitmq/src/main/java/com/pivotal/resilient/amqp/AMQPConnectionRequester.java)(s) are fully resolved via its internal `mainLoop`
+3. When `AMQPConnectionProviderImpl` detects that there are unresolved requests and there is no yet any `com.rabbitmq.client.Connection` opened yet, it opens one via the `com.rabbitmq.client.ConnectionFactory`.
+4. When `AMQPConnectionProviderImpl` establishes a connection, it passes it to all registered and unresolved yet `AMQPConnectionRequester`(s).
+5. Although not shown in the diagram, when an application component requests a `com.rabbitmq.client.Connection` it passes a list of `AMQPResource`(s) that it needs to operate. `AMQPConnectionProviderImpl` will only call `connectionAvailable` on a `AMQPConnectionRequester` (i.e. the application component) only if it succeeded to declare the requested `AMQPResource`(s).
+
 
 #### Application cannot connect due to authentication failures
 
