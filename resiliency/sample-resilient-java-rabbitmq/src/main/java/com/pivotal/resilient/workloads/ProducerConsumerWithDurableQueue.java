@@ -29,7 +29,7 @@ public class ProducerConsumerWithDurableQueue {
         Consumer consumer = ConsumerBuilder.named(serviceName)
                                         .consumeFrom(durable_test)
                                         .withPrefetch(1)             // keeping a maximum of 1 unacknowledged message
-                                        .withConsumptionDelay(30000) // delay before akcing
+                                        // .withConsumptionDelay(30000) // delay before akcing
                                         .ackEveryMessage()           // acking every message
                                         .build();
 
