@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.TaskScheduler;
 
 @Configuration
-@Profile("durable-workload")
 public class ProducerConsumerWithDurableQueue {
 
     @Bean
