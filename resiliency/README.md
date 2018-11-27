@@ -215,7 +215,7 @@ When we do a rolling upgrade on a **Pre-Provisioned RabbitMQ for PCF** cluster, 
 
 When we do a rolling upgrade on a **On-demand RabbitMQ for PCF** cluster, applications will suffer a sub-second downtime. However, applications should be written to handle connection drops so that they can reconnect when the RabbitMQ Cluster is upgraded.
 
-As far as the applications are concerned, they only see nodes going down or the entire cluster going down. And these 2 failure scenarios have already been handled in the previous sections. 
+As far as the applications are concerned, they only see nodes going down or the entire cluster going down. And these 2 failure scenarios have already been handled in the previous sections.
 
 ### Message resiliency
 
@@ -234,7 +234,7 @@ RabbitMQ provides mechanisms to prevent message loss for publishers and consumer
 This is as far as RabbitMQ is concerned and regardless of the RabbitMQ client library we use.
 
 But what happens when our message consumer logic throws an exception while processing the message? or what happens with [poisonous messages](https://docs.microsoft.com/en-us/dotnet/framework/wcf/feature-details/poison-message-handling)? Spring AMQP will automatically reject and requeue all the messages the consumer failed to consume (i.e. threw an exception) except for those poisonous messages which are discarded. [Spring AMQP docs](https://docs.spring.io/spring-amqp/reference/html/_reference.html#exception-handling) explains which failures are treated as poisonous message.
-It is recommended that you configure the queue with [dead-letter exchange](https://www.rabbitmq.com/dlx.html) so that they are not entire lost.
+It is recommended that you configure the queue with [dead-letter exchange](https://www.rabbitmq.com/dlx.html) so that they are not entirely lost.
 
 Be aware that a poisonous message originated due to some business exception will be constantly delivered draining lots of resources in the broker, in the network and in the consumer application.
 Here we have 2 options:
@@ -484,6 +484,7 @@ We could encounter 2 type of failures or situations. One where our consumer appl
 The second failure is when our consumer application is connected to a node which does not host the non-durable queue. If the hosting queue node goes down, the application does not loose the connection but the consumer gets its subscription shutdown. Both are handled by the current design.
 
 Be aware that Java RabbitMQ client has a feature called [Topology recovery](https://www.rabbitmq.com/api-guide.html#recovery) which re-declares AMQP resources (including bindings) and consumers. But in our reference application we have decided to disable this feature and always redeclare the resources and consumers.  
+> When using topology recovery : you shouldn't close a channel after it has created some resources (queues, exchanges, bindings) or topology recovery for those resources will fail later, as the channel has been closed. Instead, leave creating channels open for the life of the application.
 
 
 #### RabbitMQ cluster raises an alarm
