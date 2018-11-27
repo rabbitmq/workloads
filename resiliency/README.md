@@ -206,6 +206,17 @@ It would also be great if we could identify which connection is which when we lo
 In the diagram below we can see the two named connections. The first number after the connection label (`consumer`, `producer`) is the `ConnectionFactory` reference and the second number is the number associated to this connection. The value is `0` but a value of `10` would mean that this is the 11th connection created by `ConnectionFactory`.
 ![named connections](assets/namedConnections.png)
 
+#### Rolling upgrade of RabbitMQ for PCF
+Depending on what versions are involved in an upgrade, we have to choose the right upgrade procedure. These are the 2 possible upgrade procedures:
+- [Rolling upgrade](https://www.rabbitmq.com/upgrade.html#multiple-nodes-upgrade) - Perform upgrades without cluster downtime. A rolling upgrade is when nodes are stopped, upgraded and restarted one-by-one, with the rest of the cluster still running while each node is being upgraded.
+- [Full-Stop upgrade](https://www.rabbitmq.com/upgrade.html#full-stop-upgrades) - If rolling upgrades are not possible, the entire cluster should be stopped, then restarted. This is referred to as a full stop upgrade.
+
+When we do a rolling upgrade on a **Pre-Provisioned RabbitMQ for PCF** cluster, applications will suffer some downtime. For instance, in a 3 node cluster with 1 ha-proxy, it has been observed around 5 minutes downtime. This is because RabbitMQ for PCF upgrades not only RabbitMQ cluster but also the Ha-Proxy server.
+
+When we do a rolling upgrade on a **On-demand RabbitMQ for PCF** cluster, applications will suffer a sub-second downtime. However, applications should be written to handle connection drops so that they can reconnect when the RabbitMQ Cluster is upgraded.
+
+As far as the applications are concerned, they only see nodes going down or the entire cluster going down. And these 2 failure scenarios have already been handled in the previous sections. 
+
 ### Message resiliency
 
 So far we have covered failures scenarios of RabbitMQ nodes and how we can improve our applications so that we are resilient to them and hence they remain available until the RabbitMQ nodes' service is restored.
