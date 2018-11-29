@@ -1,21 +1,54 @@
 package com.pivotal.resilient;
 
+import com.pivotal.cloud.service.messaging.RabbitConnectionFactoryCreator;
+import com.pivotal.cloud.service.messaging.SpringRabbitConnectionFactoryCreator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
+import org.springframework.amqp.rabbit.connection.ConnectionNameStrategy;
+import org.springframework.amqp.rabbit.connection.RabbitConnectionFactoryBean;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration;
+import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
 import org.springframework.cloud.Cloud;
 import org.springframework.cloud.CloudFactory;
+import org.springframework.cloud.service.MapServiceConnectorConfig;
+import org.springframework.cloud.service.common.AmqpServiceInfo;
+import org.springframework.cloud.service.messaging.RabbitConnectionFactoryConfig;
+import org.springframework.cloud.service.messaging.RabbitConnectionFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.scheduling.annotation.EnableScheduling;
+
+import javax.net.ssl.SSLContext;
+import java.io.IOException;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 
 @Configuration
 @EnableScheduling
 public class RabbitMQConfiguration {
     private Logger logger = LoggerFactory.getLogger(RabbitMQConfiguration.class);
+
+    private SpringRabbitConnectionFactoryCreator rabbitConnectionFactoryCreator = new SpringRabbitConnectionFactoryCreator();
+
+    @Autowired
+    RabbitProperties rabbitProperties;
+
+    @Autowired
+    ObjectProvider<ConnectionNameStrategy> connectionNameStrategies;
+
 
     @Bean
     public CloudFactory cloudFactory() {
@@ -29,26 +62,22 @@ public class RabbitMQConfiguration {
     }
 
 
-    @Bean
-    public ConnectionFactory connectionFactory(Cloud cloud) {
-        ConnectionFactory factory = cloud.getSingletonServiceConnector(ConnectionFactory.class,
-                null);
-        return factory;
-    }
-
     @Bean("consumer")
     public org.springframework.amqp.rabbit.connection.ConnectionFactory consumer(Cloud cloud) {
-        ConnectionFactory factory = cloud.getSingletonServiceConnector(org.springframework.amqp.rabbit.connection.ConnectionFactory.class,
-                null);
+        logger.info("Creating consumer Spring ConnectionFactory ...");
+        ConnectionFactory factory = rabbitConnectionFactoryCreator.create(
+                cloud.getSingletonServiceInfoByType(AmqpServiceInfo.class),
+                rabbitProperties, connectionNameStrategies);
+
         return factory;
     }
 
     @Bean("producer")
     @Primary
-    public org.springframework.amqp.rabbit.connection.ConnectionFactory producer(Cloud cloud) {
-        ConnectionFactory factory = cloud.getSingletonServiceConnector(org.springframework.amqp.rabbit.connection.ConnectionFactory.class,
-                null);
-        return factory.getPublisherConnectionFactory();
+    public org.springframework.amqp.rabbit.connection.ConnectionFactory producer(Cloud cloud,
+                                                                                 @Qualifier("consumer") ConnectionFactory consumerConnectionFactory) {
+        logger.info("Creating producer Spring ConnectionFactory ...");
+        return consumerConnectionFactory.getPublisherConnectionFactory();
     }
 
     @Bean
@@ -61,5 +90,7 @@ public class RabbitMQConfiguration {
 
         return admin;
     }
+
+
 }
 

@@ -1,2 +1,12 @@
 issues:
   useRabbitMQClusterAtStartup: false
+
+spring:
+  rabbitmq:
+    ssl:
+      enabled: true
+      validate-server-certificate: true
+      verify-hostname: false
+      #trust-store: "file:/tmp/docker-test/trust-store.p12"
+      #trust-store-password: roboconf
+      #trust-store-type: PKCS12
