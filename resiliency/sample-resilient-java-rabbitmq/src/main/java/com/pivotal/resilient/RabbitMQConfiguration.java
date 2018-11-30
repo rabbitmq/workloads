@@ -4,6 +4,7 @@ import com.pivotal.resilient.amqp.AMQPConnectionProvider;
 import com.pivotal.resilient.amqp.AMQPConnectionProviderImpl;
 import com.rabbitmq.client.Address;
 import com.rabbitmq.client.ConnectionFactory;
+import org.apache.tomcat.jni.SSL;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,10 +16,14 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.scheduling.TaskScheduler;
 
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
+import java.security.*;
+import java.security.cert.CertificateException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -46,9 +51,11 @@ public class RabbitMQConfiguration {
     }
 
     @Bean
-    public ConnectionFactory amqpConnectionFactory(Cloud cloud) throws NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
+    public ConnectionFactory amqpConnectionFactory(Cloud cloud) throws NoSuchAlgorithmException, KeyManagementException, URISyntaxException, CertificateException, KeyStoreException, IOException, UnrecoverableKeyException {
         ConnectionFactory factory = new ConnectionFactory();
 
+        //initConnectionFactoryWithSSLSupport(factory);
+        initConnectionFactoryWithCustomSSLSupport(factory);
         initConnetionFactoryWithAMQPCredentials(cloud, factory);
 
         factory.setAutomaticRecoveryEnabled(true);
@@ -81,9 +88,6 @@ public class RabbitMQConfiguration {
 
     private void initConnetionFactoryWithAMQPCredentials(Cloud cloud, ConnectionFactory factory) throws NoSuchAlgorithmException, KeyManagementException, URISyntaxException {
         AmqpServiceInfo amqp = cloud.getSingletonServiceInfoByType(AmqpServiceInfo.class);
-        //factory.setUsername(amqp.getUserName());
-        //factory.setPassword(amqp.getPassword());
-        //factory.setVirtualHost(amqp.getVirtualHost());
         factory.setUri(amqp.getUri());
     }
     private List<Address> getAmqpAddressesFrom(Cloud cloud) {
@@ -103,6 +107,21 @@ public class RabbitMQConfiguration {
                 throw new RuntimeException(e);
             }
         }).collect(Collectors.toList());
+    }
+
+    private void initConnectionFactoryWithSSLSupport(ConnectionFactory connectionFactory) throws NoSuchAlgorithmException {
+        SSLContext sslContext = SSLContext.getDefault();
+        connectionFactory.useSslProtocol(sslContext);
+        //connectionFactory.enableHostnameVerification();
+    }
+    private void initConnectionFactoryWithCustomSSLSupport(ConnectionFactory connectionFactory) throws NoSuchAlgorithmException, KeyStoreException, KeyManagementException {
+
+        SSLContext sslContext = SSLContext.getInstance("TLS");
+        TrustManagerFactory trustManagerFactory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
+        trustManagerFactory.init((KeyStore)null);
+        sslContext.init((KeyManager[])null, trustManagerFactory.getTrustManagers(), (SecureRandom)null);
+        connectionFactory.useSslProtocol(sslContext);
+
     }
 }
 
