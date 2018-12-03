@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+
+hostnames=${1:?first parameter is a comma-separated list of hostnames}
+uri=""
+for hostname in $(echo $hostnames | sed "s/,/ /g")
+do
+    uri+="amqp://${RABBITMQ_USER:-"admin"}:${RABBITMQ_PASS:?must be set}@$hostname:${RABBITMQ_AMQP_PORT:-"5672"}/%2F,"
+done
+echo "${uri%?}"

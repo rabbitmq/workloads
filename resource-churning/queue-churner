@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+set -x
+set -e
+set -o pipefail
+
+QUEUE_CHURNER_COUNT=${1:-"1"}
+
+. setup
+
+queue_churner() {
+
+  QUEUE_PREFIX=${1:?first parameter is the queue prefix name}
+  QUEUES=${2:?first parameter is the number of queues}
+  DURATION=${3:?third parameter is the duration of this queue churner}
+
+  URIS="$(./_uri $HOSTNAMES)"
+
+  echo "Perftest with uri $URIS"
+
+  perftest   \
+--autoack \
+--size 100 \
+--routing-key perf-test \
+--uris $URIS \
+--queue-pattern $QUEUE_PREFIX \
+--queue-pattern-from 1 \
+--queue-pattern-to ${QUEUES:?must be set} \
+--consumers ${QUEUES:?must be set} \
+--producers ${QUEUES:?must be set} \
+--time ${DURATION}  1>/dev/null
+
+}
+
+printf "%s\n" "" \
+	"## Producing Queue Churning against $HOSTNAMES " \
+
+unset CHURNER
+
+for CHURNER in $(seq 1 $QUEUE_CHURNER_COUNT); do
+  printf "Launching Queue Churner #%s " $CHURNER
+  queue_churner "perf-test-$CHURNER-%d" 10 10 &
+done

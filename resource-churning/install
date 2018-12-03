@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+set -eu
+
+SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+DEPLOYMENT=${1:?first parameter is the deployment name}
+
+echo "Gathering RabbitMQ nodes from $DEPLOYMENT deployment ..."
+
+HOSTNAMES=$(bosh -d ${DEPLOYMENT} instances | awk '/rmq*/ { print $4 }' | tr '\n' ',')
+echo "Cluster : $HOSTNAMES"
+
+PACKAGE_DIR=$(mktemp -d)
+trap 'rm -r ${PACKAGE_DIR}' EXIT
+
+bosh -d $DEPLOYMENT manifest > $PACKAGE_DIR/manifest
+RABBITMQ_PASS=$(cat $PACKAGE_DIR/manifest | awk '/admin_pass/ { print $2}')
+
+cat >>$PACKAGE_DIR/setup <<EOF
+export HOSTNAMES=$HOSTNAMES
+export RABBITMQ_PASS=$RABBITMQ_PASS
+EOF
+
+echo "Installing resource-churning onto perftest instances ..."
+cp $SCRIPT/* $PACKAGE_DIR
+
+PACKAGE_NAME=resource-churning-$DEPLOYMENT.tar.gz
+pushd $PACKAGE_DIR
+tar -czvf $PACKAGE_NAME *
+
+bosh -d $DEPLOYMENT scp -r $PACKAGE_NAME perftest:/tmp/$PACKAGE_NAME
