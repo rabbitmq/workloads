@@ -28,7 +28,7 @@ This workload consists of a number of scripts that produces resource churning lo
 
 ## Producing Queue churning
 
-Run the following script to produce **2 concurrent queue churners**. Each concurrent churner will create 10 queues, publish/consume messages to it for **10 seconds**, and delete the queues **10 times**. The script terminates with the message `All queue churners completed!` when the 2 concurrent queue churners have both terminated.
+Run the following script to produce **2 concurrent queue churners**. Each concurrent queue churner will create 10 queues, publish/consume messages to it for **10 seconds**, and delete the queues afterwards. And it will do it **10 times**. The script terminates with the message `All queue churners completed!` when the 2 concurrent queue churners have both terminated.
 ```
 ./queue_churners 2
 ```
