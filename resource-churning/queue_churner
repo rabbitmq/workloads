@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 
-set -x
 set -e
 set -o pipefail
 
 CHURNER=${1:?first parameter is the name of this churner. Used to name queues}
-TIMES=${2:-"1"}
-DURATION=${3:-"10"}
+QUEUES=${2:-"10"}
+TIMES=${3:-"1"}
+MIN_DURATION=${4:-"5"}
+MAX_DURATION=${5:-"10"}
 
 . setup
 
@@ -16,22 +17,29 @@ queue_churner() {
   QUEUES=${2:?first parameter is the number of queues}
   DURATION=${3:?third parameter is the duration of this queue churner}
 
-  URIS="$(./_uri $HOSTNAMES)"
+	# PerfTest is not able yet to handle the situation when it fails to establish the first
+	# connection. With this while-loop we randomly choose one node from the list of nodes
+	# until it successfully connects
+	while : ; do
+	    URI="$(./_uri $HOSTNAMES | tr ',' "\n"|shuf|head -n 1)"
+	    echo "Perftest with uri $URIS"
 
-  echo "Perftest with uri $URIS"
+	    perftest   \
+	--autoack \
+	--size 100 \
+	--routing-key perf-test \
+	--uris $URI \
+	--queue-pattern $QUEUE_PREFIX \
+	--queue-pattern-from 1 \
+	--queue-pattern-to ${QUEUES:?must be set} \
+	--consumers ${QUEUES:?must be set} \
+	--producers ${QUEUES:?must be set} \
+	--time ${DURATION}  1>/dev/null
 
-  perftest   \
---autoack \
---size 100 \
---routing-key perf-test \
---uris $URIS \
---queue-pattern $QUEUE_PREFIX \
---queue-pattern-from 1 \
---queue-pattern-to ${QUEUES:?must be set} \
---consumers ${QUEUES:?must be set} \
---producers ${QUEUES:?must be set} \
---time ${DURATION}  1>/dev/null
-
+	   [ $? = 1 ] || break
+		 echo "Unable to connect to $URI. Trying in 1 second"
+	   sleep 1
+	 done
 }
 
 printf "%s\n" "" \
@@ -39,5 +47,6 @@ printf "%s\n" "" \
 
 for i in $(seq 1 $TIMES); do
   printf "Launching Queue Churner #%s-%s " $CHURNER $i
-  queue_churner "$CHURNER-%d" 10 $DURATION
+	DURATION=$(( $RANDOM % $MAX_DURATION + $MIN_DURATION));
+  queue_churner "$CHURNER-%d" $QUEUES $DURATION
 done
