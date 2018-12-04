@@ -4,7 +4,9 @@ set -x
 set -e
 set -o pipefail
 
-QUEUE_CHURNER_COUNT=${1:-"1"}
+CHURNER=${1:?first parameter is the name of this churner. Used to name queues}
+TIMES=${2:-"1"}
+DURATION=${3:-"10"}
 
 . setup
 
@@ -33,11 +35,9 @@ queue_churner() {
 }
 
 printf "%s\n" "" \
-	"## Producing Queue Churning against $HOSTNAMES " \
+	"## Queue Churner $CHURNER iagainst $HOSTNAMES " \
 
-unset CHURNER
-
-for CHURNER in $(seq 1 $QUEUE_CHURNER_COUNT); do
-  printf "Launching Queue Churner #%s " $CHURNER
-  queue_churner "perf-test-$CHURNER-%d" 10 10 &
+for i in $(seq 1 $TIMES); do
+  printf "Launching Queue Churner #%s-%s " $CHURNER $i
+  queue_churner "$CHURNER-%d" 10 $DURATION
 done

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+QUEUE_CHURNER_COUNT=${1:?first parameter must be the number of simulatneous queue churners.}
+TIMES=${2:-"10"}
+DURATION_SEC=${3:-"10"}
+
+for i in $(seq 1 $QUEUE_CHURNER_COUNT); do
+  printf "Launching Queue Churner #%s " $i
+  ./queue_churner "queue-churner-$i" $TIMES $DURATION_SEC &
+done
+wait
+echo "All queue churners completed!"
