@@ -28,20 +28,21 @@ We are now ready to use the scripts on this workload.
 
 ## Producing Queue churning
 
-Run the following script to produce **2 concurrent queue churners**. Each concurrent churner will create 10 queues, send messages to it for **10 seconds**, and delete the queue afterwards **10 times**. The script terminates with the message `All queue churners completed!` when the 2 concurrent queue churners have both terminated.
+Run the following script to produce **2 concurrent queue churners**. Each concurrent churner will create 10 queues, publish/consume messages to it for **10 seconds**, and delete the queues **10 times**. The script terminates with the message `All queue churners completed!` when the 2 concurrent queue churners have both terminated.
 ```
 ./queue_churners 2
 ```
 
-If we want to extend the queue churning over time we run the following command which launches again **2 concurrent queue churners** but each queue churner will iterate 50 times rather than 10.
+If we want the queue churning to run for longer we run the following command which launches again **2 concurrent queue churners** but each queue churner will iterate **50 times** rather than 10.
 ```
 ./queue_churners 2 50
 ```
 
-If we want the queue churners to spend less time publishing and consuming messages we run the following command which spends only 5 seconds publishing and consuming.
+If we want the queue churners to spend less time publishing and consuming messages we run the following command which spends only **5 seconds** publishing and consuming.
 ```
 ./queue_churners 2 50 5
 ```
 
-We can monitor the queue churning statistics in the overview page of the management ui.
+We can monitor the queue churning statistics in the overview page of the management ui as shown the screenshot below.
+
 ![Churning stats](churn_stats.png)
