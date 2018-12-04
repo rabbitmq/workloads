@@ -5,7 +5,7 @@ Worload created to simulate resource churning in RabbitMQ. Churning refers to ac
 ## Getting started
 
 This workload assumes we are going to run the workload against a RabbitMQ cluster when we deploy
-[rabbitmq-server-boshrelease](https://github.com/rabbitmq/rabbitmq-server-boshrelease) with BOSH. This release offers us the possibility of deploy a VM with [RabbitMQ Perf-Test](https://github.com/rabbitmq/rabbitmq-perf-test) along with a RabbitMQ Cluster.
+[rabbitmq-server-boshrelease](https://github.com/rabbitmq/rabbitmq-server-boshrelease) with BOSH. This release offers us the possibility of deploying a VM with [RabbitMQ Perf-Test](https://github.com/rabbitmq/rabbitmq-perf-test) along with a RabbitMQ Cluster.
 
 This workload consists of a number of scripts that produces resource churning load. To use it we first need to install it on the VM where we have PerfTest installed.
 
@@ -21,7 +21,7 @@ This workload consists of a number of scripts that produces resource churning lo
   ```
   bosh -d  <bosh-deployment-name> ssh perftest
   mkdir resource-churning
-  tar -xzvf resource-churning*.gz -C resource-churning
+  tar -xzvf /tmp/resource-churning*.gz -C resource-churning
   cd resource-churning
   ```
 
@@ -33,16 +33,23 @@ Run the following script to produce **2 concurrent queue churners**. Each concur
 ./queue_churners 2
 ```
 
-If we want the queue churning to run for longer we run the following command which launches again **2 concurrent queue churners** but each queue churner will iterate **50 times** rather than 10.
+The syntax is as follows:
 ```
-./queue_churners 2 50
+./queue_churners
+  <concurrent_queue_churners>
+  <queues_per_queue_churner>
+  <queue_churner_iterations>
+  <queue_churner_min_duration>
+  <queue_churner_max_duration>
+```
+A single `queue_churner` creates as many queues as indicated in `<queues_per_queue_churner>` parameter, it iterates as many times as indicated by `<queue_churner_iterations>` and it publishes and consumes messages for a random number of seconds between `<queue_churner_min_duration>` and `<queue_churner_max_duration>`.
+
+This command launches 25 concurrent `queue_churners` which churns 50 queues each, 15 times and spending between 5 and 30 seconds publishing and consuming messages.
+
+```
+./queue_churners 25 50 15 5 25
 ```
 
-If we want the queue churners to spend less time publishing and consuming messages we run the following command which spends only **5 seconds** publishing and consuming.
-```
-./queue_churners 2 50 5
-```
-
-We can monitor the queue churning statistics in the overview page of the management ui as shown the screenshot below.
+Since 3.8.0, we can monitor the queue churning statistics in the overview page of the management ui as shown the screenshot below.
 
 ![Churning stats](churn_stats.png)
