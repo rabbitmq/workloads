@@ -1,4 +1,4 @@
-## Resilient Java applications upon AMQP failures
+## Resilient Applications in Java: Handle Connection Failures and More
 
 The goal of this workload is to provide guidance to developers on how to write Java applications -that uses
 [RabbitMQ Java AMQP](https://www.rabbitmq.com/java-client.html) or [Spring AMQP](https://docs.spring.io/spring-amqp/reference/html/)- which are resilient to failures.
@@ -6,8 +6,8 @@ The goal of this workload is to provide guidance to developers on how to write J
 The type of failures we are going to handle are:
 - RabbitMQ node goes down expectedly (e.g. during a rolling upgrade) or unexpectedly
 - Entire RabbitMQ cluster goes down
-- Connection abruptly closed
-- Channel failure  
+- Connection fails or abruptly closed by an intermediary such as a load balancer
+- Channel-level exceptions  
 - Fatal consumer errors (e.g. poisonous message)
 
 
