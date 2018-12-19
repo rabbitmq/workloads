@@ -1,10 +1,51 @@
 #!/usr/bin/env bash
 
+if [ "$1" = "--help" ]
+then
+  echo "Return amqp uris using the provided comma-separated list of hostname and the RABBITMQ_PASS env variable"
+  echo " "
+  echo "Syntax: "
+  echo "  _uri <amqp|http> <comma-separated-hostnames>        : Returns comma-separated uris"
+  echo "  _uri <amqp|http> <comma-separated-hostnames> <1-N>  : Returns the Nth uri from the list of uris"
+  echo " "
+  exit 0
+fi
 
-hostnames=${1:?first parameter is a comma-separated list of hostnames}
-uri=""
-for hostname in $(echo $hostnames | sed "s/,/ /g")
-do
-    uri+="amqp://${RABBITMQ_USER:-"admin"}:${RABBITMQ_PASS:?must be set}@$hostname:${RABBITMQ_AMQP_PORT:-"5672"}/%2F,"
-done
-echo "${uri%?}"
+hostnames=${2:?first parameter is a comma-separated list of hostnames}
+
+amqp_uri() {
+  uri=""
+  for hostname in $(echo $hostnames | sed "s/,/ /g")
+  do
+      uri+="amqp://${RABBITMQ_USER:-"admin"}:${RABBITMQ_PASS:?must be set}@$hostname:${RABBITMQ_AMQP_PORT:-"5672"}/%2F,"
+  done
+  echo "$uri"
+}
+http_uri() {
+  uri=""
+  for hostname in $(echo $hostnames | sed "s/,/ /g")
+  do
+      uri+="http://${RABBITMQ_USER:-"admin"}:${RABBITMQ_PASS:?must be set}@$hostname:${RABBITMQ_HTTP_PORT:-"15672"},"
+  done
+  echo "$uri"
+}
+
+filter_uri() {
+  if [ -z "$2" ]
+  then
+    echo "${1%?}"
+  else
+    echo "$(echo $1|tr ',' "\n"|head -$2|tail -1)"
+  fi
+}
+
+case $1 in
+"amqp")
+    uri=$(amqp_uri)
+    ;;
+"http")
+    uri=$(http_uri)
+    ;;
+esac
+
+filter_uri $uri ${3:-""}
