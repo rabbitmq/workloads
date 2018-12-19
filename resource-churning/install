@@ -20,6 +20,7 @@ RABBITMQ_PASS=$(cat $PACKAGE_DIR/manifest | awk '/admin_pass/ { print $2}')
 cat >>$PACKAGE_DIR/setup <<EOF
 export HOSTNAMES=$HOSTNAMES
 export RABBITMQ_PASS=$RABBITMQ_PASS
+export MANAGEMENT_URI=admin:$RABBITMQ_PASS@$(echo $HOSTNAMES|tr ',' "\n"|head -1):15672
 EOF
 
 echo "Installing resource-churning onto perftest instances ..."
