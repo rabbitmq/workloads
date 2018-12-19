@@ -11,6 +11,19 @@ MAX_DURATION=${5:-"10"}
 
 . setup
 
+delete_queues() {
+  QUEUE_PREFIX=${1:?first parameter is the queue prefix name}
+  QUEUES=${2:?first parameter is the number of queues}
+
+  URI="$(./_uri http $HOSTNAMES | tr ',' "\n"|shuf|head -n 1)"
+
+  for Q in $(seq 1 $QUEUES); do
+    QUEUE="$(printf $QUEUE_PREFIX $Q)"
+    echo "Deleting queue $QUEUE"
+    curl -X DELETE $URI/api/queues/%2f/$QUEUE
+  done
+}
+
 queue_churner() {
 
   QUEUE_PREFIX=${1:?first parameter is the queue prefix name}
@@ -21,11 +34,13 @@ queue_churner() {
 	# connection. With this while-loop we randomly choose one node from the list of nodes
 	# until it successfully connects
 	while : ; do
-	    URI="$(./_uri $HOSTNAMES | tr ',' "\n"|shuf|head -n 1)"
-	    echo "Perftest with uri $URIS"
+	    URI="$(./_uri amqp $HOSTNAMES | tr ',' "\n"|shuf|head -n 1)"
+	    echo "Perftest with uri $URI and duration $DURATION"
 
-	    perftest   \
+	    time perftest   \
 	--autoack \
+  --flag persistent \
+  --auto-delete false \
 	--size 100 \
 	--routing-key perf-test \
 	--uris $URI \
@@ -36,14 +51,18 @@ queue_churner() {
 	--producers ${QUEUES:?must be set} \
 	--time ${DURATION}  1>/dev/null
 
-	   [ $? = 1 ] || break
-		 echo "Unable to connect to $URI. Trying in 1 second"
-	   sleep 1
-	 done
+	   if [ $? -ne 0 ]; then
+       echo "Unable to connect to $URI. Trying in 1 second"
+  	   sleep 1
+     else
+        delete_queues $1 $2
+        break
+     fi
+	done
 }
 
 printf "%s\n" "" \
-	"## Queue Churner $CHURNER iagainst $HOSTNAMES " \
+	"## Queue Churner $CHURNER against $HOSTNAMES " \
 
 for i in $(seq 1 $TIMES); do
   printf "Launching Queue Churner #%s-%s " $CHURNER $i
