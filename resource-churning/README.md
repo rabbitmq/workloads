@@ -28,7 +28,7 @@ This workload consists of a number of scripts that produces resource churning lo
 
 ## Producing Queue churning
 
-Run the following script to produce **2 concurrent queue churners**. Each concurrent queue churner will create 10 queues, publish/consume messages to it for **10 seconds**, and delete the queues afterwards. And it will do it **10 times**. The script terminates with the message `All queue churners completed!` when the 2 concurrent queue churners have both terminated.
+Run the following script to produce **2 concurrent queue churners**. Each concurrent queue churner will create 10 queues, publish/consume messages to/from it for **10 seconds**, and delete the queues afterwards. And it will do it **10 times**. The script terminates with the message `All queue churners completed!` when the 2 concurrent queue churners have both terminated.
 ```
 ./queue_churners 2
 ```
@@ -44,10 +44,10 @@ The syntax is as follows:
 ```
 A single `queue_churner` creates as many queues as indicated in `<queues_per_queue_churner>` parameter, it iterates as many times as indicated by `<queue_churner_iterations>` and it publishes and consumes messages for a random number of seconds between `<queue_churner_min_duration>` and `<queue_churner_max_duration>`.
 
-This command launches 25 concurrent `queue_churners` which churns 50 queues each, 15 times and spending between 5 and 30 seconds publishing and consuming messages.
+This command launches 20 concurrent `queue_churners` which churns 5 queues each, 100000 times and spending between 1 and 2 seconds publishing and consuming messages.
 
 ```
-./queue_churners 25 50 15 5 25
+./queue_churners 20 5 100000 1 2
 ```
 
 Since 3.8.0, we can monitor the queue churning statistics in the overview page of the management ui as shown the screenshot below.
