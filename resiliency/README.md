@@ -226,7 +226,7 @@ RabbitMQ provides mechanisms to prevent message loss for publishers and consumer
 
 **Publishers** shall use:
 - [Publisher confirmation](https://www.rabbitmq.com/confirms.html). It could happen that the broker dies just before it received the message.
-- [Alternate Exchange](https://www.rabbitmq.com/ae.html). It could happen that the producer application sends messages before the consumer application has declared its queue and bound it to the exchange. Or simply, the hosting non-mirrored durable queue node is not available and we are not using the `mandatory` flag.
+- [Alternate Exchange](https://www.rabbitmq.com/ae.html) or [Mandatory Flag](https://www.rabbitmq.com/amqp-0-9-1-reference.html#basic.publish.mandatory). It could happen that the producer application sends messages before the consumer application has declared its queue and bound it to the exchange. It could also happens that the hosting non-mirrored durable queue node is not available.
 
 **Consumers** shall use:
 - [Client acknowledgement](https://www.rabbitmq.com/confirms.html#acknowledgement-modes)
