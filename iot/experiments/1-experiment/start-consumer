@@ -1,0 +1,14 @@
+#!/bin/bash
+set -eu
+
+MQTT_DOCKER_IMAGE=mqtt
+CONSUMER_ID=${1:?"first parameter is the consumer name"}
+
+echo "MQTT anonymous consumer $CONSUMER_ID"
+
+shift
+
+docker run -d --rm --name $CONSUMER_ID \
+  --link rabbitmq-1:rabbitmq \
+  $MQTT_DOCKER_IMAGE \
+  subscribe "$@"

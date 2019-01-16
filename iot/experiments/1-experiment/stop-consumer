@@ -1,0 +1,8 @@
+#!/bin/bash
+set -eu
+
+CONSUMER_ID=${1:?"first parameter is the consumer name"}
+
+echo "Stopping MQTT anonymous consumer $CONSUMER_ID"
+
+docker rm -f $CONSUMER_ID

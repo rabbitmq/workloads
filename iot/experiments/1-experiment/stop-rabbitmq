@@ -1,0 +1,6 @@
+#!/bin/bash
+set -eu
+
+echo "Stopping RabbitMQ server"
+
+docker rm -f rabbitmq-1

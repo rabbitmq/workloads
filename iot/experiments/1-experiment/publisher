@@ -1,0 +1,14 @@
+#!/bin/bash
+set -eu
+
+MQTT_DOCKER_IMAGE=mqtt
+PUBLISHER_ID=${1:?"first parameter is the publisher name"}
+
+echo "MQTT anonymous publisher $PUBLISHER_ID"
+
+shift
+
+docker run --rm --name mqtt-publisher-$PUBLISHER_ID \
+  --link rabbitmq-1:rabbitmq \
+  $MQTT_DOCKER_IMAGE \
+  publish "$@"
