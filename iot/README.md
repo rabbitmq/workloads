@@ -20,13 +20,24 @@ By default, every message will be sent to the `amq.topic` exchange using the MQT
 
 As of RabbitMQ 3.7.x, it supports MQTT 3.1.1 via a [plugin](https://www.rabbitmq.com/mqtt.html). Check [here](https://www.rabbitmq.com/mqtt.html#features) for the list of supported features.
 
+## Set up
 
-## Experiment 1 - Deploy RabbitMQ node with MQTT enabled with anonymous access and a default vhost
+Before we run any of the experiments we need the following:
+
+[] Docker installed
+[] RabbitMQ Docker image. To build it, check out `git@github.com:rabbitmq/rabbitmq.git` and run `cd 3.7/ubuntu/management && docker build --build-arg PGP_KEYSERVER="pgpkeys.co.uk" -t rabbitmq-mgt-ubuntu .`
+[] mqtt-client Docker image. To build it run `cd mqtt-client && docker build -t mqtt .`
+
+## Experiment 1 - MQTT enabled with anonymous access and a default vhost
+
+**default MQTT port**
 
 When no configuration is specified the MQTT plugin will listen on all interfaces on port `1883`. However, we have explicitly [configured](experiments/1-experiment/conf/rabbitmq.conf) it.
   ```
   mqtt.listeners.tcp.1 = 1883
   ```
+
+**anonymous access**
 
 MQTT supports optional authentication. To enable anonymous authentication over MQTT we need to configure the default user RabbitMQ would use. Here we are using `guest`/`guest` user.
   ```
@@ -34,6 +45,8 @@ MQTT supports optional authentication. To enable anonymous authentication over M
   mqtt.default_pass = guest
   mqtt.allow_anonymous = true
   ```
+
+**default vhost**
 
 MQTT does not have the concept of *vhost* however RabbitMQ does. If MQTT client does not provide one, we configure the default vhost we want to use for MQTT messaging. Here we are using the default vhost.
   ```
@@ -83,6 +96,8 @@ Follow the next steps to start RabbitMQ server with MQTT and see two MQTT client
   ./stop-rabbitmq
   ./stop-consumer my-consumer
   ```
+  After we stop the consumer, its queue disappears.
+
 
 ## Experiment N - Authenticate users with TLS/X.509 certificates
 
