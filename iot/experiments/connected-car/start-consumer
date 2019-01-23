@@ -4,7 +4,7 @@ set -eu
 MQTT_DOCKER_IMAGE=mqtt
 CONSUMER_ID=${1:?"first parameter is the consumer name"}
 
-echo "MQTT anonymous consumer $CONSUMER_ID"
+echo "MQTT consumer $CONSUMER_ID"
 
 shift
 

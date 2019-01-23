@@ -1,0 +1,28 @@
+{
+  "users": [
+    {
+      "name": "vehicle-1",
+      "password_hash": "kAc90wh34SlsMQkvQiFBgi2/m0WRcIdDi2ouLedplrEtm6er",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": ""
+    }
+  ],
+  "permissions": [
+    {
+      "user": "vehicle-1",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "topic_permissions": [
+    {
+      "user": "vehicle-1",
+      "vhost": "/",
+      "exchange": "amq.topic",
+      "write": "^events.{client_id}.*",
+      "read": "^vehicle.{client_id}.*"
+    }
+  ]
+}

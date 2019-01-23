@@ -1,0 +1,4 @@
+#!/bin/bash
+set -eu
+
+curl -H "content-type:application/json" -u guest:guest http://localhost:15672/api/definitions -d @"$1"

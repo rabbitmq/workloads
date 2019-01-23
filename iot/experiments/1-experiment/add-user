@@ -1,4 +1,0 @@
-#!/bin/bash
-set -eu
-
-echo "Adding user ${1:-first parameter is the username}"

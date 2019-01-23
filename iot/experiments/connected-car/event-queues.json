@@ -1,0 +1,37 @@
+{
+  "queues": [
+   {
+     "name": "activity",
+     "vhost": "/",
+     "durable": true,
+     "auto_delete": false,
+     "arguments": {}
+   },
+   {
+     "name": "location",
+     "vhost": "/",
+     "durable": true,
+     "auto_delete": false,
+     "arguments": {}
+   }
+ ],
+ "bindings": [
+    {
+      "source": "amq.topic",
+      "vhost": "/",
+      "destination": "activity",
+      "destination_type": "queue",
+      "routing_key": "activity.*",
+      "arguments": {}
+    },
+    {
+      "source": "amq.topic",
+      "vhost": "/",
+      "destination": "location",
+      "destination_type": "queue",
+      "routing_key": "location.*",
+      "arguments": {}
+    }
+  ]
+
+}

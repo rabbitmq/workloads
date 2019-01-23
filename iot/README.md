@@ -6,7 +6,7 @@ The term **Internet of Things** was first used by [Kevin Ashton](http://www.rfid
 
 The communication between the huge amount of devices is enabled by IPv6 and lightweight communication protocols like MQTT.
 
-## MQTT
+## MQTT - MQ Telemetry Transport
 
 The goals of MQTT were to have a protocol, which is bandwidth-efficient and uses little battery power.
 
@@ -20,6 +20,14 @@ By default, every message will be sent to the `amq.topic` exchange using the MQT
 
 As of RabbitMQ 3.7.x, it supports MQTT 3.1.1 via a [plugin](https://www.rabbitmq.com/mqtt.html). Check [here](https://www.rabbitmq.com/mqtt.html#features) for the list of supported features.
 
+# Learnings on RabbitMQ MQTT
+
+- Duplicate connections (with same *client id*) are not allowed. RabbitMQ will close the duplicate connection attempt and log it as follows:
+  ```
+   MQTT disconnecting duplicate client id <<"v1">> ("172.17.0.3:53904 -> 172.17.0.2:1883")
+  ```
+-
+
 ## Set up
 
 Before we run any of the experiments we need the following:
@@ -28,75 +36,68 @@ Before we run any of the experiments we need the following:
 [] RabbitMQ Docker image. To build it, check out `git@github.com:rabbitmq/rabbitmq.git` and run `cd 3.7/ubuntu/management && docker build --build-arg PGP_KEYSERVER="pgpkeys.co.uk" -t rabbitmq-mgt-ubuntu .`
 [] mqtt-client Docker image. To build it run `cd mqtt-client && docker build -t mqtt .`
 
-## Experiment 1 - MQTT enabled with anonymous access and a default vhost
 
-**default MQTT port**
+## Use Cases / Applications
 
-When no configuration is specified the MQTT plugin will listen on all interfaces on port `1883`. However, we have explicitly [configured](experiments/1-experiment/conf/rabbitmq.conf) it.
-  ```
-  mqtt.listeners.tcp.1 = 1883
-  ```
+The MQTT protocol is a good choice for wireless networks that experience varying levels of latency due to occasional bandwidth constraints or unreliable connections.
 
-**anonymous access**
 
-MQTT supports optional authentication. To enable anonymous authentication over MQTT we need to configure the default user RabbitMQ would use. Here we are using `guest`/`guest` user.
-  ```
-  mqtt.default_user = guest
-  mqtt.default_pass = guest
-  mqtt.allow_anonymous = true
-  ```
+# Use case - Connected Applications
 
-**default vhost**
+The customer is building applications where the users connect to RabbitMQ from the web pages, mobile, and Windows native apps. The customer would like to use an efficient and ubiquitous messaging protocol that is supported by many brokers, such as MQTT.
 
-MQTT does not have the concept of *vhost* however RabbitMQ does. If MQTT client does not provide one, we configure the default vhost we want to use for MQTT messaging. Here we are using the default vhost.
-  ```
-  mqtt.vhost = /
-  ```
+**OAuth authentication** - Not supported by RabbitMQ 3.7
 
-Follow the next steps to start RabbitMQ server with MQTT and see two MQTT clients in action, a publisher and a consumer.
+RabbitMQ MQTT requires authentication via user id/password or certificate. Storing password or certificate in client source code is a security anti-pattern (it is easily discoverable), so we would like to use a token (e.g. OAuth) for user authentication.
 
-1. Start RabbitMQ with MQTT and Management plugin enabled
-  ```
-  ./start-rabbitmq
-  ```
-2. To check the management UI is available run:
-  ```
-  curl  -u guest:guest http://localhost:15672/api/overview | jq .
-  ```
-3. To check mqtt plugin is running in RabbitMQ:
-  ```
-  docker exec -it rabbitmq-1 rabbitmqctl status
-  ```
-  We should expect `{rabbitmq_mqtt,"RabbitMQ MQTT Adapter","3.7.8"},` and `{mqtt,1883,"::"},`.
+**Topic authorization**
 
-4. Start a MQTT anonymous consumer which listens on `temperature` *topic*.
-  ```
-  ./start-consumer my-consumer -C mqtt -h rabbitmq -p 1883 -t "temperature" -v
-  ```
-  Check in the management UI the queue created by our consumer.
+Customer has 2 type of applications, *consumer-to-business* and *business-to-business* apps. In *consumer-to-business* applications, users subscribe to "own" topics, i.e. topics that reflect user's id, user's group, or user's connection id (client id in MQTT terms). Hence, the need for MQTT topic access control based on patterns, so to apply to an infinitely large number of users.
 
-  ![subscription queue](assets/subscription-queue.png)
+Application subscribes for messages to a topic that follows this naming convention: `client`/`<client_id>`/`<event_type>`. Only an application with `bob` as it is `client_id` can subscribe to any event_type for `bob`, i.e. `client/bob/#`.
 
-5. Start a MQTT anonymous publisher which sends two messages to the `temperature` *topic*.
-  ```
-  ./publisher my-publisher -C mqtt -h rabbitmq -p 1883 -t "temperature" -m "124.2"
-  ./publisher my-publisher -C mqtt -h rabbitmq -p 1883 -t "temperature" -m "124.3"
-  ```
-  Check the consumer logs
-  ```
-  docker logs my-consumer
-  ```
-  It should print out
-  ```
-  temperature 124.2
-  temperature 124.3
-  ```
-6. Stop RabbitMQ and the consumer
-  ```
-  ./stop-rabbitmq
-  ./stop-consumer my-consumer
-  ```
-  After we stop the consumer, its queue disappears.
+Applications sends messages to a topic that follows this naming convention:
+`activity`/`<username>`/`<event_type>`. Only an application with `bob` as it is `client_id` can send a message to the topic `activity/bob/turn-on`.
+
+
+## Experiment 2 - Leveraging RabbitMQ multi-tenancy
+
+If RabbitMQ is used by just one single solution, i.e. single tenancy, we don't need to have multiple *vhosts*. We could simply use the default *vhost* as we did it in the previous experiment.
+
+In the contrary, if RabbitMQ is used or shared by many solutions, i.e. multiple tenants, we need a *vhost* for each solution/tenant to isolate one from the other. The question lies on how to map MQTT users, or more precisely their connections, to a *vhost*.
+
+We have 2 options:
+a) We enable in RabbitMQ a port for each solution and map the port to a vhost.
+or
+b) Embed the *vhost* on the username like this `<vhost>:<username>`. If we use X.509-based authentication, we need map each certificate's subject to a vhost via *Runtime Global parameters* in RabbitMQ. Will this scale if we have thousands of users/devices?
+
+> If we used on-demand RabbitMQ for PCF offering, we don't really need to set up any vhost mapping. The cluster would have just one vhost, the default one. Furthermore, the on-demand instance would be used by a single solution.
+
+Questions: How does real MQTT architectures work?
+- Do they use anonymous or authenticated access?
+- What is the number of devices/users?
+- Do we assign devices an ID which matches a username in the MQTT broker? or in other hand, those IDs are fixed and instead we have to register uses in the broker using those IDs?
+- When is MQTTs used?
+
+1. Declare the `mqtt` vhost and enable `guest` user to access it  
+
+we are going to disable anonymous access and only allow declared users (`guest`/`guest`) to access RabbitMQ.
+```
+mqtt.allow_anonymous = false
+```
+
+## Experiment 3 - Quality of Service
+
+The Quality of Service (QoS) level is an agreement between the sender of a message and the receiver of a message that defines the guarantee of delivery for a specific message.
+
+There are 3 QoS levels in MQTT:
+- **QoS0** At most once - There is no guarantee of delivery. Fire and forget. Supported by RabbitMQ.
+- **QoS1** At least once - Guarantees that a message is delivered at least one time to the receiver. Supported by RabbitMQ.
+- **QoS2** Exactly once - publishers/subscribers **downgraded to QoS1** in RabbitMQ.
+
+The client that publishes the message to the broker defines the QoS level of the message when it sends the message to the broker. The broker transmits this message to subscribing clients using the QoS level that each subscribing client defines during the subscription process.
+
+MQTT manages the re-transmission of messages and guarantees delivery (even when the underlying transport is not reliable). This is the reason why duplicates may happen.
 
 
 ## Experiment N - Authenticate users with TLS/X.509 certificates
@@ -106,6 +107,20 @@ Follow the next steps to start RabbitMQ server with MQTT and see two MQTT client
 ## Experiment N - Handle large number of connections
 
 The plugin supports TCP listener option configuration. The settings use a common prefix, mqtt.tcp_listen_options, and control things such as TCP buffer sizes, inbound TCP connection queue length, whether TCP keepalives are enabled and so on.
+
+- Open File Handles (including sockets)
+  ulimit –n default: 1024    1.5 * (number of connections)  500K+
+- TCP Buffer Size
+  reduce RAM consumption, e.g. 32KB
+  drawback: throughput drop
+- Erlang VM I/O Thread Pool
+  RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=“+A 128”
+  12+ threads per available core
+- Connection backlog
+  Increase rabbit.tcp_listen_options.backlog
+- TCP Sockets Options
+  Low tcp_fin_timeout, tcp_tw_reuse=1
+
 
 ## Experiment N - MQTT with TLS
 
