@@ -10,6 +10,5 @@ docker run -d --name rabbitmq-1 \
   --hostname rabbitmq-1 \
   --mount type=bind,source="$(pwd)/conf",target=/etc/rabbitmq \
   -p 15672:15672 \
-  -p 1883:1883 \
   -e RABBITMQ_ERLANG_COOKIE=$RABBITMQ_ERLANG_COOKIE \
   $RABBITMQ_DOCKER_IMAGE
