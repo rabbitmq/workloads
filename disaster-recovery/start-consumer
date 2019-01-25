@@ -1,0 +1,14 @@
+#!/bin/bash
+set -eu
+
+echo "Starting RabbitMQ consumer"
+
+PERFTEST_DOCKER_IMAGE=pivotalrabbitmq/perf-test:latest
+
+docker run -it --rm --name consumer  \
+  --link rabbitmq-1:rabbitmq \
+  -p 8081:8080 \
+  $PERFTEST_DOCKER_IMAGE --producers 0 --consumers 1 \
+  --flag persistent --exchange incoming-transaction --queue transactions \
+  --metrics-prometheus --auto-delete false --qos 20 --uri amqp://rabbitmq \
+  "$@"
