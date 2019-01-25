@@ -1,0 +1,6 @@
+#!/bin/bash
+set -eu
+
+K8S_NAMESPACE=${1:-First parameter is the namespace}
+echo "Switching to $K8S_NAMESPACE"
+kubectl config set-context "$(kubectl config current-context)" --namespace=$K8S_NAMESPACE

@@ -1,0 +1,7 @@
+#!/bin/bash
+set -eu
+
+kubectl apply -f topology/main-site-namespace.yml
+kubectl apply -f topology/dr-site-namespace.yml
+
+kubectl get namespaces --show-labels

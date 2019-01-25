@@ -1,10 +1,10 @@
 #!/bin/bash
 set -eu
 
-RABBITMQ_CLUSTER_NAME=${1:-First parameter is the cluster name}
-echo "Starting RabbitMQ server $RABBITMQ_CLUSTER_NAME"
+K8S_NAMESPACE=${1:-First parameter is the namespace where to deploy rabbitmq}
+echo "Starting RabbitMQ server on rmq-$K8S_NAMESPACE namespace"
 
-helm install --name $RABBITMQ_CLUSTER_NAME \
+helm install --name rmq-$K8S_NAMESPACE --namespace $K8S_NAMESPACE \
   --set rabbitmq.username=admin,rabbitmq.password=admin \
   -f conf/rabbitmq-helm-values.yaml \
   stable/rabbitmq

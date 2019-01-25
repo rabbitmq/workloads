@@ -19,6 +19,18 @@ Requirements summary:
   helm repo update
   ```
 
+3. We are going to create one k8s namespace for each site named `main-site` and `dr-site` respectively
+  ```
+  ./create-sites  
+  ```
+
+  To switch to the `main-site` namespace:
+  ```
+  ./switch-ns main-site
+  ./current-ns
+  main-site
+  ```
+
 3. We are deploying 2 RabbitMQ Clusters, `dr-cluster-1` as the **main** site and  `dr-cluster-2` as the **DR** site.
 
   Relevant [RabbitMQ configuration](/conf/rabbitmq-helm-values.yaml):
@@ -28,8 +40,8 @@ Requirements summary:
   - Default credentials: admin/admin
 
   ```
-  ./start-rabbitmq dr-cluster-1  
-  ./start-rabbitmq dr-cluster-2
+  ./start-rabbitmq main-site
+  ./start-rabbitmq dr-site
   ```
 
   It takes some time to get the cluster ready. Once it is ready we can see it by running:
@@ -38,27 +50,48 @@ Requirements summary:
   ```
   ```
   NAME     	REVISION	UPDATED                 	STATUS  	CHART         	NAMESPACE
-  dr-cluster-1	1       	Fri Jan 25 11:57:08 2019	DEPLOYED	rabbitmq-4.1.0	default
-  dr-cluster-2	1       	Fri Jan 25 11:57:08 2019	DEPLOYED	rabbitmq-4.1.0	default
+  rmq-dr-site  	1       	Fri Jan 25 15:40:27 2019	DEPLOYED	rabbitmq-4.1.0	dr-site
+  rmq-main-site	1       	Fri Jan 25 15:40:11 2019	DEPLOYED	rabbitmq-4.1.0	main-site
   ```
 
 4. Before we can interact with RabbitMQ server Management UI we need to expose a port by running the following command on a separate terminal where we leave it running:
   ```bash
-  kubectl port-forward --namespace default svc/dr-cluster-1-rabbitmq 15672:15672
-  kubectl port-forward --namespace default svc/dr-cluster-2-rabbitmq 15673:15672
+  kubectl port-forward --namespace default svc/rmq-main-site-rabbitmq 15672:15672
+  kubectl port-forward --namespace default svc/rmq-dr-site-rabbitmq 15673:15672
   ```
 
 5. Check both RabbitMQ clusters are ready:
   ```bash
-  ./check-rabbitmq dr-cluster-1 15672
+  ./check-rabbitmq main-site 15672
   RabbitMQ "Install complete"
   RabbitMQ cluster "rabbit@dr-cluster-1-rabbitmq-0.dr-cluster-1-rabbitmq-headless.default.svc.cluster.local"  running "3.7.10"
 
-  ./check-rabbitmq dr-cluster-2 15673
+  ./check-rabbitmq dr-site 15673
   RabbitMQ "Install complete"
   RabbitMQ cluster "rabbit@dr-cluster-2-rabbitmq-0.dr-cluster-2-rabbitmq-headless.default.svc.cluster.local" running "3.7.10"
   ```
 
+## Deploy workload to main site
+
+1. Switch to `main-site` namespace
+  ```
+  ./switch-ns main-site
+  ```
+
+2. Start producer configured with all the guarantees to not lose 100 messages. The second command sends 10 messages per second.
+  ```
+  ./start-producer
+  or
+  ./start-producer --rate 10
+  ```
+3. Start consumer configured with all the guarantees to not lose messages. The first command processes messages at maximum rate. The second command processes 5 messages per second.
+  ```
+  ./start-consumer
+  or
+  ./start-consumer --consumer-rate 5
+  ```
+6. To check the current depth of the `transactions` queue, run the following command:
+`curl -s -u guest:guest localhost:15672/api/queues/%2F/transactions | jq .messages`
 
 
 ## Google Cloud Platform

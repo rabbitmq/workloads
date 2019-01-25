@@ -1,0 +1,4 @@
+#!/bin/bash
+set -eu
+
+kubectl delete namespaces disaster-recovery

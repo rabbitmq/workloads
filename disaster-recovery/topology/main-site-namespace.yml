@@ -1,0 +1,10 @@
+{
+  "kind": "Namespace",
+  "apiVersion": "v1",
+  "metadata": {
+    "name": "main-site",
+    "labels": {
+      "name": "main-site"
+    }
+  }
+}
