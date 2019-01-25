@@ -1,18 +1,10 @@
 #!/bin/bash
 set -eu
 
-echo "Starting RabbitMQ server"
+RABBITMQ_CLUSTER_NAME=${1:-First parameter is the cluster name}
+echo "Starting RabbitMQ server $RABBITMQ_CLUSTER_NAME"
 
-RABBITMQ_DOCKER_IMAGE=rabbitmq-mgt-ubuntu
-RABBITMQ_ERLANG_COOKIE="theCookie"
-
-mkdir -p data
-
-docker run -d --name rabbitmq-1 \
-  --hostname rabbitmq-1 \
-  --mount type=bind,source="$(pwd)/conf",target=/etc/rabbitmq \
-  --mount type=bind,source="$(pwd)/data",target=/var/lib/rabbitmq \
-  -p 15672:15672 \
-  -e RABBITMQ_ERLANG_COOKIE=$RABBITMQ_ERLANG_COOKIE \
-  $RABBITMQ_DOCKER_IMAGE
-
+helm install --name $RABBITMQ_CLUSTER_NAME \
+  --set rabbitmq.username=admin,rabbitmq.password=admin \
+  -f conf/rabbitmq-helm-values.yaml \
+  stable/rabbitmq

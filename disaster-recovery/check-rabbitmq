@@ -1,0 +1,15 @@
+#!/bin/bash
+set -eu
+
+RABBITMQ_CLUSTER_NAME=${1:-First parameter is the cluster name}
+RABBITMQ_MGT_PORT=${2:-Second parameter is the RabbitMQ management port}
+echo "Checking RabbitMQ server $RABBITMQ_CLUSTER_NAME on port $RABBITMQ_MGT_PORT"
+
+# Check RabbitMQ helm chart status
+echo "RabbitMQ $(helm status $RABBITMQ_CLUSTER_NAME -o json | jq .info.Description)"
+
+# Check Management UI is reachable
+tmpfile=$(mktemp /tmp/disaster-recovery-mgt-ui.XXXXXX)
+curl -s -u admin:admin http://127.0.0.1:$RABBITMQ_MGT_PORT/api/overview > $tmpfile
+
+echo "RabbitMQ cluster $(jq .cluster_name $tmpfile) running $(jq .rabbitmq_version $tmpfile)"

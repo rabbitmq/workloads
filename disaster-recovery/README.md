@@ -8,40 +8,57 @@ Requirements summary:
 [] Message throughput ?
 [] Eventual consistency (i.e. DR site may not have all messages generated from the main site. They are not lost though)
 
-## Set up
+## Deploy RabbitMQ clusters
 
-1. We are going to deploy a RabbitMQ cluster in Kubernetes using a [Helm chart](https://github.com/helm/charts/blob/master/stable/rabbitmq).
+1. We are going to RabbitMQ in Kubernetes. Check out [Google Cloud Platform](#Google-Cloud-Platform) section for instructions on how to get started.
 
-2. We are going to use an Ubuntu docker image which is not yet available in Docker hub (pending to approve PR). Therefore, we are going to build the docker image locally.
+2. We are going to use this [Helm chart](https://github.com/helm/charts/blob/master/stable/rabbitmq) to deploy RabbitMQ. You can see what *stable* releases of this chart are available [here](https://console.cloud.google.com/storage/browser/kubernetes-charts?prefix=rabbitmq).
 
-  ```
-  git clone git@github.com:rabbitmq/rabbitmq.git
-  cd rabbitmq
-  git checkout compile-openssl-otp
-  git pull
-  cd 3.7/ubuntu/management
-  docker build --build-arg PGP_KEYSERVER="pgpkeys.co.uk" -t rabbitmq-mgt-ubuntu .
+  Before deploying the helm chart we are going to update the helm repositories so that it deploys the latest:
+  ```bash
+  helm repo update
   ```
 
-3. Start RabbitMQ server with a local `data` folder created if it does not exist yet. This is so that we don't loose the messages when we stop RabbitMQ server container.
+3. We are deploying 2 RabbitMQ Clusters, `dr-cluster-1` as the **main** site and  `dr-cluster-2` as the **DR** site.
+
+  Relevant [RabbitMQ configuration](/conf/rabbitmq-helm-values.yaml):
+  - RabbitMQ docker image `bitnami/rabbitmq` version 3.7.10
+  - 3 node cluster with *autoheal* cluster partition handling
+  - federation plugin installed
+  - Default credentials: admin/admin
+
   ```
-  ./start-rabbitmq
+  ./start-rabbitmq dr-cluster-1  
+  ./start-rabbitmq dr-cluster-2
   ```
 
-4. Start producer configured with all the guarantees to not lose 100 messages. The second command sends 10 messages per second.
+  It takes some time to get the cluster ready. Once it is ready we can see it by running:
+  ```bash
+  helm list
   ```
-  ./start-producer
-  or
-  ./start-producer --rate 10
   ```
-5. Start consumer configured with all the guarantees to not lose messages. The first command processes messages at maximum rate. The second command processes 5 messages per second.
+  NAME     	REVISION	UPDATED                 	STATUS  	CHART         	NAMESPACE
+  dr-cluster-1	1       	Fri Jan 25 11:57:08 2019	DEPLOYED	rabbitmq-4.1.0	default
+  dr-cluster-2	1       	Fri Jan 25 11:57:08 2019	DEPLOYED	rabbitmq-4.1.0	default
   ```
-  ./start-consumer
-  or
-  ./start-consumer --consumer-rate 5
+
+4. Before we can interact with RabbitMQ server Management UI we need to expose a port by running the following command on a separate terminal where we leave it running:
+  ```bash
+  kubectl port-forward --namespace default svc/dr-cluster-1-rabbitmq 15672:15672
+  kubectl port-forward --namespace default svc/dr-cluster-2-rabbitmq 15673:15672
   ```
-6. To check the current depth of the `transactions` queue, run the following command:
-`curl -s -u guest:guest localhost:15672/api/queues/%2F/transactions | jq .messages`
+
+5. Check both RabbitMQ clusters are ready:
+  ```bash
+  ./check-rabbitmq dr-cluster-1 15672
+  RabbitMQ "Install complete"
+  RabbitMQ cluster "rabbit@dr-cluster-1-rabbitmq-0.dr-cluster-1-rabbitmq-headless.default.svc.cluster.local"  running "3.7.10"
+
+  ./check-rabbitmq dr-cluster-2 15673
+  RabbitMQ "Install complete"
+  RabbitMQ cluster "rabbit@dr-cluster-2-rabbitmq-0.dr-cluster-2-rabbitmq-headless.default.svc.cluster.local" running "3.7.10"
+  ```
+
 
 
 ## Google Cloud Platform
@@ -56,6 +73,7 @@ To install gcloud and kubectl, perform the following steps:
   ```
   gcloud components install kubectl
   ```
+[] Install Helm following the [instructions](https://docs.helm.sh/using_helm/#install-helm).
 
 ### Connect to gcloud to your project
 At this point, you must have an account in GCP and a default project.
@@ -101,6 +119,26 @@ After creating your cluster, you need to get authentication credentials to inter
 ```bash
 $ gcloud container clusters get-credentials --region=[COMPUTE_ZONE] [CLUSTER_NAME]
 ```
+
+Check what deployments are currently available:
+```bash
+$ kubectl kubectl get deployments
+```
+```
+No resources found.
+```
+
+Check what services are currently available:
+```bash
+$ kubectl get services
+```
+```
+NAME         TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)                       AGE
+kubernetes   ClusterIP   10.47.240.1   <none>        443/TCP                       38d
+rabbitmq     ClusterIP   None          <none>        4369/TCP,5672/TCP,25672/TCP   10d
+```
+
+It looks like there is one rabbitmq service currently deployed.
 
 ### Delete our cluster
 
