@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eu
 
-RABBITMQ_CLUSTER_NAME=${1:-First parameter is the cluster name}
-echo "Stopping RabbitMQ server $RABBITMQ_CLUSTER_NAME"
+K8S_NAMESPACE=$(./current-ns)
+echo "Stopping RabbitMQ server on $K8S_NAMESPACE namespace"
 
-helm delete $RABBITMQ_CLUSTER_NAME
+helm delete rmq-$K8S_NAMESPACE

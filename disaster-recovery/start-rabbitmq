@@ -1,8 +1,8 @@
 #!/bin/bash
 set -eu
 
-K8S_NAMESPACE=${1:-First parameter is the namespace where to deploy rabbitmq}
-echo "Starting RabbitMQ server on rmq-$K8S_NAMESPACE namespace"
+K8S_NAMESPACE=$(./current-ns)
+echo "Starting RabbitMQ server on $K8S_NAMESPACE namespace"
 
 helm install --name rmq-$K8S_NAMESPACE --namespace $K8S_NAMESPACE \
   --set rabbitmq.username=admin,rabbitmq.password=admin \

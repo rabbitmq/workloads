@@ -40,8 +40,13 @@ Requirements summary:
   - Default credentials: admin/admin
 
   ```
-  ./start-rabbitmq main-site
-  ./start-rabbitmq dr-site
+  ./switch-ns main-site
+  ./start-rabbitmq
+
+  ./switch-ns dr-site
+  ./start-rabbitmq
+
+  ./switch-ns main-site
   ```
 
   It takes some time to get the cluster ready. Once it is ready we can see it by running:
@@ -90,7 +95,7 @@ Requirements summary:
   or
   ./start-consumer --consumer-rate 5
   ```
-6. To check the current depth of the `transactions` queue, run the following command:
+4. To check the current depth of the `transactions` queue, run the following command:
 `curl -s -u guest:guest localhost:15672/api/queues/%2F/transactions | jq .messages`
 
 
