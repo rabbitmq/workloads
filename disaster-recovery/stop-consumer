@@ -1,0 +1,5 @@
+#!/bin/bash
+set -eu
+
+echo "Stopping tx-consumer on $(./current-ns)"
+kubectl delete -f topology/tx-consumer.yml

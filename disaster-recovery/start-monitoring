@@ -1,0 +1,8 @@
+#!/bin/bash
+set -eu
+
+echo "Starting Monitoring with Prometheus"
+
+helm install --name rmq-monitoring  \
+  --set prometheusOperator.createCustomResource=false,alertmanager.enabled=false \
+  stable/prometheus-operator

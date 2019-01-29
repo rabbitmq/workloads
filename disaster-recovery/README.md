@@ -8,6 +8,10 @@ Requirements summary:
 [] Message throughput ?
 [] Eventual consistency (i.e. DR site may not have all messages generated from the main site. They are not lost though)
 
+Prerequisites:
+- [Deploy RabbitMQ clusters](#deploy-rabbitmq-clusters)
+
+
 ## Deploy RabbitMQ clusters
 
 1. We are going to RabbitMQ in Kubernetes. Check out [Google Cloud Platform](#Google-Cloud-Platform) section for instructions on how to get started.
@@ -76,7 +80,23 @@ Requirements summary:
   RabbitMQ cluster "rabbit@dr-cluster-2-rabbitmq-0.dr-cluster-2-rabbitmq-headless.default.svc.cluster.local" running "3.7.10"
   ```
 
-## Deploy workload to main site
+## Deploy Monitor infrastructure
+
+1. Run the following command to deploy the monitoring infrastructure:
+  ```
+  ./start-monitoring
+  ```
+2. To connect to the grafana dashboard, the following command and open the url http://localhost:3000 with the credentials `admin`:`prom-operator`.
+  ```
+  kubectl port-forward $(kubectl get pods -l app=grafana -o jsonpath="{.items..metadata.name}") 3000
+  ```
+
+  Sample dashboard to monitor first rabbitmq node http://127.0.0.1:3000/d/6581e46e4e5c7ba40a07646395ef7b23/k8s-compute-resources-pod?refresh=10s&orgId=1&var-datasource=Prometheus&var-namespace=main-site&var-pod=rmq-main-site-rabbitmq-0
+
+
+## Messages cannot be lost
+
+To tackle this requirement, we are going to deploy our workload to **main** site. The workload consists of a *producer* and a *consumer* application configured appropriately so that they do not lose messages.
 
 1. Switch to `main-site` namespace
   ```
@@ -95,9 +115,21 @@ Requirements summary:
   or
   ./start-consumer --consumer-rate 5
   ```
+  > Producer and consumer apps expose a prometheus metrics via /metrics endpoint.
+  > To check this metrics do:
+  > 1. kubectl port-forward tx-consumer-5948c4fb5f-9xxxg  8080:8080
+  > 2. open the browser on localhost:8080
+  > 3. you will get metrics like
+  >    perftest_consumed 0.0
+  >    # HELP perftest_nacked  
+  >    # TYPE perftest_nacked gauge
+  >    perftest_nacked 0.0
+
 4. To check the current depth of the `transactions` queue, run the following command:
 `curl -s -u guest:guest localhost:15672/api/queues/%2F/transactions | jq .messages`
 
+
+At this point
 
 ## Google Cloud Platform
 

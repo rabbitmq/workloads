@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tx-consumer
+  labels:
+    app: tx-consumer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tx-consumer
+  template:
+    metadata:
+      labels:
+        app: tx-consumer
+    spec:
+      containers:
+      - name: tx-consumer
+        image: pivotalrabbitmq/perf-test:latest
+        args:
+          - --producers
+          - "0"
+          - --consumers
+          - "1"
+          - --flag
+          - persistent
+          - --exchange
+          - incoming-transaction
+          - --queue
+          - transactions
+          - --metrics-prometheus
+          - --auto-delete
+          - "false"
+          - --uri
+          - amqp://admin:admin@rmq-main-site-rabbitmq.main-site.svc.cluster.local:5672
+        ports:
+        - containerPort: 8080  # for prometheus exporter
