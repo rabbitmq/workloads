@@ -26,7 +26,9 @@ Spring Cloud Connectors is able to read from `VCAP_SERVICES` the full credential
       "credentials":  {
         "uri": "amqp://af716b3b-9f10-49f6-8433-22d040f6a6e2:0FUhD8G8ntYpAjGY48hifHmF@10.0.0.41:5672/ee72bc16-3752-4c60-85d4-3c74a015aa57",
        "uris": [
-        "amqp://af716b3b-9f10-49f6-8433-22d040f6a6e2:0FUhD8G8ntYpAjGY48hifHmF@10.0.0.42:5672/ee72bc16-3752-4c60-85d4-3c74a015aa57"
+        "amqp://af716b3b-9f10-49f6-8433-22d040f6a6e2:0FUhD8G8ntYpAjGY48hifHmF@10.0.0.42:5672/ee72bc16-3752-4c60-85d4-3c74a015aa57",
+        amqp://af716b3b-9f10-49f6-8433-22d040f6a6e2:0FUhD8G8ntYpAjGY48hifHmF@10.0.0.42:5672/ee72bc16-3752-4c60-85d4-3c74a015aa57",
+        amqp://af716b3b-9f10-49f6-8433-22d040f6a6e2:0FUhD8G8ntYpAjGY48hifHmF@10.0.0.43:5672/ee72bc16-3752-4c60-85d4-3c74a015aa57",
        ],
       },
       "instance_name": "rmq",
