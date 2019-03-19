@@ -1,39 +1,22 @@
 package com.pivotal.resilient;
 
-import com.pivotal.cloud.service.messaging.RabbitConnectionFactoryCreator;
 import com.pivotal.cloud.service.messaging.SpringRabbitConnectionFactoryCreator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionNameStrategy;
-import org.springframework.amqp.rabbit.connection.RabbitConnectionFactoryBean;
 import org.springframework.amqp.rabbit.core.RabbitAdmin;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration;
 import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
 import org.springframework.cloud.Cloud;
 import org.springframework.cloud.CloudFactory;
-import org.springframework.cloud.service.MapServiceConnectorConfig;
 import org.springframework.cloud.service.common.AmqpServiceInfo;
-import org.springframework.cloud.service.messaging.RabbitConnectionFactoryConfig;
-import org.springframework.cloud.service.messaging.RabbitConnectionFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.scheduling.annotation.EnableScheduling;
-
-import javax.net.ssl.SSLContext;
-import java.io.IOException;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
 
 
 @Configuration
