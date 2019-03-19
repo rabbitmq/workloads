@@ -39,7 +39,8 @@ Spring Cloud Connectors is able to read from `VCAP_SERVICES` the full credential
 }
 ```
 
-From the above configuration RabbitMQ Cloud Connectors take the `username`, `password` and `vhost` from the json attribute `uri`. If the `uris` json array is present, it uses each address to connect to RabbitMQ. It will always try to connect to the first address (`10.0.0.41:5672`). If that fails it attempts to connect to the next one, `10.0.0.42:5673` and so forth.
+From the above configuration, RabbitMQ Cloud Connectors takes the `username`, `password` and `vhost` from the `uri` *json attribute*. If the `uris` *json array* is present, it extracts all the hostname/ipadress and port from the array of AMQP addresses. If `uris` *json array* is not present or empty, the hostname and port in the `uri` is used instead.  
+Spring Cloud Connectors configures Spring AMQP's ConnectionFactory with the full list of addresses. Spring AMQP will first connect to the first address (`10.0.0.41:5672`). If that fails it attempts to connect to the next one, `10.0.0.42:5673` and so forth.
 
 
 ### Skeleton application
