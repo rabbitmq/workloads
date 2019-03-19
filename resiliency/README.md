@@ -10,6 +10,97 @@ The type of failures we are going to handle are:
 - Channel-level exceptions  
 - Fatal consumer errors (e.g. poisonous message)
 
+## Skeleton for Spring AMQP client
+
+Before we start talking about resiliency and what it means, first we would like to set the basis of how we are going to bootstrap RabbitMQ ConnectionFactory.
+
+### Cloud Foundry and Spring Cloud
+
+First of all, we are assuming we are running our Spring applications in Cloud Foundry. [Spring Cloud](https://spring.io/projects/spring-cloud) ecosystem offers a very convenient library called [Spring Cloud Connectors](https://cloud.spring.io/spring-cloud-connectors/) which we can use it to either get automatically injected a [ConnectionFactory](https://docs.spring.io/spring-amqp/api/org/springframework/amqp/rabbit/connection/ConnectionFactory.html) to our application or get one manually built by calling the appropriate [method](https://docs.spring.io/spring-cloud/docs/1.2.6.RELEASE/api/org/springframework/cloud/config/java/ServiceConnectionFactory.html#rabbitConnectionFactory()). The latter method allows us to fully configure the ConnectionFactory because by default Spring Cloud Services does not take into account the local Spring configuration.
+
+Spring Cloud Connectors is able to read from `VCAP_SERVICES` the full credentials of a RabbitMQ Service Instance. See a sample below which corresponds to a 3-node cluster.
+```
+{
+  "user-provided": [
+    {
+      "credentials":  {
+        "uri": "amqp://af716b3b-9f10-49f6-8433-22d040f6a6e2:0FUhD8G8ntYpAjGY48hifHmF@10.0.0.41:5672/ee72bc16-3752-4c60-85d4-3c74a015aa57",
+       "uris": [
+        "amqp://af716b3b-9f10-49f6-8433-22d040f6a6e2:0FUhD8G8ntYpAjGY48hifHmF@10.0.0.42:5672/ee72bc16-3752-4c60-85d4-3c74a015aa57"
+       ],
+      },
+      "instance_name": "rmq",
+      "label": "rabbitmq",
+      "name": "rmq"
+    }
+  ]
+}
+```
+
+From the above configuration RabbitMQ Cloud Connectors take the `username`, `password` and `vhost` from the json attribute `uri`. If the `uris` json array is present, it uses each address to connect to RabbitMQ. It will always try to connect to the first address (`10.0.0.41:5672`). If that fails it attempts to connect to the next one, `10.0.0.42:5673` and so forth.
+
+
+### Skeleton application
+
+The minimum code that demonstrate RabbitMQ bootstrapping for a Spring Boot application check out the [resilient-skeleton-spring-rabbitmq](resilient-skeleton-spring-rabbitmq) folder.
+
+Before waking thru this skeleton application it is worth mentioning the requirements that shaped the application as it is. These are:
+- Our application may potentially require another RabbitMQ service instance
+- also our application most likely will need custom RabbitMQ ConnectionFactory settings like `spring.rabbitmq.connection-timeout`
+
+These two requirements tells us that we cannot use [Spring Auto-configuration provided by the Java Buildpack](https://docs.cloudfoundry.org/buildpacks/java/configuring-service-connections/spring-service-bindings.html#auto) to automatically bootstrap RabbitMQ ConnectionFactory for us. Instead we need to ask that mechanism to back off.
+
+### When Auto Configuration is a viable option
+
+In the contrary, if your application does not need any custom RabbitMQ configuration and your application only ever gets bound one RabbitMQ service instance then all we need to do is add the appropriate Spring AMQP dependency. We don't need to include `spring-cloud-spring-service-connector` or `spring-cloud-cloudfoundry-connector` because [Spring Auto-configuration provided by the Java Buildpack](https://docs.cloudfoundry.org/buildpacks/java/configuring-service-connections/spring-service-bindings.html#auto) does it for us.
+
+### When Auto Configuration is not a viable option
+
+Going back to the skeleton application the key classes are:
+- [CloudConfig](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java) - This is where we ask Spring Cloud Connectors for an RabbitMQ ConnectionFactory instance and expose it as a `@Bean` so that we can use it from other parts of our Spring application.
+
+- [RabbitMQConfiguration](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/RabbitMQConfiguration.java) - This is where we build RabbitMQ related objects like a dedicated ConnectionFactory for publishing and/or a RabbitTemplate that uses the Publisher connection factory.
+  > It is a good practice to separate publisher from consumer applications. We can also easily identify them in the RabbitMQ management ui as shown in the screenshot below
+  > ![Connection for publisher annotated ConnectionFactory](assets/skeleton-producer-conn.png)
+
+- [ResilientSpringRabbitmqApplication](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/ResilientSpringRabbitmqApplication.java) - This is where we use the RabbitTemplate to send a message every 5 seconds to the configured routing-key and exchanged in the RabbitTemplate.
+
+### Get started with this skeleton app
+
+Get the code if you have not done it yet.
+```
+> git clone https://github.com/rabbitmq/workloads
+```
+
+Create a RabbitMQ Service instance with a 3-node cluster (`plan-2`) and wait until it is built:
+```
+> cf create-service p.rabbitmq plan-2 rmq
+> cf services
+Getting services in org system / space dev as admin...
+
+name   service      plan     bound apps   last operation
+rmq    p.rabbitmq   plan-2                create succeeded
+```
+
+
+We will need Java 1.8 and at least Maven 3.3.x to build the application.
+```
+> cd resiliency/resilient-skeleton-spring-rabbitmq
+> mvn install
+```
+
+Push the application using the local `manifest.yml` file which binds the application to the `rmq` service instance we just created.
+```
+cf push
+```
+
+### To run it locally
+
+To run it locally all you need to do is either use the command `run.sh` or if you want to run it from your preferred IDE declare the following environment variables:
+- `SPRING_PROFILES_ACTIVE` with the value `Cloud`
+- `VCAP_APPLICATION` with the value `'{"application_name":demo}'`
+- `VCAP_SERVICES` with the value copied from either [src/main/resources/cluster.json](resilient-skeleton-spring-rabbitmq/src/main/resources/cluster.json) or  [src/main/resources/singleNode.json](resilient-skeleton-spring-rabbitmq/src/main/resources/singleNode.json)
+
 
 ## Patterns for applications that uses Spring AMQP client
 
