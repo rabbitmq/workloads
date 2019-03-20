@@ -19,7 +19,7 @@ image:
 
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
-  ## ref: http://kubernetes.io/docs/user-guide/images/#pre-pulling-images
+  ## ref: https://kubernetes.io/docs/user-guide/images/#pre-pulling-images
   ##
   pullPolicy: IfNotPresent
   ## Optionally specify an array of imagePullSecrets.
@@ -139,7 +139,7 @@ persistence:
   size: 8Gi
 
 ## Configure resource requests and limits
-## ref: http://kubernetes.io/docs/user-guide/compute-resources/
+## ref: https://kubernetes.io/docs/user-guide/compute-resources/
 ##
 resources:
   requests:
@@ -162,7 +162,7 @@ podAnnotations: {}
 
 ## Configure the ingress resource that allows you to access the
 ## Wordpress installation. Set up the URL
-## ref: http://kubernetes.io/docs/user-guide/ingress/
+## ref: https://kubernetes.io/docs/user-guide/ingress/
 ##
 ingress:
   ## Set to true to enable ingress record generation
