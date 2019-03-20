@@ -97,6 +97,15 @@ Push the application using the local `manifest.yml` file which binds the applica
 cf push
 ```
 
+The logs -coming from Spring AMQP- reveal the list of AMQP addresses configured and the address used to establish the connection. The following logs shows the application was configured with 2 addresses (`[localhost:5672, localhost:5673]`) and the connected address `127.0.0.1:5673`.
+
+```
+2019-03-20 15:53:38.532  INFO 86633 --- [   scheduling-1] o.s.a.r.c.CachingConnectionFactory       : Attempting to connect to: [localhost:5672, localhost:5673]
+2019-03-20 15:53:38.533  INFO 86633 --- [           main] c.p.r.ResilientSpringRabbitmqApplication : Started ResilientSpringRabbitmqApplication in 1.596 seconds (JVM running for 2.094)
+2019-03-20 15:53:38.587  INFO 86633 --- [   scheduling-1] o.s.a.r.c.CachingConnectionFactory       : Created new connection: producer#42b64ab8:0/SimpleConnection@73ae06fd [delegate=amqp://guest@127.0.0.1:5673/, localPort= 49402]
+```
+
+
 ### To run it locally
 
 To run it locally all you need to do is either use the command `run.sh` or if you want to run it from your preferred IDE declare the following environment variables:
