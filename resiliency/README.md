@@ -120,11 +120,11 @@ Although it is not strictly necessary to talk about metrics at this stage where 
 In [CloudConfig](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java) we build 2 Spring AMQP connection factories with its own Java RabbitMQ connection factory.
 The reason for having a dedicated Java RabbitMQ ConnectionFactory for each Spring AMQP ConnectionFactory is so that we could have separate metrics for each connectionFactory. In the contrary, if both Spring AMQP ConnectionFactory shared the same Java RabbitMQ ConnectionFactory then we would have aggregated metrics which is not very useful.
 
-By default, Spring AMQP auto-configuration groups all the rabbitmq metrics under the prefix `rabbitmq`. For instance, `rabbitmq.connections`. This works fine if we do not need to know how many connections are for consuming and how many for producing. But if we cared then it is what we did in [CloudConfig](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java#L52-L59).
+By default, Spring AMQP auto-configuration groups all the rabbitmq metrics under the prefix `rabbitmq`. For instance, `rabbitmq.connections` metrics gives us all the connections opened by the single Java RabbitMQ ConnectionFactory created by Spring AMQP auto-configuration. This works fine if we do not need to know how many connections are used for consuming and how many for producing. But if we cared then this is what we did in [CloudConfig](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java#L52-L59).
 
-If you run `curl localhost:8080/actuator/metrics | jq . | grep rabbitmq` it will return you all the rabbitmq metrics:
+If you run `curl localhost:8080/actuator/metrics | jq . | grep rabbitmq` it returns all the `rabbitmq` metrics:
 ```
-"rabbitmq.producer.acknowledged_published",
+  "rabbitmq.producer.acknowledged_published",
   "rabbitmq.producer.consumed",
   "rabbitmq.producer.acknowledged",
   "rabbitmq.consumer.failed_to_publish",
@@ -146,7 +146,23 @@ If you run `curl localhost:8080/actuator/metrics | jq . | grep rabbitmq` it will
   "rabbitmq.producer.published",
 ```
 
-And to get the connections opened by the `producer` connectionFactory, we run `curl localhost:8080/actuator/metrics/rabbitmq.producer.connections | jq .`.
+And to get the connections opened by the `producer` connectionFactory, we run
+`curl localhost:8080/actuator/metrics/rabbitmq.producer.connections | jq .`. which produces
+ 
+```
+{
+  "name": "rabbitmq.producer.connections",
+  "description": null,
+  "baseUnit": null,
+  "measurements": [
+    {
+      "statistic": "VALUE",
+      "value": 1
+    }
+  ],
+  "availableTags": []
+}
+```
 
 
 
