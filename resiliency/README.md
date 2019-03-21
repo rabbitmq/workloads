@@ -60,9 +60,9 @@ In the contrary, if your application does not need any custom RabbitMQ configura
 ### When Auto Configuration is not a viable option
 
 Going back to the skeleton application the key classes are:
-- [CloudConfig](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java) - This is where we ask Spring Cloud Connectors for an RabbitMQ ConnectionFactory instance and expose it as a `@Bean` so that we can use it from other parts of our Spring application.
+- [CloudConfig](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java) - This is where we ask Spring Cloud Connectors for an RabbitMQ ConnectionFactory instance and expose it as a `@Bean` so that we can use it from other parts of our Spring application. In fact, we build 2 separate ConnectionFactories, one for publishing and another one for consuming messages. This is a very good practice that we will discuss later on.
 
-- [RabbitMQConfiguration](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/RabbitMQConfiguration.java) - This is where we build RabbitMQ related objects like a dedicated ConnectionFactory for publishing and/or a RabbitTemplate that uses the Publisher connection factory.
+- [RabbitMQConfiguration](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/RabbitMQConfiguration.java) - This is where we build RabbitMQ related objects like a RabbitTemplate that uses the `publisher` connection factory or a rabbitListenerContainerFactory used for methods annotated with `@RabbitListener` configured with the `consumer` connection factory.
   > It is a good practice to separate publisher from consumer applications. We can also easily identify them in the RabbitMQ management ui as shown in the screenshot below
   > ![Connection for publisher annotated ConnectionFactory](assets/skeleton-producer-conn.png)
 
@@ -112,6 +112,42 @@ To run it locally all you need to do is either use the command `run.sh` or if yo
 - `SPRING_PROFILES_ACTIVE` with the value `Cloud`
 - `VCAP_APPLICATION` with the value `'{"application_name":demo}'`
 - `VCAP_SERVICES` with the value copied from either [src/main/resources/cluster.json](resilient-skeleton-spring-rabbitmq/src/main/resources/cluster.json) or  [src/main/resources/singleNode.json](resilient-skeleton-spring-rabbitmq/src/main/resources/singleNode.json)
+
+### RabbitMQ Metrics
+
+Although it is not strictly necessary to talk about metrics at this stage where we only care about the minimum logic to connect to RabbitMQ, we thought that monitoring metrics was such a basic functionality that it deserved to be done now.
+
+In [CloudConfig](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java) we build 2 Spring AMQP connection factories with its own Java RabbitMQ connection factory.
+The reason for having a dedicated Java RabbitMQ ConnectionFactory for each Spring AMQP ConnectionFactory is so that we could have separate metrics for each connectionFactory. In the contrary, if both Spring AMQP ConnectionFactory shared the same Java RabbitMQ ConnectionFactory then we would have aggregated metrics which is not very useful.
+
+By default, Spring AMQP auto-configuration groups all the rabbitmq metrics under the prefix `rabbitmq`. For instance, `rabbitmq.connections`. This works fine if we do not need to know how many connections are for consuming and how many for producing. But if we cared then it is what we did in [CloudConfig](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java#L52-L59).
+
+If you run `curl localhost:8080/actuator/metrics | jq . | grep rabbitmq` it will return you all the rabbitmq metrics:
+```
+"rabbitmq.producer.acknowledged_published",
+  "rabbitmq.producer.consumed",
+  "rabbitmq.producer.acknowledged",
+  "rabbitmq.consumer.failed_to_publish",
+  "rabbitmq.consumer.channels",
+  "rabbitmq.producer.connections",
+  "rabbitmq.consumer.acknowledged",
+  "rabbitmq.consumer.not_acknowledged_published",
+  "rabbitmq.producer.channels",
+  "rabbitmq.consumer.unrouted_published",
+  "rabbitmq.consumer.rejected",
+  "rabbitmq.consumer.acknowledged_published",
+  "rabbitmq.consumer.connections",
+  "rabbitmq.producer.not_acknowledged_published",
+  "rabbitmq.producer.failed_to_publish",
+  "rabbitmq.producer.rejected",
+  "rabbitmq.producer.unrouted_published",
+  "rabbitmq.consumer.published",
+  "rabbitmq.consumer.consumed",
+  "rabbitmq.producer.published",
+```
+
+And to get the connections opened by the `producer` connectionFactory, we run `curl localhost:8080/actuator/metrics/rabbitmq.producer.connections | jq .`.
+
 
 
 ## Patterns for applications that uses Spring AMQP client

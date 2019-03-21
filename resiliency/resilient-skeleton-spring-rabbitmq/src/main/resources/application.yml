@@ -1,0 +1,7 @@
+management.endpoints.web.exposure.include: metrics
+
+management:
+  endpoint:
+    metrics:
+      enabled: true
+  security.enabled: false
