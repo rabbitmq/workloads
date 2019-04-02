@@ -63,7 +63,7 @@ Going back to the skeleton application the key classes are:
 - [CloudConfig](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java) - This is where we ask Spring Cloud Connectors for an RabbitMQ ConnectionFactory instance and expose it as a `@Bean` so that we can use it from other parts of our Spring application. In fact, we build 2 separate ConnectionFactories, one for publishing and another one for consuming messages. This is a very good practice that we will discuss later on.
 
 - [RabbitMQConfiguration](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/RabbitMQConfiguration.java) - This is where we build RabbitMQ related objects like a RabbitTemplate that uses the `publisher` connection factory or a rabbitListenerContainerFactory used for methods annotated with `@RabbitListener` configured with the `consumer` connection factory.
-  > It is a good practice to separate publisher from consumer applications. We can also easily identify them in the RabbitMQ management ui as shown in the screenshot below
+  > It is a good practice to separate publisher from consumer connections. We can also easily identify them in the RabbitMQ management ui as shown in the screenshot below
   > ![Connection for publisher annotated ConnectionFactory](assets/skeleton-producer-conn.png)
 
 - [ResilientSpringRabbitmqApplication](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/ResilientSpringRabbitmqApplication.java) - This is where we use the RabbitTemplate to send a message every 5 seconds to the configured routing-key and exchanged in the RabbitTemplate.
@@ -147,8 +147,8 @@ If you run `curl localhost:8080/actuator/metrics | jq . | grep rabbitmq` it retu
 ```
 
 And to get the connections opened by the `producer` connectionFactory, we run
-`curl localhost:8080/actuator/metrics/rabbitmq.producer.connections | jq .`. which produces
- 
+`curl localhost:8080/actuator/metrics/rabbitmq.producer.connections | jq .` which produces
+
 ```
 {
   "name": "rabbitmq.producer.connections",
