@@ -1,7 +1,22 @@
-management.endpoints.web.exposure.include: metrics
+spring:
+  application:
+    name: resilient-skeleton-spring-rabbitmq
 
 management:
+  security:
+    enabled: false
   endpoint:
     metrics:
       enabled: true
-  security.enabled: false
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - metrics
+          - info
+          - env
+
+
+
+

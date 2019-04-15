@@ -151,7 +151,7 @@ And to get the connections opened by the `producer` connectionFactory, we run
 
 ```
 {
-  "name": "rabbitmq.producer.connections",
+  "name": "rabbitmq.client.producer.connections",
   "description": null,
   "baseUnit": null,
   "measurements": [
@@ -160,10 +160,76 @@ And to get the connections opened by the `producer` connectionFactory, we run
       "value": 1
     }
   ],
-  "availableTags": []
+  "availableTags": [
+    {
+      "tag": "cf-app-name",
+      "values": [
+        "demo"
+      ]
+    },
+    {
+      "tag": "cf-space-id",
+      "values": [
+        "flamingo"
+      ]
+    },
+    {
+      "tag": "cf-app-id",
+      "values": [
+        "0001"
+      ]
+    },
+    {
+      "tag": "app-name",
+      "values": [
+        "resilient-skeleton-spring-rabbitmq"
+      ]
+    }
+  ]
 }
 ```
 
+We have tagged the metrics so that we can identify the originator. These are the tags and [here](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java#L59-L65) you can find where we set them up in the code.
+- tag `cf-app-name` = `VCAP_APPLICATION.name`
+- tag `cf-app-id` = `VCAP_APPLICATION.instance_id`
+- tag `cf-space-id` = `VCAP_APPLICATION.space_id`
+- tag `app-name` = `spring.application.name`
+
+
+### Monitoring skeleton application with Datadog
+
+It would be great to be able to present the metrics discussed in the previous section in a dashboard together with RabbitMQ server metrics so that we can reason about our architecture from a single place. In this section, we are going to go thru what we need to do in order to get our application to send metrics to Datadog and how to find those metrics in Datadog. We are not going to build any dashboard with those metrics yet.
+
+To know more about how to monitor RabbitMQ server with Datadog and how even how to install it, check out [Monitoring RabbitMQ for PCF using Datadog](https://github.com/MarcialRosales/rabbitmq-monitoring-guide/tree/master/datadog).
+
+First of all, we need to build the application with a different Maven profile so that it includes `micrometer-registry-datadog` dependency.
+  > The pom.xml has a [custom build profile](resilient-skeleton-spring-rabbitmq/pom.xml#L68-L76) which adds `micrometer-registry-datadog` dependency
+
+  ```
+  mvn -P datadog clean install
+  ```
+
+Second, to run it locally we need to specify the Datadog API_KEY:
+  ```
+  export DATADOG_API_KEY="my-key"
+  ./run.sh --management.metrics.export.datadog.api-key=$DATADOG_API_KEY
+  ```
+    > Notice that run.sh activates the spring profile `datadog` in all cases. Although it only takes effect when we add the appropriate dependency.
+
+  It should print out the following statement every 20seconds:
+  ```
+  019-04-15 11:43:19.613 DEBUG 54120 --- [trics-publisher] i.m.datadog.DatadogMeterRegistry         : successfully sent 94 metrics to datadog
+  ```
+
+  And we can see the metrics in Datadog Metrics explorer. In the screenshot below, we are observing the number of opened *consumer* connections.
+  ![client metrics](assets/client-metrics.png)
+    > In the screenshot we are searching for metrics coming from a given application name and running within a Cloud Foundry space.
+
+Third, to deploy it in Cloud Foundry we run the following command:
+  ```
+  export DATADOG_API_KEY="my-key"
+  cf push -f manifest-datadog.yml --var datadog_api_key=$DATADOG_API_KEY
+  ```
 
 
 ## Patterns for applications that uses Spring AMQP client

@@ -9,6 +9,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.connection.AbstractConnectionFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer;
+import org.springframework.cloud.Cloud;
 import org.springframework.cloud.config.java.AbstractCloudConfig;
 import org.springframework.cloud.config.java.ServiceConnectionFactory;
 import org.springframework.context.annotation.Bean;
@@ -35,6 +38,9 @@ public class CloudConfig extends AbstractCloudConfig {
     @Autowired
     MeterRegistry meterRegistry;
 
+    @Value("${spring.application.name}")
+    String applicationName;
+
     @Bean("consumer")
     @Primary
     public ConnectionFactory rabbitFactory() {
@@ -47,6 +53,15 @@ public class CloudConfig extends AbstractCloudConfig {
         logger.info("Creating producer Spring ConnectionFactory ...");
         ServiceConnectionFactory scf = connectionFactory();
         return configureMetricCollections(scf.rabbitConnectionFactory().getPublisherConnectionFactory(), "producer");
+    }
+
+    @Bean
+    MeterRegistryCustomizer<MeterRegistry> commonTags() {
+        return r -> r.config().commonTags(
+                "cf-app-name", cloud().getApplicationInstanceInfo().getAppId(),
+                "cf-app-id", cloud().getApplicationInstanceInfo().getInstanceId(),
+                "app-name", applicationName,
+                "cf-space-id", (String)cloud().getApplicationInstanceInfo().getProperties().get("space_id"));
     }
 
     private ConnectionFactory configureMetricCollections(ConnectionFactory cf, String connectionName) {
@@ -71,6 +86,6 @@ class RabbitMetrics implements MeterBinder {
     }
 
     public void bindTo(MeterRegistry registry) {
-        this.connectionFactory.setMetricsCollector(new MicrometerMetricsCollector(registry, "rabbitmq." + name, this.tags));
+        this.connectionFactory.setMetricsCollector(new MicrometerMetricsCollector(registry, "rabbitmq.client." + name, this.tags));
     }
 }

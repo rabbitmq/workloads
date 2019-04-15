@@ -1,0 +1,15 @@
+
+logging:
+  level:
+    io.micrometer.datadog: debug
+
+management:
+  metrics:
+    export:
+      datadog:
+        enabled: true
+        step: 20s
+        host-tag: cf-app-name
+
+
+

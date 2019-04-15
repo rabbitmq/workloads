@@ -1,0 +1,12 @@
+
+applications:
+  - name: resilient-skeleton-spring-rabbitmq
+    memory: 1G
+    path: target/resilient-skeleton-spring-rabbitmq-0.0.1-SNAPSHOT.jar
+    no-route: true
+    health-check-type: none
+    env:
+      MANAGEMENT_METRICS_EXPORT_DATADOG_API_KEY: ((datadog_api_key))
+      SPRING_PROFILES_ACTIVE: datdog
+    services:
+      - rmq
