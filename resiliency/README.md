@@ -11,6 +11,8 @@ The type of failures we are going to handle are:
 - Fatal consumer errors (e.g. poisonous message)
 
 
+**Table of Content**
+
 <!-- TOC START min:1 max:3 link:true asterisk:false update:true -->
 - [Resilient Applications in Java: Handle Connection Failures and More](#resilient-applications-in-java-handle-connection-failures-and-more)
   - [Skeleton Spring AMQP client](#skeleton-spring-amqp-client)
