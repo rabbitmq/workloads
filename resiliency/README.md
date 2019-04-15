@@ -209,23 +209,24 @@ First of all, we need to build the application with a different Maven profile so
   mvn -P datadog clean install
   ```
 
-Second, to run it locally we need to specify the Datadog API_KEY:
+To run it locally we need to specify the Datadog API_KEY:
   ```
   export DATADOG_API_KEY="my-key"
   ./run.sh --management.metrics.export.datadog.api-key=$DATADOG_API_KEY
   ```
-    > Notice that run.sh activates the spring profile `datadog` in all cases. Although it only takes effect when we add the appropriate dependency.
+
+  > Notice that run.sh activates the spring profile `datadog` in all cases. Although it only takes effect when we add the appropriate dependency.
 
   It should print out the following statement every 20seconds:
   ```
   019-04-15 11:43:19.613 DEBUG 54120 --- [trics-publisher] i.m.datadog.DatadogMeterRegistry         : successfully sent 94 metrics to datadog
   ```
 
-  And we can see the metrics in Datadog Metrics explorer. In the screenshot below, we are observing the number of opened *consumer* connections.
-  ![client metrics](assets/client-metrics.png)
-    > In the screenshot we are searching for metrics coming from a given application name and running within a Cloud Foundry space.
+Once we see the the above logging statement, we should be able to see the metrics in *Datadog Metrics explorer* as shown below.
+![client metrics](assets/client-metrics.png)
+> In the screenshot we are searching for metrics coming from a given application name and running within a Cloud Foundry space.
 
-Third, to deploy it in Cloud Foundry we run the following command:
+And finally, to deploy it in Cloud Foundry we run the following command:
   ```
   export DATADOG_API_KEY="my-key"
   cf push -f manifest-datadog.yml --var datadog_api_key=$DATADOG_API_KEY
