@@ -1,4 +1,4 @@
-## Resilient Applications in Java: Handle Connection Failures and More
+# Resilient Applications in Java: Handle Connection Failures and More
 
 The goal of this workload is to provide guidance to developers on how to write Java applications -that uses
 [RabbitMQ Java AMQP](https://www.rabbitmq.com/java-client.html) or [Spring AMQP](https://docs.spring.io/spring-amqp/reference/html/)- which are resilient to failures.
@@ -10,7 +10,34 @@ The type of failures we are going to handle are:
 - Channel-level exceptions  
 - Fatal consumer errors (e.g. poisonous message)
 
-## Skeleton for Spring AMQP client
+
+<!-- TOC START min:1 max:3 link:true asterisk:false update:true -->
+- [Resilient Applications in Java: Handle Connection Failures and More](#resilient-applications-in-java-handle-connection-failures-and-more)
+  - [Skeleton Spring AMQP client](#skeleton-spring-amqp-client)
+    - [Cloud Foundry and Spring Cloud](#cloud-foundry-and-spring-cloud)
+    - [Skeleton application](#skeleton-application)
+    - [When Auto Configuration is a viable option](#when-auto-configuration-is-a-viable-option)
+    - [When Auto Configuration is not a viable option](#when-auto-configuration-is-not-a-viable-option)
+    - [Get started with this skeleton app](#get-started-with-this-skeleton-app)
+    - [To run it locally](#to-run-it-locally)
+    - [RabbitMQ Metrics](#rabbitmq-metrics)
+    - [Monitoring skeleton application with Datadog](#monitoring-skeleton-application-with-datadog)
+  - [Patterns for applications that uses Spring AMQP client](#patterns-for-applications-that-uses-spring-amqp-client)
+    - [Getting the code and building the application](#getting-the-code-and-building-the-application)
+    - [To run the application locally](#to-run-the-application-locally)
+    - [To deploy the application to Cloud Foundry](#to-deploy-the-application-to-cloud-foundry)
+    - [Reference Spring AMQP application](#reference-spring-amqp-application)
+    - [Types of failures/situations](#types-of-failuressituations)
+    - [Message resiliency](#message-resiliency)
+  - [Patterns for applications that uses RabbitMQ Java client](#patterns-for-applications-that-uses-rabbitmq-java-client)
+    - [Getting the code and building the application](#getting-the-code-and-building-the-application-1)
+    - [To run the application locally](#to-run-the-application-locally-1)
+    - [Reference Java AMQP application](#reference-java-amqp-application)
+    - [Types of failures/situations](#types-of-failuressituations-1)
+<!-- TOC END -->
+
+
+## Skeleton Spring AMQP client
 
 Before we start talking about resiliency and what it means, first we would like to set the basis of how we are going to bootstrap RabbitMQ ConnectionFactory.
 
