@@ -13,7 +13,7 @@ The type of failures we are going to handle are:
 
 **Table of Content**
 
-<!-- TOC START min:1 max:3 link:true asterisk:false update:true -->
+<!-- TOC START min:1 max:4 link:true asterisk:false update:true -->
 - [Resilient Applications in Java: Handle Connection Failures and More](#resilient-applications-in-java-handle-connection-failures-and-more)
   - [Skeleton Spring AMQP client](#skeleton-spring-amqp-client)
     - [Cloud Foundry and Spring Cloud](#cloud-foundry-and-spring-cloud)
@@ -27,16 +27,31 @@ The type of failures we are going to handle are:
   - [Patterns for applications that uses Spring AMQP client](#patterns-for-applications-that-uses-spring-amqp-client)
     - [Getting the code and building the application](#getting-the-code-and-building-the-application)
     - [To run the application locally](#to-run-the-application-locally)
+    - [To run a 3-node cluster locally](#to-run-a-3-node-cluster-locally)
     - [To deploy the application to Cloud Foundry](#to-deploy-the-application-to-cloud-foundry)
     - [Reference Spring AMQP application](#reference-spring-amqp-application)
     - [Types of failures/situations](#types-of-failuressituations)
+      - [Application starts up with the entire cluster down](#application-starts-up-with-the-entire-cluster-down)
+      - [Application cannot connect due to authentication failures](#application-cannot-connect-due-to-authentication-failures)
+      - [RabbitMQ node becomes unavailable with applications connected to it](#rabbitmq-node-becomes-unavailable-with-applications-connected-to-it)
+      - [RabbitMQ node with non-mirrored durable queues becomes unavailable](#rabbitmq-node-with-non-mirrored-durable-queues-becomes-unavailable)
+      - [RabbitMQ node with non-mirrored non-durable queues becomes unavailable](#rabbitmq-node-with-non-mirrored-non-durable-queues-becomes-unavailable)
+      - [RabbitMQ cluster raises an alarm](#rabbitmq-cluster-raises-an-alarm)
+      - [Rolling upgrade of RabbitMQ for PCF](#rolling-upgrade-of-rabbitmq-for-pcf)
     - [Message resiliency](#message-resiliency)
   - [Patterns for applications that uses RabbitMQ Java client](#patterns-for-applications-that-uses-rabbitmq-java-client)
     - [Getting the code and building the application](#getting-the-code-and-building-the-application-1)
     - [To run the application locally](#to-run-the-application-locally-1)
     - [Reference Java AMQP application](#reference-java-amqp-application)
     - [Types of failures/situations](#types-of-failuressituations-1)
+      - [Application starts up with the entire cluster down](#application-starts-up-with-the-entire-cluster-down-1)
+      - [Application cannot connect due to authentication failures](#application-cannot-connect-due-to-authentication-failures-1)
+      - [RabbitMQ node becomes unavailable with applications connected to it](#rabbitmq-node-becomes-unavailable-with-applications-connected-to-it-1)
+      - [RabbitMQ node with non-mirrored durable queues becomes unavailable](#rabbitmq-node-with-non-mirrored-durable-queues-becomes-unavailable-1)
+      - [RabbitMQ node with non-mirrored non-durable queues becomes unavailable](#rabbitmq-node-with-non-mirrored-non-durable-queues-becomes-unavailable-1)
+      - [RabbitMQ cluster raises an alarm](#rabbitmq-cluster-raises-an-alarm-1)
 <!-- TOC END -->
+
 
 
 ## Skeleton Spring AMQP client
@@ -291,7 +306,7 @@ To run the application within IntelliJ, copy the file `ResilientSpringRabbitmqAp
 
 Either `src/main/resources/cluster.json` or `ResilientSpringRabbitmqApplication.xml` have the credentials to a 3 node RabbitMQ cluster running in localhost on ports 5672, 5673 and 5674 respectively.  
 
-#### To run a 3-node cluster locally
+### To run a 3-node cluster locally
 
 Follow these steps to run a 3-node cluster locally. You will need Docker installed in your machine:
 
