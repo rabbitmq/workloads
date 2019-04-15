@@ -122,32 +122,32 @@ The reason for having a dedicated Java RabbitMQ ConnectionFactory for each Sprin
 
 By default, Spring AMQP auto-configuration groups all the rabbitmq metrics under the prefix `rabbitmq`. For instance, `rabbitmq.connections` metrics gives us all the connections opened by the single Java RabbitMQ ConnectionFactory created by Spring AMQP auto-configuration. This works fine if we do not need to know how many connections are used for consuming and how many for producing. But if we cared then this is what we did in [CloudConfig](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java#L52-L59).
 
-If you run `curl localhost:8080/actuator/metrics | jq . | grep rabbitmq` it returns all the `rabbitmq` metrics:
+If you run `curl localhost:8080/actuator/metrics | jq . | grep rabbitmq | sort ` it returns all the `rabbitmq.client` metrics:
 ```
-  "rabbitmq.producer.acknowledged_published",
-  "rabbitmq.producer.consumed",
-  "rabbitmq.producer.acknowledged",
-  "rabbitmq.consumer.failed_to_publish",
-  "rabbitmq.consumer.channels",
-  "rabbitmq.producer.connections",
-  "rabbitmq.consumer.acknowledged",
-  "rabbitmq.consumer.not_acknowledged_published",
-  "rabbitmq.producer.channels",
-  "rabbitmq.consumer.unrouted_published",
-  "rabbitmq.consumer.rejected",
-  "rabbitmq.consumer.acknowledged_published",
-  "rabbitmq.consumer.connections",
-  "rabbitmq.producer.not_acknowledged_published",
-  "rabbitmq.producer.failed_to_publish",
-  "rabbitmq.producer.rejected",
-  "rabbitmq.producer.unrouted_published",
-  "rabbitmq.consumer.published",
-  "rabbitmq.consumer.consumed",
-  "rabbitmq.producer.published",
+  "rabbitmq.client.consumer.acknowledged",
+  "rabbitmq.client.consumer.acknowledged_published",
+  "rabbitmq.client.consumer.channels",
+  "rabbitmq.client.consumer.connections",
+  "rabbitmq.client.consumer.consumed",
+  "rabbitmq.client.consumer.failed_to_publish",
+  "rabbitmq.client.consumer.not_acknowledged_published",
+  "rabbitmq.client.consumer.published",
+  "rabbitmq.client.consumer.rejected",
+  "rabbitmq.client.consumer.unrouted_published",
+  "rabbitmq.client.producer.acknowledged",
+  "rabbitmq.client.producer.acknowledged_published",
+  "rabbitmq.client.producer.channels",
+  "rabbitmq.client.producer.connections",
+  "rabbitmq.client.producer.consumed",
+  "rabbitmq.client.producer.failed_to_publish",
+  "rabbitmq.client.producer.not_acknowledged_published",
+  "rabbitmq.client.producer.published",
+  "rabbitmq.client.producer.rejected",
+  "rabbitmq.client.producer.unrouted_published",
 ```
 
 And to get the connections opened by the `producer` connectionFactory, we run
-`curl localhost:8080/actuator/metrics/rabbitmq.producer.connections | jq .` which produces
+`curl localhost:8080/actuator/metrics/rabbitmq.client.producer.connections | jq .` which produces
 
 ```
 {
