@@ -90,7 +90,7 @@ Spring Cloud Connectors configures Spring AMQP's ConnectionFactory with the full
 
 ### Skeleton application
 
-The minimum code that demonstrate RabbitMQ bootstrapping for a Spring Boot application check out the [resilient-skeleton-spring-rabbitmq](resilient-skeleton-spring-rabbitmq) folder.
+[resilient-skeleton-spring-rabbitmq](resilient-skeleton-spring-rabbitmq) folder contains the minimum code that demonstrate RabbitMQ bootstrapping for a Spring Boot application.
 
 Before waking thru this skeleton application it is worth mentioning the requirements that shaped the application as it is. These are:
 - Our application may potentially require another RabbitMQ service instance
@@ -319,7 +319,7 @@ docker-compose up -d
 
 The application is configured to connect to RabbitMQ cluster with a user called `test` and password `test`. The application will not be able to connect right after we bring the cluster up because it comes with the default user `guest:guest`.
 
-This is on purpose so that we can reproduce situations where we connect to a cluster due to access control failures.
+This is on purpose so that we can reproduce situations where we cannot connect to a cluster due to access control failures.
 To add the user to the running cluster follow these steps:
 ```
 $ docker exec -it docker-rabbitmq-cluster_rabbit1_1 /bin/bash -c 'rabbitmqctl add_user test test; rabbitmqctl set_permissions test ".*" ".*" ".*"; rabbitmqctl set_user_tags test administrator'
