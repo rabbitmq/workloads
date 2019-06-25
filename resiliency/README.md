@@ -432,7 +432,7 @@ When this situation occurs, although the RabbitMQ Cluster knows about the queue 
 
 The producer will not experience any connection/AMQP failures. However, published messages may be lost.
 How do we prevent message loss in this case?
-- Either we use [mandatory](https://www.rabbitmq.com/amqp-0-9-1-reference.html#basic.publish.mandatory) flag (be aware of the [performance impact](https://www.rabbitmq.com/blog/2012/04/25/rabbitmq-performance-measurements-part-2/) this flag may have. If we use this flag, RabbitMQ will inform the producer if it could not send the message to any queue.
+- Either we use [mandatory](https://www.rabbitmq.com/amqp-0-9-1-reference.html#basic.publish.mandatory) flag. If we use this flag, RabbitMQ will inform the producer if it could not send the message to any queue.
 - Use [Alternate exchange](https://www.rabbitmq.com/ae.html) to send messages to an alternate exchange should an exchange cannot find a queue where to send the messages.
 
 The consumer will get shutdown and its respective channel closed.
