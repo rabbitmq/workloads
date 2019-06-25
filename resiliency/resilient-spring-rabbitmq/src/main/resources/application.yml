@@ -1,10 +1,14 @@
 issues:
   useRabbitMQClusterAtStartup: false
 
+#durable.producer.enabled: false
+#non-durable.producer.enabled: false
+
 spring:
   rabbitmq:
+    requested-heartbeat: 0
     ssl:
-      enabled: true
+      enabled: false
       validate-server-certificate: true
       verify-hostname: false
       #trust-store: "file:/tmp/docker-test/trust-store.p12"
