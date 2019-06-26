@@ -86,7 +86,7 @@ class RabbitMetrics implements MeterBinder {
         Assert.notNull(connectionFactory, "ConnectionFactory must not be null");
         this.name = name;
         this.connectionFactory = connectionFactory;
-        this.tags = Tags.concat(tags, "connection", name);
+        this.tags = tags != null ? Tags.concat(tags, "name", name) : Tags.of("name", name);
     }
 
     public void bindTo(MeterRegistry registry) {
