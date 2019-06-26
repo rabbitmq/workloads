@@ -3,6 +3,7 @@ package com.pivotal.cloud.service.messaging;
 
 import com.rabbitmq.client.ConnectionFactory;
 import org.springframework.amqp.rabbit.connection.RabbitConnectionFactoryBean;
+import org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration;
 import org.springframework.boot.autoconfigure.amqp.RabbitProperties;
 import org.springframework.boot.context.properties.PropertyMapper;
 import org.springframework.cloud.service.common.AmqpServiceInfo;
