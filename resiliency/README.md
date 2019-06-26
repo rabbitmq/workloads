@@ -162,41 +162,35 @@ To run it locally all you need to do is either use the command `run.sh` or if yo
 
 Although it is not strictly necessary to talk about metrics at this stage where we only care about the minimum logic to connect to RabbitMQ, we thought that monitoring metrics was such a basic functionality that it deserved to be done now.
 
-In [CloudConfig](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java) we build 2 Spring AMQP connection factories with its own Java RabbitMQ connection factory.
-The reason for having a dedicated Java RabbitMQ ConnectionFactory for each Spring AMQP ConnectionFactory is so that we could have separate metrics for each connectionFactory. In the contrary, if both Spring AMQP ConnectionFactory shared the same Java RabbitMQ ConnectionFactory then we would have aggregated metrics which is not very useful.
-
-By default, Spring AMQP auto-configuration groups all the rabbitmq metrics under the prefix `rabbitmq`. For instance, `rabbitmq.connections` metrics gives us all the connections opened by the single Java RabbitMQ ConnectionFactory created by Spring AMQP auto-configuration. This works fine if we do not need to know how many connections are used for consuming and how many for producing. But if we cared then this is what we did in [CloudConfig](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java#L52-L59).
-
-If you run `curl localhost:8080/actuator/metrics | jq . | grep rabbitmq | sort ` it returns all the `rabbitmq.client` metrics:
+If you run `curl localhost:8080/actuator/metrics | jq -r .names[] | grep rabbitmq | sort ` it returns all the `rabbitmq` metrics:
 ```
-  "rabbitmq.client.consumer.acknowledged",
-  "rabbitmq.client.consumer.acknowledged_published",
-  "rabbitmq.client.consumer.channels",
-  "rabbitmq.client.consumer.connections",
-  "rabbitmq.client.consumer.consumed",
-  "rabbitmq.client.consumer.failed_to_publish",
-  "rabbitmq.client.consumer.not_acknowledged_published",
-  "rabbitmq.client.consumer.published",
-  "rabbitmq.client.consumer.rejected",
-  "rabbitmq.client.consumer.unrouted_published",
-  "rabbitmq.client.producer.acknowledged",
-  "rabbitmq.client.producer.acknowledged_published",
-  "rabbitmq.client.producer.channels",
-  "rabbitmq.client.producer.connections",
-  "rabbitmq.client.producer.consumed",
-  "rabbitmq.client.producer.failed_to_publish",
-  "rabbitmq.client.producer.not_acknowledged_published",
-  "rabbitmq.client.producer.published",
-  "rabbitmq.client.producer.rejected",
-  "rabbitmq.client.producer.unrouted_published",
+rabbitmq.acknowledged
+rabbitmq.acknowledged_published
+rabbitmq.channels
+rabbitmq.connections
+rabbitmq.consumed
+rabbitmq.failed_to_publish
+rabbitmq.not_acknowledged_published
+rabbitmq.published
+rabbitmq.rejected
+rabbitmq.unrouted_published
 ```
 
-And to get the connections opened by the `producer` connectionFactory, we run
-`curl localhost:8080/actuator/metrics/rabbitmq.client.producer.connections | jq .` which produces
+If we ran `curl localhost:8080/actuator/metrics/rabbitmq.connections | jq .measurements[].value` we would get back the value `2`.
+And to get the connections opened from the `producer` connectionFactory, we run
+`curl localhost:8080/actuator/metrics/rabbitmq.connections?tag=connection:producer | jq .measurements[].value` which produces the value `1`.
 
+
+We have tagged the metrics so that we can identify the originator. These are the tags and [here](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java#L59-L65) you can find where we set them up in the code.
+- tag `cf-app-name` = `VCAP_APPLICATION.name`
+- tag `cf-app-id` = `VCAP_APPLICATION.instance_id`
+- tag `cf-space-id` = `VCAP_APPLICATION.space_id`
+- tag `app-name` = `spring.application.name`
+
+e.g.
 ```
 {
-  "name": "rabbitmq.client.producer.connections",
+  "name": "rabbitmq.connections",
   "description": null,
   "baseUnit": null,
   "measurements": [
@@ -232,13 +226,8 @@ And to get the connections opened by the `producer` connectionFactory, we run
     }
   ]
 }
-```
 
-We have tagged the metrics so that we can identify the originator. These are the tags and [here](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java#L59-L65) you can find where we set them up in the code.
-- tag `cf-app-name` = `VCAP_APPLICATION.name`
-- tag `cf-app-id` = `VCAP_APPLICATION.instance_id`
-- tag `cf-space-id` = `VCAP_APPLICATION.space_id`
-- tag `app-name` = `spring.application.name`
+```
 
 
 ### Monitoring skeleton application with Datadog
@@ -474,8 +463,8 @@ In the diagram below we can see the two named connections. The first number afte
 ![named connections](assets/namedConnections.png)
 
 #### Rolling upgrade of RabbitMQ for PCF
-Depending on what versions are involved in an upgrade, we have to choose the right upgrade procedure. These are the 2 possible upgrade procedures:
-- [Rolling upgrade](https://www.rabbitmq.com/upgrade.html#multiple-nodes-upgrade) - Perform upgrades without cluster downtime. A rolling upgrade is when nodes are stopped, upgraded and restarted one-by-one, with the rest of the cluster still running while each node is being upgraded.
+Depending on which version we are upgrading to, we have to choose the right upgrade procedure. These are the 2 possible upgrade procedures:
+- [Rolling upgrade](https://www.rabbitmq.com/upgrade.html#multiple-nodes-upgrade) - Perform upgrades without entire cluster downtime. A rolling upgrade is when nodes are stopped, upgraded and restarted one-by-one, with the rest of the cluster still running while each node is being upgraded.
 - [Full-Stop upgrade](https://www.rabbitmq.com/upgrade.html#full-stop-upgrades) - If rolling upgrades are not possible, the entire cluster should be stopped, then restarted. This is referred to as a full stop upgrade.
 
 When we do a rolling upgrade on a **Pre-Provisioned RabbitMQ for PCF** cluster, applications will suffer some downtime. For instance, in a 3 node cluster with 1 ha-proxy, it has been observed around 5 minutes downtime. This is because RabbitMQ for PCF upgrades not only RabbitMQ cluster but also the Ha-Proxy server.

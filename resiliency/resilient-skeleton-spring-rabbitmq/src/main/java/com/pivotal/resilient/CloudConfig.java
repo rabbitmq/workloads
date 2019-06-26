@@ -1,8 +1,10 @@
 package com.pivotal.resilient;
 
 import com.rabbitmq.client.impl.MicrometerMetricsCollector;
+import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.binder.MeterBinder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +21,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.util.Assert;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * Use this configuration class (by uncommenting the @Configuration line) when we want to customize
@@ -82,10 +86,10 @@ class RabbitMetrics implements MeterBinder {
         Assert.notNull(connectionFactory, "ConnectionFactory must not be null");
         this.name = name;
         this.connectionFactory = connectionFactory;
-        this.tags = (Iterable)(tags != null ? tags : Collections.emptyList());
+        this.tags = Tags.concat(tags, "connection", name);
     }
 
     public void bindTo(MeterRegistry registry) {
-        this.connectionFactory.setMetricsCollector(new MicrometerMetricsCollector(registry, "rabbitmq.client." + name, this.tags));
+        this.connectionFactory.setMetricsCollector(new MicrometerMetricsCollector(registry, "rabbitmq", this.tags));
     }
 }
