@@ -105,9 +105,9 @@ In the contrary, if your application does not need any custom RabbitMQ configura
 ### When Auto Configuration is not a viable option
 
 Going back to the skeleton application the key classes are:
-- [CloudConfig](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java) - This is where we ask Spring Cloud Connectors for an RabbitMQ ConnectionFactory instance and expose it as a `@Bean` so that we can use it from other parts of our Spring application. In fact, we build 2 separate ConnectionFactories, one for publishing and another one for consuming messages. This is a very good practice that we will discuss later on.
+- [AMQPConnectionFactoryConfig](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/AMQPConnectionFactoryConfig.java) - This is where we ask Spring Cloud Connectors for an RabbitMQ ConnectionFactory instance and expose it as a `@Bean` so that we can use it from other parts of our Spring application. In fact, we build 2 separate ConnectionFactories, one for publishing and another one for consuming messages. This is a very good practice that we will discuss later on.
 
-- [RabbitMQConfiguration](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/RabbitMQConfiguration.java) - This is where we build RabbitMQ related objects like a RabbitTemplate that uses the `publisher` connection factory or a rabbitListenerContainerFactory used for methods annotated with `@RabbitListener` configured with the `consumer` connection factory.
+- [AMQPResourceConfig](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/AMQPResourceConfig.java) - This is where we build RabbitMQ related objects like a RabbitTemplate that uses the `publisher` connection factory or a rabbitListenerContainerFactory used for methods annotated with `@RabbitListener` configured with the `consumer` connection factory.
   > It is a good practice to separate publisher from consumer connections. We can also easily identify them in the RabbitMQ management ui as shown in the screenshot below
   > ![Connection for publisher annotated ConnectionFactory](assets/skeleton-producer-conn.png)
 

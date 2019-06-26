@@ -18,12 +18,12 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @EnableRabbit
-public class RabbitMQConfiguration {
-    private Logger logger = LoggerFactory.getLogger(RabbitMQConfiguration.class);
+public class AMQPResourceConfig {
+    private Logger logger = LoggerFactory.getLogger(AMQPResourceConfig.class);
 
 
     /**
-     * Creates a default RabbitTemplate bean configured with the *producer* connectionFactory built by {@link RabbitMQConfiguration} class.
+     * Creates a default RabbitTemplate bean configured with the *producer* connectionFactory built by {@link AMQPResourceConfig} class.
      * The template sends messages by default to *amp.direct* exchange using *hello* routing key.
      *
      * @param connectionFactory
@@ -42,8 +42,8 @@ public class RabbitMQConfiguration {
     }
 
     /**
-     * Creates a default SimpleRabbitlistenerContainer baean to be used by @RabbitListener(s) annotated methods.
-     * This container is configured with the @Primary (a.k.a. default) connectionFactory built by {@link RabbitMQConfiguration} class
+     * Creates a default SimpleRabbitlistenerContainer bean to be used by @RabbitListener(s) annotated methods.
+     * This container is configured with the @Primary (a.k.a. default) connectionFactory built by {@link AMQPResourceConfig} class
      *
      * @param connectionFactory
      * @return

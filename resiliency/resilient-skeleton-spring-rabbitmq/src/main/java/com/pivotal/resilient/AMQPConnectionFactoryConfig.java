@@ -1,7 +1,6 @@
 package com.pivotal.resilient;
 
 import com.rabbitmq.client.impl.MicrometerMetricsCollector;
-import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
@@ -13,17 +12,12 @@ import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer;
-import org.springframework.cloud.Cloud;
 import org.springframework.cloud.config.java.AbstractCloudConfig;
 import org.springframework.cloud.config.java.ServiceConnectionFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.util.Assert;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * Use this configuration class (by uncommenting the @Configuration line) when we want to customize
@@ -36,8 +30,8 @@ import java.util.List;
  *
  */
 @Configuration
-public class CloudConfig extends AbstractCloudConfig {
-    private Logger logger = LoggerFactory.getLogger(CloudConfig.class);
+public class AMQPConnectionFactoryConfig extends AbstractCloudConfig {
+    private Logger logger = LoggerFactory.getLogger(AMQPConnectionFactoryConfig.class);
 
     @Autowired
     MeterRegistry meterRegistry;
