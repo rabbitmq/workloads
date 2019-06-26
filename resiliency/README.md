@@ -378,6 +378,10 @@ Now we are ready to add a basic producer which sends messages every 5sec to a du
 
 [e88a705](https://github.com/rabbitmq/workloads/commit/e88a705)
 
+The application's code base has changed since that commit so that we could achieve things like:
+- use Spring AMQP configuration (`spring.rabbitmq.*`) from the environment (such as `application.yml`) to customize ConnectionFactories among other objects
+- expose RabbitMQ metrics
+
 ### Types of failures/situations
 
 Now that we have the application ready, we are going to improve its resiliency by challenging it with a number of failures.
