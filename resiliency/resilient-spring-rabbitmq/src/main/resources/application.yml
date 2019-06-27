@@ -38,9 +38,9 @@ issues:
 durable:
   enabled: false
   producer:
-    enabled: true
+    enabled: false
   consumer:
-    enabled: true
+    enabled: false
 
 
 no-message-loss:
@@ -48,10 +48,10 @@ no-message-loss:
   queue-name: no-message-loss-q
   exchange-name: no-message-loss-e
   routing-key: no-message-loss-q
-  synchronousProducer:
-    enabled: true
+  synchronous-producer:
+    enabled: false
   consumer:
-    enabled: true
+    enabled: false
 
 
 
