@@ -18,7 +18,7 @@ public class NoMessageLossProperties {
     boolean possibleAuthenticationFailureFatal = false;
     boolean missingQueuesFatal = false;
 
-    SynchronousProducer synchronousProducer = new SynchronousProducer();
+    SynchronousProducer producer = new SynchronousProducer();
 
     @Getter
     @Setter

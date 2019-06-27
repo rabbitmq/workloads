@@ -1,6 +1,5 @@
 package com.pivotal.resilient.nomessageloss;
 
-import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.AmqpException;
@@ -12,18 +11,17 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @Component
 @ConditionalOnBean(NoMessageLossConfiguration.class)
-@ConditionalOnProperty(prefix = "no-message-loss.synchronousProducer", value = "enabled", matchIfMissing = false)
+@ConditionalOnExpression("${no-message-loss.enabled:true} and ${no-message-loss.producer.enabled:true}")
 public class SynchronousProducer {
     private Logger logger = LoggerFactory.getLogger(SynchronousProducer.class);
 
@@ -70,7 +68,7 @@ public class SynchronousProducer {
     private boolean waitForConfirmation(String correlationId, CorrelationData cd) {
         try {
             CorrelationData.Confirm confirm = log(
-                    cd.getFuture().get(configuration.properties.synchronousProducer.confirmTimeoutMs, TimeUnit.MILLISECONDS),
+                    cd.getFuture().get(configuration.properties.producer.confirmTimeoutMs, TimeUnit.MILLISECONDS),
                     cd);
             return trueWhenConfirmedAndNotReturned(confirm, cd);
 

@@ -48,7 +48,7 @@ no-message-loss:
   queue-name: no-message-loss-q
   exchange-name: no-message-loss-e
   routing-key: no-message-loss-q
-  synchronous-producer:
+  producer:
     enabled: false
   consumer:
     enabled: false
