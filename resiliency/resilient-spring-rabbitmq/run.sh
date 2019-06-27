@@ -1,5 +1,5 @@
 
-export SPRING_PROFILES_ACTIVE=Cloud
+export SPRING_PROFILES_ACTIVE=Cloud,datadog
 export VCAP_APPLICATION='{"instance_id": "0001", "name": "demo", "space_id": "flamingo"}'
 export VCAP_SERVICES=$(cat src/main/resources/singleNode.json)
 
