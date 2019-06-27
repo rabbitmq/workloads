@@ -20,7 +20,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @Component
-@ConditionalOnExpression("${no-message-loss.enabled:true} and ${no-message-loss.producer.enabled:true}")
 public class SynchronousProducer {
     private Logger logger = LoggerFactory.getLogger(SynchronousProducer.class);
 
