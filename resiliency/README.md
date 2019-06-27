@@ -38,6 +38,7 @@ The type of failures we are going to handle are:
       - [RabbitMQ node with non-mirrored non-durable queues becomes unavailable](#rabbitmq-node-with-non-mirrored-non-durable-queues-becomes-unavailable)
       - [RabbitMQ cluster raises an alarm](#rabbitmq-cluster-raises-an-alarm)
       - [Rolling upgrade of RabbitMQ for PCF](#rolling-upgrade-of-rabbitmq-for-pcf)
+      - [Considerations when performing a rolling upgrade in relation to service availability and message resiliency](#considerations-when-performing-a-rolling-upgrade-in-relation-to-service-availability-and-message-resiliency)
     - [Message resiliency](#message-resiliency)
   - [Patterns for applications that uses RabbitMQ Java client](#patterns-for-applications-that-uses-rabbitmq-java-client)
     - [Getting the code and building the application](#getting-the-code-and-building-the-application-1)
@@ -486,6 +487,23 @@ When we do a rolling upgrade on a **Pre-Provisioned RabbitMQ for PCF** cluster, 
 When we do a rolling upgrade on a **On-demand RabbitMQ for PCF** cluster, applications will suffer a sub-second downtime. However, applications should be written to handle connection drops so that they can reconnect when the RabbitMQ Cluster is upgraded.
 
 As far as the applications are concerned, they only see nodes going down or the entire cluster going down. And these 2 failure scenarios have already been handled in the previous sections.
+
+#### Considerations when performing a rolling upgrade in relation to service availability and message resiliency
+Up until now we have made our applications resilient in the event of an upgrade, i.e it does not crash when it happens and when the upgrade completes, it keeps functioning. However there are two new aspects we have to contemplate which are **service availability** and **message resiliency**.
+
+If a queue is not available and our application cannot declare it either then we have lost **service availability**. For as long as the queue is not available, consumer applications will not be able to consume. Furthermore, producer applications -if they use the right configuration- they wont be able to successfully publish messages either.
+
+And we can configure RabbitMQ to favour availability over consistency or on the contrary, depending on our requirements. Consistency refers to guarantee message delivery (i.e. no message loss). See these two configurations and how they affect service availability and message resiliency.
+
+  - Manual synchronization (`ha-sync-mode: manual`) and `ha-promote-on-shutdown: always` will lose messages generated during the upgrade process. However with this set up we achieve the shortest service downtime as the queue master is election is quicker.
+  - Manual synchronization (`ha-sync-mode: manual`) and `ha-promote-on-shutdown: when-synced` will prevent message loss at the cost of service downtime. The queue will be unavailable until the node, hosting the master queue, is upgraded (i.e. stopped, upgraded and started). The downtime is shorter compared to doing a full synchronization on a very large queue (full synchronization will trigger when RabbitMQ promotes a new master before upgrading the node hosting the master queue).
+
+**TL:DR**
+1) After a rolling upgrade using manual synchronization we dot no have redundancy of messages which existed prior the upgrade and/or were sent during the upgrade. We need to asses whether we take the risk or whether we should trigger a manual synchronization.
+
+2) Having large queues and automatic synchronization can cause large service downtime. We can increase the size of the synchronization batch (`ha-sync-batch-size: 4096`) to speed up the synchronization. However synchronizing lots of large messages can be even worse. So we have to be careful when adjusting this setting.
+
+3) With *Pause minority* partition clustering technique we have to use *Automatic synchronization* if we do not want to lose messages. *Ignore* is the only partition clustering technique we can use to prevent message loss.
 
 ### Message resiliency
 
