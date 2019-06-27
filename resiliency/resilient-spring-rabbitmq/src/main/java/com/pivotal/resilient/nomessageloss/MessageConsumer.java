@@ -1,4 +1,4 @@
-package com.pivotal.resilient.durable;
+package com.pivotal.resilient.nomessageloss;
 
 import com.pivotal.resilient.PlainMessageListener;
 import org.slf4j.Logger;
@@ -13,22 +13,22 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@ConditionalOnExpression("${durable.enabled:true} and ${durable.consumer.enabled:true}")
-public class DurableConsumer {
-    private Logger logger = LoggerFactory.getLogger(DurableConsumer.class);
+@ConditionalOnExpression("${no-message-loss.enabled:true} and ${no-message-loss.consumer.enabled:true}")
+public class MessageConsumer {
+    private Logger logger = LoggerFactory.getLogger(MessageConsumer.class);
 
     @Autowired
-    private DurableResourcesConfiguration configuration;
+    private NoMessageLossConfiguration configuration;
 
     @Bean
-    public SimpleMessageListenerContainer consumerOnDurableQueue(@Qualifier("durableQueue") Queue queue,
+    public SimpleMessageListenerContainer synchronousConsumer(@Qualifier("no-message-loss-queue") Queue queue,
                                                                  @Qualifier("consumer") ConnectionFactory connectionFactory) {
-        logger.info("Creating consumer on {} ...", queue.getName());
+        logger.info("Creating synchronous consumer on {} ...", queue.getName());
 
         SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
         container.setQueueNames(queue.getName());
-        container.setMessageListener(new PlainMessageListener("consumer-durable"));
+        container.setMessageListener(new PlainMessageListener("consumer"));
 
         // it set to true, it will fail nad not recover if we get access refused
         container.setPossibleAuthenticationFailureFatal(configuration.properties.possibleAuthenticationFailureFatal);

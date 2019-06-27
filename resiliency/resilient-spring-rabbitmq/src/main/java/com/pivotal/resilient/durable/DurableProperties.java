@@ -15,8 +15,8 @@ public class DurableProperties {
     String queueName = "durable-q";
     String exchangeName = "durable-e";
     String routingKey = queueName;
-    boolean possibleAuthenticationFailureFatal;
-    boolean missingQueuesFatal;
+    boolean possibleAuthenticationFailureFatal = false;
+    boolean missingQueuesFatal = false;
 
 
 }

@@ -15,6 +15,8 @@ public class NoMessageLossProperties {
     String queueName = "no-message-loss-q";
     String exchangeName = "no-message-loss-e";
     String routingKey = queueName;
+    boolean possibleAuthenticationFailureFatal = false;
+    boolean missingQueuesFatal = false;
 
     SynchronousProducer synchronousProducer = new SynchronousProducer();
 

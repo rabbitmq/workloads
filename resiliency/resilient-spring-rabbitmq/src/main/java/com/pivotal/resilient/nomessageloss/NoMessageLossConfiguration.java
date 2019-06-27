@@ -34,7 +34,7 @@ public class NoMessageLossConfiguration {
     @Autowired
     NoMessageLossProperties properties;
 
-    @Bean
+    @Bean("no-message-loss-queue")
     public Queue queue() {
         return QueueBuilder.durable(properties.queueName).build();
     }
