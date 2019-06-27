@@ -493,7 +493,7 @@ Up until now we have made our applications resilient in the event of an upgrade,
 
 If a queue is not available and our application cannot declare it either then we have lost **service availability**. For as long as the queue is not available, consumer applications will not be able to consume. Furthermore, producer applications -if they use the right configuration- they wont be able to successfully publish messages either.
 
-And we can configure RabbitMQ to favour availability over consistency or on the contrary, depending on our requirements. Consistency refers to guarantee message delivery (i.e. no message loss). See these two configurations and how they affect service availability and message resiliency.
+We can configure RabbitMQ to favour availability over consistency or on the contrary, depending on our requirements. Consistency refers to guaranteed message delivery (i.e. no message loss). The following two configurations shows how we can affect service availability and message resiliency.
 
   - Manual synchronization (`ha-sync-mode: manual`) and `ha-promote-on-shutdown: always` will lose messages generated during the upgrade process. However with this set up we achieve the shortest service downtime as the queue master is election is quicker.
   - Manual synchronization (`ha-sync-mode: manual`) and `ha-promote-on-shutdown: when-synced` will prevent message loss at the cost of service downtime. The queue will be unavailable until the node, hosting the master queue, is upgraded (i.e. stopped, upgraded and started). The downtime is shorter compared to doing a full synchronization on a very large queue (full synchronization will trigger when RabbitMQ promotes a new master before upgrading the node hosting the master queue).
