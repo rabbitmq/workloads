@@ -49,9 +49,9 @@ no-message-loss:
   exchange-name: no-message-loss-e
   routing-key: no-message-loss-q
   producer:
-    enabled: false
+    enabled: true
   consumer:
-    enabled: false
+    enabled: true
 
 
 
