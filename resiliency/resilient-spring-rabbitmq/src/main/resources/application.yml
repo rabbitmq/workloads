@@ -3,14 +3,16 @@ spring:
   application:
     name: resilient-spring-rabbitmq
   rabbitmq:
-      requested-heartbeat: 0
-      ssl:
-        enabled: false
-        validate-server-certificate: true
-        verify-hostname: false
-        #trust-store: "file:/tmp/docker-test/trust-store.p12"
-        #trust-store-password: roboconf
-        #trust-store-type: PKCS12
+    publisher-confirms: true
+    publisher-returns: true
+    requested-heartbeat: 0
+    ssl:
+      enabled: false
+      validate-server-certificate: true
+      verify-hostname: false
+      #trust-store: "file:/tmp/docker-test/trust-store.p12"
+      #trust-store-password: roboconf
+      #trust-store-type: PKCS12
 
 management:
   security:
@@ -27,10 +29,28 @@ management:
           - info
           - env
           - prometheus
+          - beans
 
 
 issues:
   useRabbitMQClusterAtStartup: false
 
-durable.producer.enabled: true
-#non-durable.producer.enabled: false
+durable:
+  enabled: false
+  producer:
+    enabled: true
+  consumer:
+    enabled: true
+
+
+no-message-loss:
+  enabled: true
+  queue-name: no-message-loss-q
+  exchange-name: no-message-loss-e
+  routing-key: no-message-loss-q
+  synchronousProducer:
+    enabled: true
+  consumer:
+    enabled: true
+
+

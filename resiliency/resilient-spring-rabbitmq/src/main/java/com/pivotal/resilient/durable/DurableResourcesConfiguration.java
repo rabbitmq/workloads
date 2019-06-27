@@ -3,37 +3,40 @@ package com.pivotal.resilient.durable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.core.*;
+import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@ConditionalOnProperty(prefix = "durable", value = "enabled", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "durable", value = "enabled", matchIfMissing = false)
+@EnableConfigurationProperties(DurableProperties.class)
 public class DurableResourcesConfiguration {
 
     private Logger logger = LoggerFactory.getLogger(DurableResourcesConfiguration.class);
 
-    @Value("${durable-consumer.queue:durable-q}") String queueName;
-    @Value("${durable-consumer.directExchange:durable-e}") String exchangeName;
-    @Value("${durable-consumer.routingKey:durable-q}") String routingKey;
+    @Autowired
+    DurableProperties properties;
 
-    @Bean("durable-consumer.queue")
-    public Queue consumerQueue() {
-        return QueueBuilder.durable(queueName).build();
+    @Bean
+    public Queue durableQueue() {
+        return QueueBuilder.durable(properties.queueName).build();
     }
 
-    @Bean("durable-consumer.directExchange")
-    public Exchange consumerExchange() {
-        return ExchangeBuilder.directExchange(exchangeName).build();
+    @Bean
+    public Exchange durableExchange() {
+        return ExchangeBuilder.directExchange(properties.exchangeName).build();
     }
 
-    @Bean("durable-consumer.binding")
-    public Binding consumerBinding() {
-        return new Binding(queueName, Binding.DestinationType.QUEUE, exchangeName, routingKey, null);
+    @Bean
+    public Binding durableQueueBinding() {
+        return new Binding(properties.queueName, Binding.DestinationType.QUEUE,
+                properties.exchangeName, properties.routingKey, null);
     }
 
     @Bean
@@ -41,8 +44,8 @@ public class DurableResourcesConfiguration {
         logger.info("Creating templateForDurableProducer ...");
 
         RabbitTemplate template = new RabbitTemplate(connectionFactory);
-        template.setRoutingKey(routingKey);
-        template.setExchange(exchangeName);
+        template.setRoutingKey(properties.routingKey);
+        template.setExchange(properties.exchangeName);
 
         return template;
     }

@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@ConditionalOnProperty(prefix = "non-durable", value = "enabled", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "non-durable", value = "enabled", matchIfMissing = false)
 public class NonDurableResourcesConfiguration {
 
     private Logger logger = LoggerFactory.getLogger(NonDurableResourcesConfiguration.class);

@@ -43,7 +43,6 @@ public class AMQPConnectionFactoryConfig extends AbstractCloudConfig {
     private SpringRabbitConnectionFactoryCreator rabbitConnectionFactoryCreator = new SpringRabbitConnectionFactoryCreator();
 
     @Bean("consumer")
-    @Primary
     public ConnectionFactory consumer(RabbitProperties rabbitProperties,
                                            ObjectProvider<ConnectionNameStrategy> connectionNameStrategies) {
         logger.info("Creating consumer Spring ConnectionFactory ...");
@@ -51,6 +50,7 @@ public class AMQPConnectionFactoryConfig extends AbstractCloudConfig {
     }
 
     @Bean("producer")
+    @Primary
     public ConnectionFactory producer(RabbitProperties rabbitProperties,
                                       ObjectProvider<ConnectionNameStrategy> connectionNameStrategies) {
         logger.info("Creating producer Spring ConnectionFactory ...");

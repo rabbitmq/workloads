@@ -11,7 +11,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(prefix = "non-durable.producer", value = "enabled", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "non-durable.producer", value = "enabled", matchIfMissing = false)
 public class NonDurableProducer {
     private Logger logger = LoggerFactory.getLogger(NonDurableProducer.class);
 

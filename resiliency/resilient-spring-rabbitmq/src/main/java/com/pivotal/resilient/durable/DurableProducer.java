@@ -6,12 +6,13 @@ import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConditionalOnProperty(prefix = "durable.producer", value = "enabled", matchIfMissing = true)
+@ConditionalOnExpression("${durable.enabled:true} and ${durable.producer.enabled:true}")
 public class DurableProducer {
     private Logger logger = LoggerFactory.getLogger(DurableProducer.class);
 
@@ -23,7 +24,7 @@ public class DurableProducer {
         try {
             template.send(MessageBuilder.withBody("hello".getBytes()).build());
         }catch(RuntimeException e) {
-            logger.warn("Failed to send message due to {}", e.getMessage());
+            logger.error("Failed to send message due to {}", e.getMessage());
         }
     }
 }
