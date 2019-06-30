@@ -93,7 +93,7 @@ Spring Cloud Connectors configures Spring AMQP's ConnectionFactory with the full
 
 [resilient-skeleton-spring-rabbitmq](resilient-skeleton-spring-rabbitmq) folder contains the minimum code that demonstrate RabbitMQ bootstrapping for a Spring Boot application.
 
-Before waking thru this skeleton application it is worth mentioning the requirements that shaped the application as it is. These are:
+Before waking through this skeleton application it is worth mentioning the requirements that shaped the application as it is. These are:
 - Our application may potentially require another RabbitMQ service instance
 - also our application most likely will need custom RabbitMQ ConnectionFactory settings like `spring.rabbitmq.connection-timeout`
 
@@ -243,7 +243,7 @@ This is a brief demonstration on how we can monitor RabbitMQ client running with
 
 ### Monitoring skeleton application with Datadog
 
-It would be great to be able to present the metrics discussed in the previous section in a dashboard together with RabbitMQ server metrics so that we can reason about our architecture from a single place. In this section, we are going to go thru what we need to do in order to get our application to send metrics to Datadog and how to find those metrics in Datadog. We are not going to build any dashboard with those metrics yet.
+It would be great to be able to present the metrics discussed in the previous section in a dashboard together with RabbitMQ server metrics so that we can reason about our architecture from a single place. In this section, we are going to go through what we need to do in order to get our application to send metrics to Datadog and how to find those metrics in Datadog. We are not going to build any dashboard with those metrics yet.
 
 To know more about how to monitor RabbitMQ server with Datadog and how even how to install it, check out [Monitoring RabbitMQ for PCF using Datadog](https://github.com/MarcialRosales/rabbitmq-monitoring-guide/tree/master/datadog).
 
@@ -330,7 +330,8 @@ $ docker exec -it docker-rabbitmq-cluster_rabbit1_1 /bin/bash -c 'rabbitmqctl ad
 First we need to provision a RabbitMQ cluster. [RabbitMQ for PCF](https://docs.pivotal.io/rabbitmq-cf/1-14/index.html) have 2 service offerings.
 
 The [pre-provisioned](https://docs.pivotal.io/rabbitmq-cf/1-14/deploying.html) offering which consists of  a multi-tenant RabbitMQ cluster with a **ha-proxy** in front of it. Applications will connect to RabbitMQ via a single address, the **ha-proxy** address.
-> This offering will be deprecated soon
+
+> This offering is not recommended a production use-case.
 
 To create an pre-provisioned RabbitMQ cluster, we do it like this:
 ```
@@ -344,7 +345,7 @@ To create an on-demand RabbitMQ instance, we do it like this.
 ```
  cf create-service p.rabbitmq <plan-name> rmq
 ```
-> Replace <plan-name> with one of the plans available in your Cloud Foundry foundation
+> Replace <plan-name> with one of the plans available in your Cloud Foundry foundation. Use the command `cf marketplace`, to list the available plans.
 
 Now we can push the application. It uses the local `manifest.yml` file which references the `rmq` service we just created.
 ```
@@ -421,9 +422,11 @@ A RabbitMQ node may become unavailable should any of these events occurred:
   - node crashes
   - operator stops the node
   - operator closes the connection
-  - operator is performing a rolling upgrade (e.g. Upgrade *PCF RabbitMQ 1.13.8 / RabbitMQ 3.7.7* to *RabbitMQ 3.7.8 (PCF RabbitMQ 1.13.7*)
+  - operator is performing a rolling upgrade (e.g. Upgrade *PCF RabbitMQ 1.13.8 / RabbitMQ 3.7.7* to *PCF RabbitMQ 1.13.8 / RabbitMQ 3.7.8*)
 
 If we are using **On-Demand RabbitMQ for PCF** offering, our application gets the address of every node in the cluster. Spring AMQP will automatically try to connect to next node in the list.
+
+> **Since RabbitMQ for PCF 1.16**, the application gets a single DNS entry, which resolves each IP of the nodes.
 
 If we are using **Pre-Provision RabbitMQ for PCF** offering, our application only gets one address, the HA-proxy's address. Spring AMQP will automatically try to connect to that single address and the ha-proxy will connect it to an available node, if any.
 
@@ -802,4 +805,4 @@ Whereas, the consumer gets injected the *consumer*:
 ```
 
 
-A second advise is to detect when the connection is blocked and use it in the application. For instance, we could implement a back-pressure mechanism. Publisher will not send and block but fail-fast and report upstreams that it is not available. Or record this situation via its health status which we can expose it thru the actuator `/health` endpoint.   
+A second advise is to detect when the connection is blocked and use it in the application. For instance, we could implement a back-pressure mechanism. Publisher will not send and block but fail-fast and report upstreams that it is not available. Or record this situation via its health status which we can expose it through the actuator `/health` endpoint.
