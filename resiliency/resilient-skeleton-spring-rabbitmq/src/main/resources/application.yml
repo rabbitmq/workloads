@@ -1,6 +1,24 @@
+logging:
+  level:
+    org.springframework.amqp.rabbit: DEBUG
+
 spring:
   application:
     name: resilient-skeleton-spring-rabbitmq
+  rabbitmq:
+    template:
+      exchange: amq.direct
+      routing-key: hello
+
+    listener:
+      type: simple
+      simple:
+        prefetch: 10
+        concurrency: 1
+        max-concurrency: 2
+        missing-queues-fatal: false
+
+
 
 management:
   security:
