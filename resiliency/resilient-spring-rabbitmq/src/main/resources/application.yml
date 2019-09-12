@@ -1,4 +1,8 @@
 
+logging:
+  level:
+    com.pivotal.resilient.nomessageloss: debug
+
 spring:
   application:
     name: resilient-spring-rabbitmq
@@ -42,9 +46,16 @@ durable:
   consumer:
     enabled: false
 
+non-durable:
+  enabled: true
+  producer:
+    enabled: true
+  consumer:
+    enabled: true
+
 
 no-message-loss:
-  enabled: true
+  enabled: false
   queue-name: no-message-loss-q
   exchange-name: no-message-loss-e
   routing-key: no-message-loss-q
