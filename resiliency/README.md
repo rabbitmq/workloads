@@ -299,9 +299,11 @@ We will need Java 1.8 and at least Maven 3.3.x to build the application.
 We need to provide the following environment variables to run the application locally:
 ```
 export SPRING_PROFILES_ACTIVE=Cloud
-export VCAP_APPLICATION='{"application_name":"demo"}'
+export VCAP_APPLICATION='{"instance_id": "0001", "name": "demo", "space_id": "flamingo"}'
 export VCAP_SERVICES="$(cat src/main/resources/cluster.json)"
 ```
+> In addition to the `name` attribute in `VCAP_APPLICATION` we use the other attributes to
+> uniquely identify the metrics emitted by the appication 
 
 To run the application within IntelliJ, copy the file `ResilientSpringRabbitmqApplication.xml` to folder `.idea/runConfigurations`(within `workloads/resiliency/resilient-spring-rabbitmq` folder)  
 
