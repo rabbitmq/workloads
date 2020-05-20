@@ -1,0 +1,12 @@
+
+logging:
+  level:
+    com:
+      pivotal:
+        rabbitmq: debug
+
+spring.rabbitmq:
+  host: localhost
+  port: 15674
+  username: guest2
+  password: guest
