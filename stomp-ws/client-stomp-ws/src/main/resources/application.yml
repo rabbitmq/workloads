@@ -8,5 +8,5 @@ logging:
 spring.rabbitmq:
   host: localhost
   port: 15674
-  username: guest2
+  username: guest
   password: guest
