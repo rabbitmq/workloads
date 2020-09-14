@@ -1,0 +1,9 @@
+
+applications:
+  - name: resilient-scs-1
+    memory: 1G
+    path: target/resilient-scs-1-0.0.1-SNAPSHOT.jar
+    no-route: true
+    health-check-type: none
+    services:
+      - rmq

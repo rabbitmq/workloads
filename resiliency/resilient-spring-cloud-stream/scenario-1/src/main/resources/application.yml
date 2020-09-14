@@ -1,0 +1,22 @@
+
+logging:
+  level:
+    com.pivotal.resilient: debug
+
+spring:
+  application:
+    name: resilient-scs-rabbitmq
+  profiles:
+    include:
+      - management
+  cloud:
+    stream:
+      bindings:
+        tradesEmitter:
+          destination: q_trades
+          binder: local_rabbit
+        trades:
+          destination: q_trades
+          binder: local_rabbit
+
+
