@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+
+SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+function restart {
+  echo "Shuttting down $1 ..."
+  docker-compose -f $SCRIPT/docker-compose.yml stop $1
+
+  until ! docker-compose -f $SCRIPT/docker-compose.yml ps $1 >/dev/null 2>&1 /dev/null
+  do
+    echo "Waiting for $1 to shutdown "
+    sleep 5
+  done
+
+  docker-compose -f $SCRIPT/docker-compose.yml up -d $1
+
+  echo "Starting $1 ..."
+  until docker exec -it $1 sh -c 'rabbitmq-diagnostics check_protocol_listener amqp' >/dev/null 2>&1 /dev/null
+  do
+    echo "Waiting for $1 to start "
+    sleep 5
+  done
+}
+
+for VARIABLE in $(seq 1 ${2:-1});
+do
+  restart rmq0
+  restart rmq1
+  restart rmq2
+  echo "Waiting 5 seconds before trying again ..."
+  sleep 5
+done

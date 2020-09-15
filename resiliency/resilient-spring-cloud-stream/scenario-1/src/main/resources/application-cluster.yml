@@ -9,8 +9,7 @@ spring:
           environment:
             spring:
               rabbitmq:
-                addresses: localhost:5674,localhost:5675,localhost:5676
+                addresses: localhost:5673,localhost:5674,localhost:5675
                 username: guest
                 password: guest
                 virtual-host: /
-

@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+
+SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# INPUT VARIABLES
+AMQP_PORT=${1:-5672}
+AMQPS_PORT=${2:-5671}
+
+# OTHER VARIABLES
+HTTP_PORT=1$AMQP_PORT
+HTTPS_PORT=1$AMQPS_PORT
+SERVER_NAME=rabbitmq-$AMQP_PORT
+TRUSTED_DIR=$SCRIPT/trusted
+SELF_SIGNED_DIR=$SCRIPT/selfsigned
+PASSWORD=${PASSWORD:-bunnies}
+PROMETHEUS_PORT=15692
+
+function start {
+  echo "Launching $SERVER_NAME on ports amqp: $AMQP_PORT ; amqps: $AMQPS_PORT ; http: $HTTP_PORT ; https: $HTTPS_PORT ...."
+  echo " using ${RABBITMQ_CONF:-rabbitmq.conf}"
+
+  if [ ${RECREATE_ALL_SECRETS:-false} == "true" ]; then
+    echo "Recreating all keys and certificates"
+    rm -rf $TRUSTED_DIR $SELF_SIGNED_DIR
+  fi
+
+  generate-ca-server-client-kpi trusted
+  generate-ca-server-client-kpi selfsigned
+  create_network
+  stop_if_running
+
+  docker run -d --name $SERVER_NAME --net rabbitmq_net \
+      -p $HTTP_PORT:15672 \
+      -p $AMQP_PORT:5672 \
+      -p $AMQPS_PORT:5671 \
+      -p $HTTPS_PORT:15671 \
+      -p $PROMETHEUS_PORT:$PROMETHEUS_PORT \
+      -v ${SCRIPT}/${RABBITMQ_CONF:-rabbitmq.conf}:/etc/rabbitmq/rabbitmq.conf:ro \
+      -v ${SCRIPT}/enabled_plugins:/etc/rabbitmq/enabled_plugins \
+      -v $TRUSTED_DIR/basic/result:/etc/cert \
+      rabbitmq:3.8-rc-management
+}
+
+function create_network {
+  docker network inspect rabbitmq_net >/dev/null 2>&1 || docker network create rabbitmq_net
+}
+function stop_if_running {
+  docker rm -f $SERVER_NAME 2>/dev/null || echo "$SERVER_NAME was not running"
+}
+
+function generate-ca-server-client-kpi {
+  NAME=$1
+
+  if [ -d "$SCRIPT/$NAME" ]; then
+    return
+  fi
+
+  if [ ! -d "$SCRIPT/tls-gen" ]; then
+    git clone https://github.com/michaelklishin/tls-gen $SCRIPT/tls-gen
+  fi
+
+  echo "Generating $NAME CA, Server and Client PKI ..."
+  mkdir -p $SCRIPT/$NAME
+  cp -r $SCRIPT/tls-gen/* $NAME
+
+  CUR_DIR=$(pwd)
+  cd $SCRIPT/${NAME}/basic
+  make PASSWORD=$PASSWORD
+  make verify
+  make info
+  keytool -import -trustcacerts -alias testca -keystore result/truststore -file result/ca_certificate.pem -storepass $PASSWORD -noprompt
+  cd $CUR_DIR
+}
+
+start

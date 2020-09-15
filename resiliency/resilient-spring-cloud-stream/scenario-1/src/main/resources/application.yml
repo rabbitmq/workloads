@@ -12,11 +12,7 @@ spring:
   cloud:
     stream:
       bindings:
-        tradesEmitter:
-          destination: q_trades
-          binder: local_rabbit
-        trades:
-          destination: q_trades
-          binder: local_rabbit
-
-
+        outboundTradeRequests:
+          destination: trades
+        inboundTradeRequests:
+          destination: trades

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+# INPUT VARIABLES
+AMQP_PORT=${1:-5672}
+AMQPS_PORT=${2:-5671}
+
+# OTHER VARIABLES
+HTTP_PORT=1$AMQP_PORT
+HTTPS_PORT=1$AMQPS_PORT
+SERVER_NAME=rabbitmq-$AMQP_PORT
+
+function destroy {
+  echo "Destroying $SERVER_NAME on ports amqp: $AMQP_PORT ; amqps: $AMQPS_PORT ; http: $HTTP_PORT ; https: $HTTPS_PORT ...."
+  docker kill $SERVER_NAME
+}
+
+
+destroy

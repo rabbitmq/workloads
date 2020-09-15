@@ -1,0 +1,30 @@
+# https://docs.docker.com/compose/compose-file/
+version: "3.6"
+
+# https://docs.docker.com/compose/compose-file/#networks
+networks:
+  rabbitmq_net:
+    name: rabbitmq_net
+
+services:
+  prometheus:
+    image: prom/prometheus
+    networks:
+      - "rabbitmq_net"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana
+    networks:
+      - "rabbitmq_net"
+    environment:
+      GF_INSTALL_PLUGINS: "flant-statusmap-panel,grafana-piechart-panel,yesoreyeram-boomtable-panel"
+    volumes:
+      - ./../../../getting-started/bin/grafana:/etc/grafana/provisioning
+    ports:
+      - "3000:3000"
