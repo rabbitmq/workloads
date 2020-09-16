@@ -175,7 +175,7 @@ because the queue is deleted and recreated it again.
 recovered from additional connection failures.
 
 
-#### Failure 5 - Block producers
+#### Failure 6 - Block producers
 
 We are going to force RabbitMQ to trigger a memory alarm by setting the high water mark to 0.
 This should only impact the producer connections and let consumer connections carry on.
@@ -197,7 +197,8 @@ When we restore the high water mark, we will see all those messages sent to Rabb
 docker-compose -f ../docker/docker-compose.yml  exec rmq0 rabbitmqctl set_vm_memory_high_watermark 1.0
 ```
 
-#### Failure 6 - Pause nodes
+
+#### Failure 7 - Pause nodes
 
 We are going to pause a node, which is similar to what happen when a network partition occurs
 and the node is on the minority and we are using *pause_minority* cluster partition handling.
@@ -283,12 +284,13 @@ called after its name `trade-logger` which creates a durable queue called
 
 We switched to durable subscriptions so that we did not lose messages. However, we need to
 ensure that the producer stream uses `deliveryMode: PERSISTENT` which is the default
-value though.
+value though. If the producer did not send messages as persistent, they will be lost
+if the queue's hosting node goes down.
 
 #### Failure 2 - Shutdown queue hosting node
 
-Our consumer will not be able to consume while the queue hosting node is down. Furthermore,
-if the producer does not use mandatory flag and/or alternate-exchange, those messages are lost too. 
+Our consumer will not be able to consume while the queue's hosting node is down. Furthermore,
+if the producer does not use mandatory flag and/or alternate-exchange, those messages are lost too.
 
 1. Launch durable consumer
 ```
@@ -319,6 +321,44 @@ If we want to limit the amount of retries and terminate the application we have 
   * `missingQueuesFatal: true`
   * `queueDeclarationRetries: 3`
   * `failedDeclarationRetryInterval: 5000`
+
+If we cannot afford to lose messages and/or have downtime of our consumer service then
+we should make the queue highly available. Take a look at [Application with highly available subscriptions](#Application-with-highly-available-subscriptions).
+
+## Ensure delivery guarantee on the producer - Declare the consumer groups' queues
+
+In the previous section, we introduced a durable subscriber with a consumer group called
+`trade-logger`. This was to prevent message loss when the consumer was not running or listening.
+However, if we cannot afford to lose any message, we need to configure the producer to declare the queue using a new property called `requiredGroups`.
+
+This version of the application is now under `scenario-2`.
+
+Follow the instructions to test it:
+1. Destroy the cluster and recreate it again so that we start without any queues
+```
+./destroy-rabbit-cluster
+./deploy-rabbit-cluster
+```
+2. Launch the producer
+```
+./run.sh --scheduledTradeRequester=true
+```
+3. Check the queue `trades.trade-logger` exists and it is getting messages
+
+### Failure 2 - Shutdown queue hosting node
+
+Our producer will not guarantee delivery when the queue's hosting node is down.
+These are the two scenarios we can encounter:
+
+- The producer starts up and the queue's hosting node is down. In this scenario,
+the producer will attempt to declare it and it will fail. It does not terminate.
+Any attempt to send a message will succeed but the message will go nowhere, it will be lost.
+- The producer starts up and successfully declares the queue. However, later on,
+the queue's hosting node goes down. The messages will go no where, they will be lost.
+
+Conclusion: Adding `requiredGroups` setting in the producer, help us in reducing the
+amount of message loss but it does not prevent it entirely. It is convenient because we
+can start applications, producer or consumer, in any order. However, we are coupling the producer with the consumer. Also, should we added more consumer groups, we would have to reconfigure our producer application.
 
 
 ## Application with highly available subscriptions
