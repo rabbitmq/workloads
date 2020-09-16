@@ -1,44 +1,53 @@
 
 # Spring Cloud Stream Patterns
 
-## How to deploy RabbitMQ
+The goal is to explore configuration and design patterns in Spring Cloud Stream
+to achieve various levels of resiliency and delivery of guarantee.
 
-To deploy a standalone server, run:
-```
-deploy-rabbit
-```
-> It will deploy a standalone server on port 5672
+We start with the most basic SCS app with minimal configuration and we challenge it with a number of failure scenarios. This is done [Scenario 1](#basic-consumer-producer-application-1)
 
-To deploy a cluster of 3 nodes, run:
+
+
+## Getting started
+
+By default, all the sample applications are configured to connect to a 3-node cluster
+which we launch it by running:
 ```
 deploy-rabbit-cluster
 ```
 > It will deploy a cluster with nodes listening on 5673, 5674, 5575
 
-
-## Scenarios
-
-By default, the application is configured to connect to a cluster (application.yml)
-  which is configured on the configuration file application-cluster.yml.
-
 To launch the application against a single standalone server, edit application.yml
-and remove `cluster` as one of the included Spring profiles.
+and remove `cluster` as one of the included Spring profiles. And to deploy a  
+standalone server run:
+```
+deploy-rabbit
+```
+> It will deploy a standalone server on port 5672
 
 
-### Scenario 1 - Resilient producer/consumer with unreliable producer
+## Application with transient subscriptions
 
-In this scenario, we have a producer service (ScheduledTradeRequester) and a
-consumer service (TradeLogger).
+We can find this application under `scenario-1` folder.
 
-**Resiliency**
+It consists of 2 Spring `@Service`(s). One is a producer service (p`ScheduledTradeRequester`) and a second is a consumer service (`TradeLogger`). The consumer service uses transient, a.k.a. non-durable,
+subscriptions. This means that the consumer will only receive messages sent while it is listening to
+them. It uses non-durable, auto-delete queues.
 
-Both services are resilient to connection failures (1, 2, 3) in the
-sense that the application does not crash and both producer and consumer recover
-from it.
+This application automatically declares the AMQP resources such as exchanges, queues and bindings.
+Otherwise we would have to configure (e.g. `missingQueuesFatal`) it to deal with situations where those resources do not exist.
 
-TODO provide details with regards retry max attempts and/or frequency if there are any
 
-**Verify resiliency against failure 1 - RabbitMQ is not available when application starts**
+### Verify resiliency
+
+Out of the box, the application is pretty resilient to connection failures as we will
+see in the next sections. It lacks of guarantee of delivery which we will address
+in the next sections.
+
+#### Failure 1 - RabbitMQ is not available when application starts
+
+**TODO** provide details with regards retry max attempts and/or frequency if there are any
+`recoveryInterval` is a property of consumer rabbitmq binder.
 
 1. Stop RabbitMQ cluster
   ```
@@ -54,13 +63,13 @@ TODO provide details with regards retry max attempts and/or frequency if there a
   ../docker/deploy-rabbit-cluster
   ```
 
-**Verify resiliency against failure 2 - Restart a cluster node**
+#### Failure 2 - Restart a cluster node
 
 Pick the node where application is connected and the queue declared, say it is `rmq0`
 
 1. Restart `rmq0` node:
   ```
-  docker-compose start rmq0
+  docker-compose -f ../docker/docker-compose.yml start rmq0
   ```
 2. Check for reconnect attempts in the logs and how producer and consumer keeps working.
 We should expect a sequence of logging statements like these two:
@@ -75,7 +84,7 @@ We should expect a sequence of logging statements like these two:
   > When the number of trades received matches with the trade id it means that
   the consumer has not missed any trade request yet
 
-**Verify resiliency against failure 3 - Rolling restart of cluster nodes**
+#### Failure 3 - Rolling restart of cluster nodes
 
 1. Rolling restart:
   ```
@@ -84,7 +93,24 @@ We should expect a sequence of logging statements like these two:
 2. Wait until the script terminate to check how producer and consumer is still working
 (i.e. sending and receiving)
 
-**Verify resiliency against failure 4 - Kill producer connection (repeatedly)**
+#### Failure 4 - Kill producer connection (repeatedly)
+
+**TODO** Investigate: It would be ideal to name connections based on the application name so that
+it makes easier to identify who is connected. When we set the `connection-name-prefix`, it
+fails with
+```
+he dependencies of some of the beans in the application context form a cycle:
+
+   binderHealthIndicator defined in org.springframework.cloud.stream.binder.rabbit.config.RabbitServiceAutoConfiguration$RabbitHealthIndicatorConfiguration
+      ↓
+   rabbitTemplate defined in org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration$RabbitTemplateConfiguration
+┌─────┐
+|  rabbitConnectionFactory defined in org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration$RabbitConnectionFactoryCreator
+↑     ↓
+|  org.springframework.cloud.stream.binder.rabbit.config.RabbitMessageChannelBinderConfiguration (field private org.springframework.amqp.rabbit.connection.ConnectionFactory org.springframework.cloud.stream.binder.rabbit.config.RabbitMessageChannelBinderConfiguration.rabbitConnectionFactory)
+└─────┘
+```
+
 
 1. Launch producer only
   ```
@@ -113,7 +139,7 @@ We should expect a sequence of logging statements like these two:
 ```
 
 
-**Verify resiliency against failure 5 - Kill consumer connection (repeatedly)**
+#### Failure 5 - Kill consumer connection (repeatedly)
 
 1. Launch consumer with a processingTime of 5 seconds
   ```
@@ -144,18 +170,60 @@ The first is that our consumer is slower (processingTime:5s) than the producer (
 are creating a queue backlog. And second, when the connection is closed, we loose the backlog
 because the queue is deleted and recreated it again.
 
-> We noticed that the consumer connection creates 2 channels after it recovers the
-connection rather than just one. However, it does not keep opening further channels should it
+
+**TODO** Investigate: I noticed that the consumer connection creates 2 channels after it recovers the connection rather than just one. However, it does not keep opening further channels should it
 recovered from additional connection failures.
 
-**Verify resiliency against failure 5 - Block producers**
+
+#### Failure 5 - Block producers
 
 We are going to force RabbitMQ to trigger a memory alarm by setting the high water mark to 0.
 This should only impact the producer connections and let consumer connections carry on.
 
+1. Launch both roles together in the same application, but the a slower consumer
+so that we create a queue backlog
+```
+./run.sh --tradeLogger=true --scheduledTradeRequester=true --processingTime=5s
+```
+2. Wait a couple of seconds until we produce a backlog
+3. Set high water mark to zero
+```
+docker-compose -f ../docker/docker-compose.yml exec rmq0 rabbitmqctl set_vm_memory_high_watermark 0
+```
+4. Watch the queue depth goes to zero, i.e. the consumer is able to consume.
+5. Watch messages stop coming to RabbitMQ. However, they are piling up in the tcp buffers.
+When we restore the high water mark, we will see all those messages sent to RabbitMQ.
+```
+docker-compose -f ../docker/docker-compose.yml  exec rmq0 rabbitmqctl set_vm_memory_high_watermark 1.0
+```
+
+#### Failure 6 - Pause nodes
+
+We are going to pause a node, which is similar to what happen when a network partition occurs
+and the node is on the minority and we are using *pause_minority* cluster partition handling.
+
+We are going to shutdown all nodes (`rmq2`, `rmq3`) except one (`rmq0`) where our applications
+are connected to. This will automatically pause the last standing node because it is in minority.
+
+1. Launch both roles together
+```
+./run.sh --tradeLogger=true --scheduledTradeRequester=true --processingTime=5s
+```
+2. Wait till we have produced a message backlog
+3. Stop `rmq2`, `rmq3`
+```
+docker-compose -f ../docker/docker-compose.yml  stop rmq1 rmq2
+```
+4. Notice connection errors in the application logs. Also we have lost connection to the
+management UI on `rmq0`.
+5. Application keeps trying to publish but it fails
+6. Start `rmq2`, `rmq3`
+7. Notice application recovers and keeps publishing. The consumer has lost a few messages though.
 
 
-**Zero Guarantee of delivery on the producer**
+### Guarantee of delivery
+
+#### Zero guarantee of delivery on the producer
 
 - Producer does not use publisher confirmation. If RabbitMQ fail to deliver a message
 to a queue due to an internal issue or simply because the RabbitMQ rejects it, the
@@ -166,7 +234,7 @@ an alternate exchange either.
 - When producer fails to send (i.e. send operation throws an exception) a message,
 the producer is pretty basic and it does not retry it.
 
-**Some Guarantees of delivery on the consumer**
+#### Some Guarantees of delivery on the consumer
 
 - Consumer will only get messages while it is running. Once we stop it, all messages which
 were still in the queue are lost and also any message sent afterwards. This is because the
@@ -183,7 +251,7 @@ Do we need to make this type of queue mirrored? Not really, because an *auto-del
 queue will be automatically deleted as soon as its last consumer has cancelled or when
 the connection is lost.
 
-**Verify guarantee of delivery failure - Some messages are lost**
+#### Zero guarantees of delivery on the consumer
 
 This time we are launching producer and consumer on separate application/process
 and we are going to perform a rolling restart.
@@ -206,63 +274,62 @@ received so far 11 trades however this is the 12th trade sent. We lost one.
   Received [11] Trade 12 (account: 2) done
   ```
 
-**Recommendation**
-- Ensure your ha policies do not include anonymous queues
-- If we cannot afford to a single messages then we cannot use anonymous consumers
+## Application with durable subscriptions
 
+We are using the same application but this time we are using a different
+consumer `@Service` called `DurableTradeLogger`. This service uses a *Consumer Group*
+called after its name `trade-logger` which creates a durable queue called
+`queue.trade-logger`.
 
+We switched to durable subscriptions so that we did not lose messages. However, we need to
+ensure that the producer stream uses `deliveryMode: PERSISTENT` which is the default
+value though.
 
-## Appendix - How to test failures
+#### Failure 2 - Shutdown queue hosting node
 
-All the commands mentioned below assumes you are running from within `docker` folder.
+Our consumer will not be able to consume while the queue hosting node is down. Furthermore,
+if the producer does not use mandatory flag and/or alternate-exchange, those messages are lost too. 
 
-### 1. RabbitMQ is down
-
-To ensure your standalone RabbitMQ server is not running before starting your application.
-`destroy-rabbit` or `docker stop rabbitmq-5672`
-> These two commands assumes you are running RabbitMQ on its default port
-
-To ensure your cluster is not running, run:
-`destroy-rabbitmq-cluster` or `docker-compose stop`
-
-
-### 2. Restart standalone server or a single cluster node
-
-To restart standalone server, run:
+1. Launch durable consumer
 ```
-deploy-rabbit
+./run.sh --durableTradeLogger=true
 ```
-
-To restart an individual cluster node such as `rmq0`, run:
+2. Stop the hosting node. Most likely the queue will be on the first node, `rmq0`.
 ```
-docker-compose restart rmq0
+docker-compose -f ../docker/docker-compose.yml stop rmq0
 ```
-
-### 3. Rolling restart of all cluster nodes
-
-To perform a rolling restart of the cluster nodes, run:
+3. We will notice the consumer fails to declare the queue but it keeps indefinitely trying.
 ```
-rolling-restart
-```
+2020-09-16 16:56:17.050 o.s.a.r.l.BlockingQueueConsumer          Failed to declare queue: trades.trade-logger
+2020-09-16 16:56:17.051 o.s.a.r.l.BlockingQueueConsumer          Queue declaration failed; retries left=1
 
-### 4. Kill producer connection (repeatedly)
-
-To be done
-
-### 5. kill consumer connection (repeatedly)
-
-To be done
-
-### 6. Block producers (due to alarm, or high water mark to 0)
-
-To be done
-
-### 7. Pause node (due to network partition or cluster running in minority)
+Caused by: com.rabbitmq.client.ShutdownSignalException: channel error; protocol method: #method<channel.close>(reply-code=404, reply-text=NOT_FOUND - home node 'rabbit@rmq0' of durable queue 'trades.trade-logger' in vhost '/' is down or inaccessible, class-id=50, method-id=10)
 
 ```
-rabbitmqctl set high water mark to 0
+4. Start the hosting node.
+```
+docker-compose -f ../docker/docker-compose.yml start rmq0
+```
+5. The consumer is able to declare the queue and subscribe to it.
+```
+2020-09-16 16:51:47.022 o.s.a.r.l.BlockingQueueConsumer          Queue declaration succeeded after retrying
 ```
 
-### 8. Unresponsive network connection
+If we want to limit the amount of retries and terminate the application we have to use these [RabbitMQ Binder consumer settings](https://cloud.spring.io/spring-cloud-static/spring-cloud-stream-binder-rabbit/2.2.0.M1/spring-cloud-stream-binder-rabbit.html#_rabbitmq_consumer_properties):
+  * `missingQueuesFatal: true`
+  * `queueDeclarationRetries: 3`
+  * `failedDeclarationRetryInterval: 5000`
 
-TODO Configure toxyproxy so that it drops messages
+
+## Application with highly available subscriptions
+
+In order to address the issues found in the [previous](#Application-with-durable-subscriptions) scenario
+we are going to make the queue mirrored.
+
+**TODO** Investigate how to use QuorumQueues
+
+
+## Resilient consumer processing
+
+`maxAttempts`, `backOffX`, `defaultRetryable`, `retryableExceptions`
+https://cloud.spring.io/spring-cloud-static/spring-cloud-stream/current/reference/html/spring-cloud-stream.html#_consumer_properties

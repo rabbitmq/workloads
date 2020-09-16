@@ -17,19 +17,19 @@ import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
-@EnableBinding(TradeLogger.MessagingBridge.class)
-@ConditionalOnProperty(name="tradeLogger", matchIfMissing = false)
-public class TradeLogger {
-    private final Logger logger = LoggerFactory.getLogger(TradeLogger.class);
+@EnableBinding(DurableTradeLogger.MessagingBridge.class)
+@ConditionalOnProperty(name="durableTradeLogger", matchIfMissing = false)
+public class DurableTradeLogger {
+    private final Logger logger = LoggerFactory.getLogger(DurableTradeLogger.class);
 
     @Autowired private MessagingBridge messagingBridge;
 
     interface MessagingBridge {
 
-        String INPUT = "trade-logger-input";
+        String INPUT = "durable-trade-logger-input";
 
         @Input(INPUT)
-        SubscribableChannel tradeRequests();
+        SubscribableChannel input();
 
     }
 
@@ -39,7 +39,7 @@ public class TradeLogger {
     private volatile long receivedTradeCount;
     private AtomicLong firstTradeId = new AtomicLong();
 
-    public TradeLogger() {
+    public DurableTradeLogger() {
         logger.info("Created");
     }
 
