@@ -4,8 +4,7 @@
 The goal is to explore configuration and design patterns in Spring Cloud Stream
 to achieve various levels of resiliency and delivery of guarantee.
 
-We start with the most basic SCS app with minimal configuration and we challenge it with a number of failure scenarios. This is done [Scenario 1](#basic-consumer-producer-application-1)
-
+We start with the most basic SCS app with minimal configuration and we challenge it with a number of failure scenarios. This is done in [Scenario 1](#basic-consumer-producer-application-1).
 
 
 ## Getting started
@@ -197,8 +196,7 @@ When we restore the high water mark, we will see all those messages sent to Rabb
 docker-compose -f ../docker/docker-compose.yml  exec rmq0 rabbitmqctl set_vm_memory_high_watermark 1.0
 ```
 
-
-#### Failure 7 - Pause nodes
+#### Failure 7 - Pause nodes
 
 We are going to pause a node, which is similar to what happen when a network partition occurs
 and the node is on the minority and we are using *pause_minority* cluster partition handling.
