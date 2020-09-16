@@ -179,8 +179,7 @@ recovered from additional connection failures.
 We are going to force RabbitMQ to trigger a memory alarm by setting the high water mark to 0.
 This should only impact the producer connections and let consumer connections carry on.
 
-1. Launch both roles together in the same application, but the a slower consumer
-so that we create a queue backlog
+1. Launch both roles (`tradeLogger` and `scheduledTradeRequester`) together in the same application, but the a slower consumer so that we create a queue backlog
 ```
 ./run.sh --tradeLogger=true --scheduledTradeRequester=true --processingTime=5s
 ```
@@ -233,7 +232,7 @@ an alternate exchange either.
 - When producer fails to send (i.e. send operation throws an exception) a message,
 the producer is pretty basic and it does not retry it.
 
-#### Some Guarantees of delivery on the consumer
+#### Some Guarantees of delivery on the consumer while it is running
 
 - Consumer will only get messages while it is running. Once we stop it, all messages which
 were still in the queue are lost and also any message sent afterwards. This is because the
