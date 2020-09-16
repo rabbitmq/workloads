@@ -274,7 +274,7 @@ received so far 11 trades however this is the 12th trade sent. We lost one.
 
 ## Application with durable subscriptions
 
-We are using the same application but this time we are using a different
+We are using the same application -under `scenario-1` folder- but this time we are using a different
 consumer `@Service` called `DurableTradeLogger`. This service uses a *Consumer Group*
 called after its name `trade-logger` which creates a durable queue called
 `queue.trade-logger`.
