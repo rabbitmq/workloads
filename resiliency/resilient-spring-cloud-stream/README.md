@@ -44,14 +44,14 @@ It consists of 2 Spring `@Service`(s). One is a producer service (p`ScheduledTra
 
 This application automatically declares the AMQP resources such as exchanges, queues and bindings.
 
-**What is this consumer useful for?**
+#### What is this consumer useful for
 
 - monitoring/dashboard applications which provide real-time stats;
 - audit/logger applications which sends messages to a persistent state such as
 ELK;
 - keep local-cache up-to-date
 
-**What about data loss?**
+#### What about data loss?
 
 As we already know it will not get messages delivered while it is not connected.
 Once connected, the consumer uses *Client Auto Acknowledgement* therefore it will not lose
@@ -62,7 +62,7 @@ If we are using this type of consumer to keep a local-cache up-to-date with upda
 that come via messages, we need to know when we are processing the first message so that
 we clear the cache and prime it.
 
-**Is this consumer highly available?**
+#### Is this consumer highly available
 
 This consumer is **highly available** as long as the broker has at least one node where to
 connect. The consumer will always recreate the queue, therefore the queue it uses is
@@ -72,7 +72,7 @@ non-durable, auto-delete and exclusive.
 queue will be automatically deleted as soon as its last consumer is cancelled or when
 the connection is lost.
 
-**Is this consumer resilient to connection failures?**
+#### Is this consumer resilient to connection failures?
 
 There are different reasons why we may experience connections failure:
 
@@ -82,7 +82,7 @@ There are different reasons why we may experience connections failure:
 - The application is connected to a a node and it is paused (e.g. due to network partition)
 
 
-**What other failures this consumer has to deal with?**
+#### What other failures this consumer has to deal with
 
 Other failures have to do with AMQP resource availability. By default, this consumer
 is configured to declare the exchange and the queue too. Producer and consumer have to
@@ -113,7 +113,7 @@ ensure that the producer stream uses `deliveryMode: PERSISTENT` which is the def
 value though. If the producer did not send messages as persistent, they will be lost
 if the queue's hosting node goes down.
 
-**What about data loss?**
+#### What about data loss
 
 The consumer uses *Client Auto Acknowledgement* therefore it will not lose
  messages due to failures that may occur while processing the message.
@@ -125,7 +125,7 @@ in memory and if the queue's hosting node goes down, they will be lost.
 
 *IMPORTANT*: We are always taking about queued messages. We are not talking yet about all kind of messages, including those which are about to be sent by the producer.
 
-**Is this consumer highly available?**
+#### Is this consumer highly available
 
 By default, this consumer is **not highly available**. Its uptime depends on the
 uptime of queue's hosting node goes down.
@@ -166,7 +166,7 @@ issues with the message, the message would be lost.
 
 We can find an example of this type of producer in the project [transient-consumer](transient-consumer). It is the `ScheduledTradeRequester` producer that we have used so far.
 
-**When is this type of producer useful**
+#### When is this type of producer useful
 
 - When data is not massively critical and consumers can tolerate message loss.
 - Especially interesting when the consumers are of type transient
