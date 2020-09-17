@@ -19,6 +19,7 @@ different levels of data loss and/or downtime tolerance.
 	- [Verify resiliency of Transient consumer](#verify-resiliency-of-transient-consumer)
 	- [Verify Guarantee of delivery of fire-and-forget producer](#verify-guarantee-of-delivery-of-fire-and-forget-producer)
 	- [Verify delivery guarantee on the producer - Declare the consumer groups' queues](#verify-delivery-guarantee-on-the-producer-declare-the-consumer-groups-queues)
+	- [Verify delivery guarantee on the producer - Ensure messages are successfully sent](#verify-delivery-guarantee-on-the-producer-ensure-messages-are-successfully-sent)
 
 <!-- /TOC -->
 
@@ -81,6 +82,11 @@ There are different reasons why we may experience connections failure:
 - The application cannot establish the connection because the credentials are wrong
 - The application is connected to a a node and it is paused (e.g. due to network partition)
 
+#### Can I add more consumer instances to increase throughput
+
+We cannot because the queue is declared as *exclusive*.
+
+**TODO** Check if we can have +1 consumers within a single app instance
 
 #### What other failures this consumer has to deal with
 
@@ -125,6 +131,10 @@ in memory and if the queue's hosting node goes down, they will be lost.
 
 *IMPORTANT*: We are always taking about queued messages. We are not talking yet about all kind of messages, including those which are about to be sent by the producer.
 
+#### Can I add more consumer instances to increase throughput
+
+**TODO**
+
 #### Is this consumer highly available
 
 By default, this consumer is **not highly available**. Its uptime depends on the
@@ -134,6 +144,11 @@ Is this suitable for my case? That depends on your business case. If the consume
 can tolerate a downtime of less than an hour which is the maximum time any of nodes
 can be down then this consumer is suitable. Else, we need to make it HA. Look at the [next](#ha-durable-consumer) type of application.
 
+#### What about strict order processing of messages?
+
+If we need to have strict ordering of processing of messages we need to use `exclusive: true` attribute. If we have more instances, they will fail to subscribe but will retry based on the `recoveryInterval: 5000` attribute.
+
+**TODO** investigate how to set *single-active-consumer* on SCS
 
 ### HA Durable consumer
 
@@ -149,6 +164,8 @@ as *Mirrored*.
 **TODO** Investigate how to use QuorumQueues
 
 ### Resilient consumer processing
+
+By default, Spring Cloud Stream will use client acknowledgement (`acknowledgeMode: AUTO)`. It will reject messages if the application failed to process and it will not requeue them. We can change this behaviour though with `requeueRejected: true`. But be careful changing this value because it could produce a storm of poisonous messages unless the application raises an `AmqpRejectAndDontRequeueException`.
 
 **TODO**
 
@@ -189,6 +206,16 @@ When the producer sends critical messages it automatically implies that they wil
 be consumed by durable consumers. To further improve the delivery guarantees of the producer
 we use these additional mechanisms:
 1. Declare all destination queues, a.k.a, *consumer groups*, using a new property called `requiredGroups`. A message may need to be delivered to more than one application. Hence, the producer has to be told which those *consumer groups* are.
+
+---
+
+Configure `errorChannelEnabled: true` so that *send failures* are sent to an error channel for the destination. We need this setting so that we can configure the following one. The error channel is called <destinationName>.errors e.g. `destinationName.errors`
+
+Configure the RabbitMQ binder so that we receive confirmations of successfully sent Trades. We need to specify the name of the channel. Unsuccessful confirmations are sent to the *error channel*.
+
+*IMPORTANT*: The connection factory must be configured to enable publisher confirms.
+
+Configure RabbitMQ's binder (`application-cluster.yml`)to use publisher confirms and publisher returns.
 
 
 ## Testing Applications
@@ -500,3 +527,36 @@ the queue's hosting node goes down. The messages will go no where, they will be 
 Conclusion: Adding `requiredGroups` setting in the producer, help us in reducing the
 amount of message loss but it does not prevent it entirely. It is convenient because we
 can start applications, producer or consumer, in any order. However, we are coupling the producer with the consumer. Also, should we added more consumer groups, we would have to reconfigure our producer application.
+
+### Verify delivery guarantee on the producer - Ensure messages are successfully sent
+
+1. Launch the producer. By default, `--scheduledTradeRequester=true` is already set.
+```
+./run.sh
+```
+2. Check that messages go to the `trades.trade-logger` queue and also new logging statements that
+informs the message was successfully sent.
+```
+[sent:27] Requesting Trade{accountId=6, asset='null', amount=0, buy=false, timestamp=0}
+Received publish confirm => Trade{accountId=6, asset='null', amount=0, buy=false, timestamp=0}
+```
+3. Put a max-length limit on the queue by invoking the following script that puts a policy.
+```
+PORT=15673 ./set_limit_on_queue "trade-logger" 5
+```
+> PORT=15673 allows us to target the first node in the cluster otherwise it would use 15672
+
+4. Notice that after 5 messages, it starts reporting errors.
+```
+2020-09-17 19:58:07.145 c.p.r.ScheduledTradeRequester            [attempts:2,sent:0] Requesting Trade{accountId=3, asset='null', amount=0, buy=false, timestamp=0}
+2020-09-17 19:58:07.151 c.p.r.ScheduledTradeRequester            An error occurred while publishing Trade{accountId=3, asset='null', amount=0, buy=false, timestamp=0}```
+```
+
+5. The producer has been programmed so that it does not send more trades but retry trades which
+have not been confirmed yet (`pendingTrades`).
+
+6. Remove the max-length limit and we see the producer successfully sends pending trades and continues
+with newer ones.
+```
+PORT=15673 ./unset_limit_on_queue 
+```

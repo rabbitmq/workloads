@@ -6,7 +6,7 @@ logging:
 
 spring:
   application:
-    name: resilient-scs-rabbitmq
+    name: transient-consumer
   profiles:
     include:
       - management
@@ -24,4 +24,3 @@ spring:
       rabbit: # spring cloud stream rabbit binder configuration
         binder:
         # connection-name-prefix: hello  Cannot use it due to cycle issue during initialization
-

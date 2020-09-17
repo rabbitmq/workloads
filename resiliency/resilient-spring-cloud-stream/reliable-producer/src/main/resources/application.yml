@@ -13,14 +13,17 @@ spring:
       - cluster
   cloud:
     stream:
+
       bindings: # spring cloud stream binding configuration
         outboundTradeRequests:
           destination: trades
           producer:
+            errorChannelEnabled: true # send failures are sent to an error channel for the destination
             requiredGroups:
               - trade-logger
-        trade-logger-input:
-          destination: trades
-        durable-trade-logger-input:
-          destination: trades
-          group: trade-logger
+      rabbit:
+        bindings:
+          outboundTradeRequests:
+            producer:
+              deliveryMode: PERSISTENT # default value. Here for completeness
+              confirmAckChannel: trades.confirm # channel where to receive publish confirms

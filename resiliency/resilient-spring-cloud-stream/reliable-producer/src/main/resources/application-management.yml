@@ -1,0 +1,23 @@
+
+management:
+  security:
+    enabled: false
+  endpoint:
+    health.show-details: always
+    metrics:
+      enabled: true
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - metrics
+          - info
+          - env
+          - configprops
+          - prometheus
+          - beans
+          - integrationgraph
+
+
+
