@@ -1,17 +1,26 @@
 
 # Spring Cloud Stream Patterns
 
-The goal is to propose various types of Spring Cloud Stream application with the appropriate configuration and design pattern. The types will attend to different features such as
-data loss tolerance or downtime tolerance among others.
+The goal is to propose various types of Spring Cloud Stream applications. Each type offers
+different levels of data loss and/or downtime tolerance.
 
-In the next sections we are going to introduce 4 types of applications. And after
-introducing them we are going to test them against various failures scenarios.
+**Table of content**
+<!-- TOC depthFrom:2 depthTo:3 withLinks:1 updateOnSave:1 orderedList:0 -->
 
-The 4 applications are:
-- [Transient consumer](#transient-consumer)
-- [Durable consumer](#durable-consumer)
-- [Fire-and-Forget producer](#fire-and-forget-producer)
-- [Guarantee Delivery producer](#Guarantee-Delivery-producer)
+- [Application types](#application-types)
+	- [Transient consumer](#transient-consumer)
+	- [Durable consumer](#durable-consumer)
+	- [HA Durable consumer](#ha-durable-consumer)
+	- [Resilient consumer processing](#resilient-consumer-processing)
+	- [Fire-and-forget producer](#fire-and-forget-producer)
+	- [Guarantee Delivery producer](#guarantee-delivery-producer)
+- [Testing Applications](#testing-applications)
+	- [How to deploy RabbitMQ](#how-to-deploy-rabbitmq)
+	- [Verify resiliency of Transient consumer](#verify-resiliency-of-transient-consumer)
+	- [Verify Guarantee of delivery of fire-and-forget producer](#verify-guarantee-of-delivery-of-fire-and-forget-producer)
+	- [Verify delivery guarantee on the producer - Declare the consumer groups' queues](#verify-delivery-guarantee-on-the-producer-declare-the-consumer-groups-queues)
+
+<!-- /TOC -->
 
 ## Application types
 
