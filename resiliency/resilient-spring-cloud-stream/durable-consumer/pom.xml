@@ -4,11 +4,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.pivotal.resilient</groupId>
-	<artifactId>resilient-scs-1</artifactId>
+	<artifactId>durable-consumer</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
-	<name>resilient-scs-1</name>
+	<name>durable-consumer</name>
 	<description>Demo project for Spring Boot</description>
 
 	<parent>

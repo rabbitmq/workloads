@@ -1,13 +1,190 @@
 
 # Spring Cloud Stream Patterns
 
-The goal is to explore configuration and design patterns in Spring Cloud Stream
-to achieve various levels of resiliency and delivery of guarantee.
+The goal is to propose various types of Spring Cloud Stream application with the appropriate configuration and design pattern. The types will attend to different features such as
+data loss tolerance or downtime tolerance among others.
 
-We start with the most basic SCS app with minimal configuration and we challenge it with a number of failure scenarios. This is done in [Scenario 1](#basic-consumer-producer-application-1).
+In the next sections we are going to introduce 4 types of applications. And after
+introducing them we are going to test them against various failures scenarios.
+
+The 4 applications are:
+- [Transient consumer](#transient-consumer)
+- [Durable consumer](#durable-consumer)
+- [Fire-and-Forget producer](#fire-and-forget-producer)
+- [Guarantee Delivery producer](#Guarantee-Delivery-producer)
+
+## Application types
+
+### Transient consumer
+
+A transient consumer is one where messages are delivered to the consumer application only when that application is running and connected to the broker. Messages sent while the application is
+disconnected are lost.
+
+This type of consumer creates a queue named `<channel_destination_name>.anonymous.<unique_id>` e.g. `q_trade_confirmations.anonymous.XbaJDGmDT7mNEgD6_ru9zw` with this attributes:
+  - *non-durable*
+  - *exclusive*
+  - *auto-delete*   
+
+---
+
+We can find an example of this type of consumer in the project [transient-consumer](transient-consumer).
+
+It consists of 2 Spring `@Service`(s). One is a producer service (p`ScheduledTradeRequester`) and a second is a transient consumer service (`TradeLogger`).
+
+**TODO** Maybe include some snippets of SCS configuration and sample code
+
+This application automatically declares the AMQP resources such as exchanges, queues and bindings.
+
+**What is this consumer useful for?**
+
+- monitoring/dashboard applications which provide real-time stats;
+- audit/logger applications which sends messages to a persistent state such as
+ELK;
+- keep local-cache up-to-date
+
+**What about data loss?**
+
+As we already know it will not get messages delivered while it is not connected.
+Once connected, the consumer uses *Client Auto Acknowledgement* therefore it will not lose
+queued messages, as long as it is connected. Once it disconnects, or it looses the connection,
+all queued messages are lost.
+
+If we are using this type of consumer to keep a local-cache up-to-date with updates
+that come via messages, we need to know when we are processing the first message so that
+we clear the cache and prime it.
+
+**Is this consumer highly available?**
+
+This consumer is **highly available** as long as the broker has at least one node where to
+connect. The consumer will always recreate the queue, therefore the queue it uses is
+non-durable, auto-delete and exclusive.
+
+**IMPORTANT**: We should not include this type of queues in HA policies because an *auto-delete*
+queue will be automatically deleted as soon as its last consumer is cancelled or when
+the connection is lost.
+
+**Is this consumer resilient to connection failures?**
+
+There are different reasons why we may experience connections failure:
+
+- The application cannot establish the first connection because the cluster is not available
+- The application is connected to a node and it goes down
+- The application cannot establish the connection because the credentials are wrong
+- The application is connected to a a node and it is paused (e.g. due to network partition)
 
 
-## Getting started
+**What other failures this consumer has to deal with?**
+
+Other failures have to do with AMQP resource availability. By default, this consumer
+is configured to declare the exchange and the queue too. Producer and consumer have to
+agree on the exchange name (`bindings.<channelName>.destination`) and type (default is
+*Topic Exchange*). If we do not change the type of exchange there are fewer chances for
+failures. If we used a different exchange type then both applications must use the same
+otherwise they will fail to declare it.
+
+In the contrary, we may choose to declare the AMQP exchange externally. If the resources
+are not available when the application starts, it will fail. But we can configure it to
+keep retrying until the resource is declared. Or give up and terminate after N failed attempts.
+
+
+### Durable consumer
+
+A durable consumer means that messages it is subscribed to will be delivered even when it is
+not running at the particular point of time. Once it reconnects to the broker, all the messages that were posted in the meantime will be delivered immediately.
+
+---
+
+We can find an example f¡of this type of consumer in the project [durable-consumer](durable-consumer).
+It consists of one durable consumer called `DurableTradeLogger`. This service uses a *Consumer Group*
+called after its name `trade-logger` which creates a durable queue called
+`queue.trade-logger`.
+
+We switched to durable subscriptions so that we did not lose messages. However, we need to
+ensure that the producer stream uses `deliveryMode: PERSISTENT` which is the default
+value though. If the producer did not send messages as persistent, they will be lost
+if the queue's hosting node goes down.
+
+**What about data loss?**
+
+The consumer uses *Client Auto Acknowledgement* therefore it will not lose
+ messages due to failures that may occur while processing the message.
+
+However, queued messages -i.e. messages which are already in the queue- may be lost if
+the messages are not sent with persistent flag. By default, Spring Cloud Stream will
+send messages as persistent unless we change it. Non-persistent messages are only kept
+in memory and if the queue's hosting node goes down, they will be lost.
+
+*IMPORTANT*: We are always taking about queued messages. We are not talking yet about all kind of messages, including those which are about to be sent by the producer.
+
+**Is this consumer highly available?**
+
+By default, this consumer is **not highly available**. Its uptime depends on the
+uptime of queue's hosting node goes down.
+
+Is this suitable for my case? That depends on your business case. If the consumer
+can tolerate a downtime of less than an hour which is the maximum time any of nodes
+can be down then this consumer is suitable. Else, we need to make it HA. Look at the [next](#ha-durable-consumer) type of application.
+
+
+### HA Durable consumer
+
+In order to improve the availability of the [durable-consumer](#durable-consumer) application
+we are going to configure the queue as mirrored.
+There are two ways:
+- The queue's name must follow some naming convention, e.g. `ha-*`, because there is a policy
+that configures those queues as *Mirror queue*.
+- Application puts (using the Management Rest API) a custom policy which configures the queue
+as *Mirrored*.
+
+
+**TODO** Investigate how to use QuorumQueues
+
+### Resilient consumer processing
+
+**TODO**
+
+`maxAttempts`, `backOffX`, `defaultRetryable`, `retryableExceptions`
+https://cloud.spring.io/spring-cloud-static/spring-cloud-stream/current/reference/html/spring-cloud-stream.html#_consumer_properties
+
+
+### Fire-and-forget producer
+
+This type of producer does not guarantee that the message is delivered to all
+bound queues. Instead, it sends the message and forgets about it. If there were
+issues with the message, the message would be lost.
+
+---
+
+We can find an example of this type of producer in the project [transient-consumer](transient-consumer). It is the `ScheduledTradeRequester` producer that we have used so far.
+
+**When is this type of producer useful**
+
+- When data is not massively critical and consumers can tolerate message loss.
+- Especially interesting when the consumers are of type transient
+- When consumers use some eviction strategy in their queues, either max-length or ttl.
+
+
+### Guarantee Delivery producer
+
+This type of producer guarantee that the message is always delivered to all bound queues.
+
+To do it, the producer uses these mechanisms:
+1. Publish messages using *RabbitMQ Publisher Confirms*. A message is said to be delivered only
+when we receive a confirmation for it. Without this mechanism, we are doing *fire-and-forget*.
+2. Retry failed attempt to publish a message.
+3. Retry *Negative Publisher Confirm*.
+4. Publish messages as *persistent* otherwise the broker may loose them when the queue is
+offline (this is when the queue's hosting node goes down).
+
+When the producer sends critical messages it automatically implies that they will
+be consumed by durable consumers. To further improve the delivery guarantees of the producer
+we use these additional mechanisms:
+1. Declare all destination queues, a.k.a, *consumer groups*, using a new property called `requiredGroups`. A message may need to be delivered to more than one application. Hence, the producer has to be told which those *consumer groups* are.
+
+
+## Testing Applications
+
+### How to deploy RabbitMQ
 
 By default, all the sample applications are configured to connect to a 3-node cluster
 which we launch it by running:
@@ -25,19 +202,7 @@ deploy-rabbit
 > It will deploy a standalone server on port 5672
 
 
-## Application with transient subscriptions
-
-We can find this application under `scenario-1` folder.
-
-It consists of 2 Spring `@Service`(s). One is a producer service (p`ScheduledTradeRequester`) and a second is a consumer service (`TradeLogger`). The consumer service uses transient, a.k.a. non-durable,
-subscriptions. This means that the consumer will only receive messages sent while it is listening to
-them. It uses non-durable, auto-delete queues.
-
-This application automatically declares the AMQP resources such as exchanges, queues and bindings.
-Otherwise we would have to configure (e.g. `missingQueuesFatal`) it to deal with situations where those resources do not exist.
-
-
-### Verify resiliency
+### Verify resiliency of Transient consumer
 
 Out of the box, the application is pretty resilient to connection failures as we will
 see in the next sections. It lacks of guarantee of delivery which we will address
@@ -219,9 +384,7 @@ management UI on `rmq0`.
 7. Notice application recovers and keeps publishing. The consumer has lost a few messages though.
 
 
-### Guarantee of delivery
-
-#### Zero guarantee of delivery on the producer
+### Verify Guarantee of delivery of fire-and-forget producer
 
 - Producer does not use publisher confirmation. If RabbitMQ fail to deliver a message
 to a queue due to an internal issue or simply because the RabbitMQ rejects it, the
@@ -232,24 +395,16 @@ an alternate exchange either.
 - When producer fails to send (i.e. send operation throws an exception) a message,
 the producer is pretty basic and it does not retry it.
 
-#### Some Guarantees of delivery on the consumer while it is running
+#### Verify Guarantee of delivery on the transient consumer while it is subscribed
 
-- Consumer will only get messages while it is running. Once we stop it, all messages which
-were still in the queue are lost and also any message sent afterwards. This is because the
-consumer service, TradeLogger, is an anonymous consumer. This means that the queue named
- `<channel_destination_name>.anonymous.<unique_id>` e.g. `q_trade_confirmations.anonymous.XbaJDGmDT7mNEgD6_ru9zw` is:
-  - non-durable
-  - exclusive
-  - *auto-delete*   
-- As long as the consumer is running, messages are delivered with all guarantees:
+As long as the consumer is running, messages are delivered with all guarantees:
   - consumer only acks messages after it has successfully processed them
   - it processes messages in strict order (prefetch=1)
 
-Do we need to make this type of queue mirrored? Not really, because an *auto-delete*
-queue will be automatically deleted as soon as its last consumer has cancelled or when
-the connection is lost.
+**TODO** simulate processing failure
+**TODO** test poison messages and how to deal with them
 
-#### Zero guarantees of delivery on the consumer
+#### Verify zero guarantee of delivery on the transient consumer when connection drops
 
 This time we are launching producer and consumer on separate application/process
 and we are going to perform a rolling restart.
@@ -272,19 +427,7 @@ received so far 11 trades however this is the 12th trade sent. We lost one.
   Received [11] Trade 12 (account: 2) done
   ```
 
-## Application with durable subscriptions
-
-We are using the same application -under `scenario-1` folder- but this time we are using a different
-consumer `@Service` called `DurableTradeLogger`. This service uses a *Consumer Group*
-called after its name `trade-logger` which creates a durable queue called
-`queue.trade-logger`.
-
-We switched to durable subscriptions so that we did not lose messages. However, we need to
-ensure that the producer stream uses `deliveryMode: PERSISTENT` which is the default
-value though. If the producer did not send messages as persistent, they will be lost
-if the queue's hosting node goes down.
-
-#### Failure 2 - Shutdown queue hosting node
+#### Verify durable consumer - Failure 2 - Shutdown queue hosting node
 
 Our consumer will not be able to consume while the queue's hosting node is down. Furthermore,
 if the producer does not use mandatory flag and/or alternate-exchange, those messages are lost too.
@@ -322,15 +465,8 @@ If we want to limit the amount of retries and terminate the application we have 
 If we cannot afford to lose messages and/or have downtime of our consumer service then
 we should make the queue highly available. Take a look at [Application with highly available subscriptions](#Application-with-highly-available-subscriptions).
 
-## Ensure delivery guarantee on the producer - Declare the consumer groups' queues
+### Verify delivery guarantee on the producer - Declare the consumer groups' queues
 
-In the previous section, we introduced a durable subscriber with a consumer group called
-`trade-logger`. This was to prevent message loss when the consumer was not running or listening.
-However, if we cannot afford to lose any message, we need to configure the producer to declare the queue using a new property called `requiredGroups`.
-
-This version of the application is now under `scenario-2`.
-
-Follow the instructions to test it:
 1. Destroy the cluster and recreate it again so that we start without any queues
 ```
 ./destroy-rabbit-cluster
@@ -340,11 +476,10 @@ Follow the instructions to test it:
 ```
 ./run.sh --scheduledTradeRequester=true
 ```
-3. Check the queue `trades.trade-logger` exists and it is getting messages
+3. Check the queue `trades.trade-logger` exists and it is getting messages even though
+the consumer has not started yet.
 
-### Failure 2 - Shutdown queue hosting node
-
-Our producer will not guarantee delivery when the queue's hosting node is down.
+However, our producer will not guarantee delivery when the queue's hosting node is down.
 These are the two scenarios we can encounter:
 
 - The producer starts up and the queue's hosting node is down. In this scenario,
@@ -356,17 +491,3 @@ the queue's hosting node goes down. The messages will go no where, they will be 
 Conclusion: Adding `requiredGroups` setting in the producer, help us in reducing the
 amount of message loss but it does not prevent it entirely. It is convenient because we
 can start applications, producer or consumer, in any order. However, we are coupling the producer with the consumer. Also, should we added more consumer groups, we would have to reconfigure our producer application.
-
-
-## Application with highly available subscriptions
-
-In order to address the issues found in the [previous](#Application-with-durable-subscriptions) scenario
-we are going to make the queue mirrored.
-
-**TODO** Investigate how to use QuorumQueues
-
-
-## Resilient consumer processing
-
-`maxAttempts`, `backOffX`, `defaultRetryable`, `retryableExceptions`
-https://cloud.spring.io/spring-cloud-static/spring-cloud-stream/current/reference/html/spring-cloud-stream.html#_consumer_properties
