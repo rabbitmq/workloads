@@ -11,14 +11,14 @@ different levels of data loss and/or downtime tolerance.
 	- [Transient consumer](#transient-consumer)
 	- [Durable consumer](#durable-consumer)
 	- [HA Durable consumer](#ha-durable-consumer)
-	- [Resilient consumer processing](#resilient-consumer-processing)
+	- [Reliable consumer](#reliable-consumer)
 	- [Fire-and-forget producer](#fire-and-forget-producer)
 	- [Guarantee Delivery producer](#guarantee-delivery-producer)
 - [Testing Applications](#testing-applications)
 	- [How to deploy RabbitMQ](#how-to-deploy-rabbitmq)
 	- [Verify resiliency of Transient consumer](#verify-resiliency-of-transient-consumer)
 	- [Verify Guarantee of delivery of fire-and-forget producer](#verify-guarantee-of-delivery-of-fire-and-forget-producer)
-	- [Verify delivery guarantee on the producer - Declare the consumer groups' queues](#verify-delivery-guarantee-on-the-producer-declare-the-consumer-groups-queues)
+	- [Verify delivery guarantee on the producer - Ensure the consumer groups' queues exists](#verify-delivery-guarantee-on-the-producer-ensure-the-consumer-groups-queues-exists)
 	- [Verify delivery guarantee on the producer - Ensure messages are successfully sent](#verify-delivery-guarantee-on-the-producer-ensure-messages-are-successfully-sent)
 
 <!-- /TOC -->
@@ -153,6 +153,12 @@ If we need to have strict ordering of processing of messages we need to use `exc
 ### HA Durable consumer
 
 In order to improve the availability of the [durable-consumer](#durable-consumer) application
+we need to use highly available queues so that if the queue's hosting node goes down, we
+switch to a replica/slave node. 
+
+#### HA Durable consumer with classical mirrored queues
+
+In order to improve the availability of the [durable-consumer](#durable-consumer) application
 we are going to configure the queue as mirrored.
 There are two ways:
 - The queue's name must follow some naming convention, e.g. `ha-*`, because there is a policy
@@ -160,17 +166,53 @@ that configures those queues as *Mirror queue*.
 - Application puts (using the Management Rest API) a custom policy which configures the queue
 as *Mirrored*.
 
+#### HA Durable consumer with quorum queues
 
-**TODO** Investigate how to use QuorumQueues
+It requires [SCS 3.0.0-RELEASE](https://cloud.spring.io/spring-cloud-static/spring-cloud-stream-binder-rabbit/3.0.0.RELEASE/reference/html/spring-cloud-stream-binder-rabbit.html)
 
-### Resilient consumer processing
+We need to configure the RabbitMQ Binder's consumer bindings with `quorum.enabled: true`.
 
-By default, Spring Cloud Stream will use client acknowledgement (`acknowledgeMode: AUTO)`. It will reject messages if the application failed to process and it will not requeue them. We can change this behaviour though with `requeueRejected: true`. But be careful changing this value because it could produce a storm of poisonous messages unless the application raises an `AmqpRejectAndDontRequeueException`.
+If we want producers to declare the consumer's queue via the `requiredGroups` then we have to
+also specify `quorum.enabled: true` in the RabbitMQ Binder's producer bindings.
 
-**TODO**
 
-`maxAttempts`, `backOffX`, `defaultRetryable`, `retryableExceptions`
-https://cloud.spring.io/spring-cloud-static/spring-cloud-stream/current/reference/html/spring-cloud-stream.html#_consumer_properties
+### Reliable consumer
+
+By default, Spring Cloud Stream will use client acknowledgement (`acknowledgeMode: AUTO)`.
+
+#### Dealing with processing failures
+
+If the listener fails to process the message and throws an exception (different to `AmqpRejectAndDontRequeueException`), SCS nacks the message and the broker delivers it again.
+
+However, if the listener keeps failing, SCS will eventually reject it and the message is lost if the queue has not been configured with a *dead-letter-queue* (see [next](#Dealing-with-processing-failures-without-losing-messages) section).
+
+These are the consumer bindings' [settings](https://cloud.spring.io/spring-cloud-static/spring-cloud-stream/current/reference/html/spring-cloud-stream.html#_consumer_properties) that control the retries:
+  - `maxAttempts: 3`
+  - `backOffInitialInterval: 1000`
+  - `backOffMaxInterval: 1000`
+  - `defaultRetryable: true`
+  - `retryableExceptions`
+
+
+> We can change this behaviour though with `requeueRejected: true`. But be careful changing this value because it could produce a storm of poisonous messages unless the application raises an `AmqpRejectAndDontRequeueException`.
+
+> We should not retry exceptions related to parsing or deserializing messages and/or
+business exceptions.
+> we should retry exceptions related to infrastructure such as connectivity issues to downstream
+services over http, jdbc, etc.
+
+
+#### Dealing with processing failures without losing messages
+
+Once we have exceeded the maximum of number of retries, we want to move the message to an
+error queue so that we do not lose it and it can be handled separately.
+
+**TODO** add dlq profile to turn on DLQ feature.
+
+**VERY IMPORTANT**: Once we configure our queue with DLQ or any other features via one of the
+SCS settings, we cannot change it otherwise our application fails to declare it. Moreover, if we
+also configure the producer -via `requiredGroups`- to declare the queue, we will see failures
+happening in both, consumer and producer. Those failures are not fatal but annoying.
 
 
 ### Fire-and-forget producer
@@ -501,7 +543,7 @@ If we want to limit the amount of retries and terminate the application we have 
 If we cannot afford to lose messages and/or have downtime of our consumer service then
 we should make the queue highly available. Take a look at [Application with highly available subscriptions](#Application-with-highly-available-subscriptions).
 
-### Verify delivery guarantee on the producer - Declare the consumer groups' queues
+### Verify delivery guarantee on the producer - Ensure the consumer groups' queues exists
 
 1. Destroy the cluster and recreate it again so that we start without any queues
 ```
@@ -558,5 +600,5 @@ have not been confirmed yet (`pendingTrades`).
 6. Remove the max-length limit and we see the producer successfully sends pending trades and continues
 with newer ones.
 ```
-PORT=15673 ./unset_limit_on_queue 
+PORT=15673 ./unset_limit_on_queue
 ```

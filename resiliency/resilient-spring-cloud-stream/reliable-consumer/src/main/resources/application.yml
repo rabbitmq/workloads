@@ -1,0 +1,19 @@
+
+logging:
+  pattern.console: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%-40.40logger{1}){cyan} %msg %n"
+  level:
+    com.pivotal.resilient: debug
+
+spring:
+  application:
+    name: durable-consumer
+  profiles:
+    include:
+      - management
+      - cluster
+  cloud:
+    stream:
+      bindings: # spring cloud stream binding configuration
+        durable-trade-logger-input:
+          destination: trades
+          group: trade-logger

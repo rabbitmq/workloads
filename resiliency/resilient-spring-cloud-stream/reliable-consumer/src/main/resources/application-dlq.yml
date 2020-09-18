@@ -1,0 +1,10 @@
+
+spring:
+  cloud:
+    stream:
+      rabbit:
+        bindings:
+          durable-trade-logger-input:
+            consumer:
+              autoBindDlq: true
+
