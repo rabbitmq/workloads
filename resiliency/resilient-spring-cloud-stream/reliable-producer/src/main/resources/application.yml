@@ -1,8 +1,9 @@
 
 logging:
-  pattern.console: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%-40.40logger{1}){cyan} %msg %n"
+  pattern.console: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} [%t]  %clr(%-40.40logger{1}){cyan} %msg %n"
   level:
     com.pivotal.resilient: debug
+
 
 spring:
   application:
@@ -13,7 +14,6 @@ spring:
       - cluster
   cloud:
     stream:
-
       bindings: # spring cloud stream binding configuration
         outboundTradeRequests:
           destination: trades
@@ -27,3 +27,4 @@ spring:
             producer:
               deliveryMode: PERSISTENT # default value. Here for completeness
               confirmAckChannel: trades.confirm # channel where to receive publish confirms
+

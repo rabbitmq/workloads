@@ -109,7 +109,7 @@ not running at the particular point of time. Once it reconnects to the broker, a
 
 ---
 
-We can find an example f¡of this type of consumer in the project [durable-consumer](durable-consumer).
+We can find an example of this type of consumer in the project [durable-consumer](durable-consumer).
 It consists of one durable consumer called `DurableTradeLogger`. This service uses a *Consumer Group*
 called after its name `trade-logger` which creates a durable queue called
 `queue.trade-logger`.
@@ -154,7 +154,7 @@ If we need to have strict ordering of processing of messages we need to use `exc
 
 In order to improve the availability of the [durable-consumer](#durable-consumer) application
 we need to use highly available queues so that if the queue's hosting node goes down, we
-switch to a replica/slave node. 
+switch to a replica/slave node.
 
 #### HA Durable consumer with classical mirrored queues
 
@@ -179,6 +179,13 @@ also specify `quorum.enabled: true` in the RabbitMQ Binder's producer bindings.
 ### Reliable consumer
 
 By default, Spring Cloud Stream will use client acknowledgement (`acknowledgeMode: AUTO)`.
+Thus, even if our listener threw an exception while processing a message, it would not be lost.
+The message would be returned back to the queue and delivered it again. This retry mechanism
+is enabled by default on SCS as we will see in the [next](#dealing-with-processing-failures) section.
+
+In order to test consumer's reliability, we need to simulate failures while processing
+messages. For this reason, we have created another consumer project called [reliable-consumer](reliable-consumer). It still has the same durable consumer called `DurableTradeLogger` however we
+
 
 #### Dealing with processing failures
 
@@ -194,20 +201,22 @@ These are the consumer bindings' [settings](https://cloud.spring.io/spring-cloud
   - `retryableExceptions`
 
 
-> We can change this behaviour though with `requeueRejected: true`. But be careful changing this value because it could produce a storm of poisonous messages unless the application raises an `AmqpRejectAndDontRequeueException`.
+> We can change this behaviour with `requeueRejected: true`. But be careful changing this value because it could produce a storm of poisonous messages unless the application raises an `AmqpRejectAndDontRequeueException`.
 
-> We should not retry exceptions related to parsing or deserializing messages and/or
-business exceptions.
-> we should retry exceptions related to infrastructure such as connectivity issues to downstream
+> We should not retry exceptions related to parsing/deserializing messages and/or
+business exceptions. Because it will always fail.
+> Whereas, we should retry infrastructure related exceptions such as connectivity issues to downstream
 services over http, jdbc, etc.
 
 
 #### Dealing with processing failures without losing messages
 
-Once we have exceeded the maximum of number of retries, we want to move the message to an
+Once the consumer has exceeded the maximum of number of retries, we want to move the message to an
 error queue so that we do not lose it and it can be handled separately.
 
-**TODO** add dlq profile to turn on DLQ feature.
+SCS RabbitMQ binder allows to configure a queue with a dead-letter-queue. All we need to do is
+add a `autoBindDlq: true` to the consumer channel. Check out [application-dlq](reliable-consumer/src/main/resources/application-dlq.yml).
+
 
 **VERY IMPORTANT**: Once we configure our queue with DLQ or any other features via one of the
 SCS settings, we cannot change it otherwise our application fails to declare it. Moreover, if we
@@ -257,7 +266,7 @@ Configure the RabbitMQ binder so that we receive confirmations of successfully s
 
 *IMPORTANT*: The connection factory must be configured to enable publisher confirms.
 
-Configure RabbitMQ's binder (`application-cluster.yml`)to use publisher confirms and publisher returns.
+Configure RabbitMQ's binder (`application-cluster.yml`) to use publisher confirms and publisher returns.
 
 
 ## Testing Applications
@@ -601,4 +610,32 @@ have not been confirmed yet (`pendingTrades`).
 with newer ones.
 ```
 PORT=15673 ./unset_limit_on_queue
+```
+
+### Verify delivery guarantee on the consumer when it fails to process a message
+
+1. Launch the producer.
+```
+cd reliable-producer
+./run.sh
+```
+2. Launch the consumer. It will fail to process tradeId `3` two times. However, SCS
+ retries it 3 times.
+```
+cd reliable-consumer
+./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=2
+```
+3. Notice in the consumer log how it fails and the message is retried. We can try to
+kill the consumer before it exhausts all the attempts to ensure that the message
+stays in the queue, i.e. it is not lost.
+
+### Verify delivery guarantee on the consumer when it gives up retrying to process a message
+
+If in the previous scenario, we used `--chaos.maxFailTimes=3` or greater than 3, the message
+would be rejected and dropped/lost because we did not configure the queue with a dead-letter-queue.
+
+To run the `reliable-consumer` with a dlq we are going to run it like this :
+```
+cd reliable-consumer
+SPRING_PROFILES_ACTIVE=dlq ./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=3
 ```
