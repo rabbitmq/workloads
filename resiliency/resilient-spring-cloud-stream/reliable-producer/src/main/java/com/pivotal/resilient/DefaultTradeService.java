@@ -69,7 +69,7 @@ public class DefaultTradeService implements TradeService {
         logger.info("[attempts:{},sent:{}] Requesting {}", attemptCount, sentCount, trade);
 
         MessageTracker tracker = MessageTracker.instance(trade);
-        send(tracker);
+        pendingTrades.put(trade.getId(), send(tracker));
 
         attemptCount++;
 

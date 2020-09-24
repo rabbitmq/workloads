@@ -243,30 +243,52 @@ We can find an example of this type of producer in the project [transient-consum
 
 ### Guarantee Delivery producer
 
-This type of producer guarantee that the message is always delivered to all bound queues.
+First of all, let's clarify what we mean by guarantee of delivery.
 
-To do it, the producer uses these mechanisms:
+There are at least 2 ways to ensure that messages do get delivered (i.e. arrive to the destination queue(s)).
+
+ The interactive way where the sender/caller expects to get a confirmation when the message is eventually delivered or when it could not be. Depending how we implement it, the caller can wait until the message is *confirmed* before continue the business transaction or it can do it asynchronously.
+
+ [TradeRequesterController.execute-async]() method is an example. It calls a TradeService which
+ sends the message and returns back a *CompletableFuture*. Once the message is delivered -Successfully
+ or not- we will know it. If it is successful, we return the delivered Trade else an error.
+
+ The offline way where the sender/caller does not expect a confirmation, it is like the fire-and-forget.
+ However, there is some logic running in the background that ensures that messages get delivered. And
+ when they cannot be delivered, it notifies it somehow. Either by logging it, or sending it to an external service (http, jdbc, etc) or maybe sending it to another RabbitMQ cluster. The difference
+ lies in that the sender does not need to know when or whether it was sent.
+
+ [TradeRequesterController.execute]() method is an example. It calls a TradeService which
+ sends the message and it immediately returns. At this point, we do not know whether the message
+ was delivered or not. Under the covers, the `DefaultTradeService` awaits for the confirmation
+ in the background, and retries if it fails. At the moment, after 3 failed attempts, it gives up
+ and does nothing but logging it.
+
+ By the way, regardless which way we use, the `DefaultTradeService` will retry failed messages.
+ However, with the interactive way, the caller knows when it was delivered and can do something
+ differently when it was not. It could even abort the entire transaction. Whereas with the
+ offline way, we cannot.
+
+
+Regardless which way we want, we must use the following core RabbitMQ features, which they will
+tell us when a message was delivered and when not. By themselves will not prevent message loss.
 1. Publish messages using *RabbitMQ Publisher Confirms*. A message is said to be delivered only
 when we receive a confirmation for it. Without this mechanism, we are doing *fire-and-forget*.
 2. Retry failed attempt to publish a message.
-3. Retry *Negative Publisher Confirm*.
+3. Retry *Negative Publisher Confirm* and/or *Returned* messages
 4. Publish messages as *persistent* otherwise the broker may loose them when the queue is
 offline (this is when the queue's hosting node goes down).
 
-When the producer sends critical messages it automatically implies that they will
-be consumed by durable consumers. To further improve the delivery guarantees of the producer
-we use these additional mechanisms:
+In terms of Spring Cloud Stream, this is what we need to do:
 1. Declare all destination queues, a.k.a, *consumer groups*, using a new property called `requiredGroups`. A message may need to be delivered to more than one application. Hence, the producer has to be told which those *consumer groups* are.
+> Note 1: If we cannot lose messages the destination queues must be durable, hence we need to use
+*consumer group* feature.   
+> Note 2: We are tightly coupling the producer and the consumer when we ask the producer to declare the destination queues. It is not bad nor good, it depends on your case.
 
----
+2. Configure `producer.errorChannelEnabled: true` so that *send failures* are sent to an error channel for the destination. The destination's error channel is called <destinationName>.errors e.g. `destinationName.errors`
+3. Configure the RabbitMQ binder so that we receive confirmations of successfully sent Trades (`producer.confirmAckChannel`). We need to specify the name of the channel. Unsuccessful confirmations are sent to the *error channel*.
+4. Configure RabbitMQ's binder (`application-cluster.yml`) to use publisher confirms and publisher returns.
 
-Configure `errorChannelEnabled: true` so that *send failures* are sent to an error channel for the destination. We need this setting so that we can configure the following one. The error channel is called <destinationName>.errors e.g. `destinationName.errors`
-
-Configure the RabbitMQ binder so that we receive confirmations of successfully sent Trades. We need to specify the name of the channel. Unsuccessful confirmations are sent to the *error channel*.
-
-*IMPORTANT*: The connection factory must be configured to enable publisher confirms.
-
-Configure RabbitMQ's binder (`application-cluster.yml`) to use publisher confirms and publisher returns.
 
 
 ## Testing Applications
@@ -581,36 +603,64 @@ can start applications, producer or consumer, in any order. However, we are coup
 
 ### Verify delivery guarantee on the producer - Ensure messages are successfully sent
 
-1. Launch the producer. By default, `--scheduledTradeRequester=true` is already set.
+1. Launch the producer.
 ```
+cd reliable-producer
 ./run.sh
 ```
-2. Check that messages go to the `trades.trade-logger` queue and also new logging statements that
-informs the message was successfully sent.
+2. Request a trade (offline way)
 ```
-[sent:27] Requesting Trade{accountId=6, asset='null', amount=0, buy=false, timestamp=0}
-Received publish confirm => Trade{accountId=6, asset='null', amount=0, buy=false, timestamp=0}
+./request-trade
 ```
-3. Put a max-length limit on the queue by invoking the following script that puts a policy.
+3. Check that it sent a message go to the `trades.trade-logger` queue and also new logging statements that informs the message was successfully sent.
 ```
-PORT=15673 ./set_limit_on_queue "trade-logger" 5
+c.p.r.DefaultTradeService                [attempts:0,sent:0] Requesting Trade{tradeId=1accountId=23asset=nullamount=0buy=falsetimestamp=0}
+c.p.r.DefaultTradeService                Sending trade 1 with correlation 1600954559449 . Attempt #1
+c.p.r.DefaultTradeService                Sent trade 1
+c.p.r.DefaultTradeService                Received publish confirm w/id 1600954559449 => Trade{tradeId=1accountId=23asset=nullamount=0buy=falsetimestamp=0}
+c.p.r.DefaultTradeService                Removing 1 completed trades
 ```
-> PORT=15673 allows us to target the first node in the cluster otherwise it would use 15672
+4. Put a max-length limit on the queue by invoking the following script that puts a policy.
+```
+PORT=15674 ./set_limit_on_queue trade-logger 3
+```
+> PORT=15674 allows us to target the first node in the cluster otherwise it would use 15672
 
-4. Notice that after 5 messages, it starts reporting errors.
+5. Request a trade (offline way)
 ```
-2020-09-17 19:58:07.145 c.p.r.ScheduledTradeRequester            [attempts:2,sent:0] Requesting Trade{accountId=3, asset='null', amount=0, buy=false, timestamp=0}
-2020-09-17 19:58:07.151 c.p.r.ScheduledTradeRequester            An error occurred while publishing Trade{accountId=3, asset='null', amount=0, buy=false, timestamp=0}```
+./request-trade
 ```
 
-5. The producer has been programmed so that it does not send more trades but retry trades which
-have not been confirmed yet (`pendingTrades`).
+6. Notice that it fails and it retries 3 times. See also that our http request succeeded.
+```
+```
 
-6. Remove the max-length limit and we see the producer successfully sends pending trades and continues
+7. Request a trade (interactive way)
+```
+./request-trade-async
+```
+
+8. Notice that it fails and it retries 3 times. See also that our http request failed.
+```
+```
+
+9. Remove the max-length limit and we see the producer successfully sends pending trades and continues
 with newer ones.
 ```
 PORT=15673 ./unset_limit_on_queue
 ```
+
+10. Remove the binding of `trades.trade-logger` queue so that messages do not get to any queue.
+
+11. Request a trade (interactive way)
+```
+./request-trade-async
+```
+
+12. Notice that it fails and it retries 3 times. See also that our http request failed.
+```
+```
+
 
 ### Verify delivery guarantee on the consumer when it fails to process a message
 
