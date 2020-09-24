@@ -156,7 +156,7 @@ The logs -coming from Spring AMQP- reveal the list of AMQP addresses configured 
 
 To run it locally all you need to do is either use the command `run.sh` or if you want to run it from your preferred IDE declare the following environment variables:
 - `SPRING_PROFILES_ACTIVE` with the value `Cloud`
-- `VCAP_APPLICATION` with the value `'{"application_name":demo}'`
+- `VCAP_APPLICATION` with the value `='{"instance_id": "0001", "name": "demo", "space_id": "flamingo"}'`
 - `VCAP_SERVICES` with the value copied from either [src/main/resources/cluster.json](resilient-skeleton-spring-rabbitmq/src/main/resources/cluster.json) or  [src/main/resources/singleNode.json](resilient-skeleton-spring-rabbitmq/src/main/resources/singleNode.json)
 
 ### RabbitMQ Metrics
@@ -165,7 +165,7 @@ Although it is not strictly necessary to talk about metrics at this stage where 
 
 If you run the command below against the skeleton application running [locally](#To-run-it-locally) it returns all the metrics emitted the Java RabbitMQ client:
 ```
-curl -s localhost:8080/actuator/metrics | jq -r .names[] | grep rabbitmq | sort
+curl -s localhost:8080/actuator/metrics | jq -r '.names[]' | grep rabbitmq | sort
 
 rabbitmq.acknowledged
 rabbitmq.acknowledged_published
@@ -182,13 +182,13 @@ rabbitmq.unrouted_published
 
 If we ran the command below we would get back the value `2`.
 ```
-curl localhost:8080/actuator/metrics/rabbitmq.connections | jq .measurements[].value
+curl localhost:8080/actuator/metrics/rabbitmq.connections | jq '.measurements[].value'
 
 2
 ```
 
 And to get the connections opened from the `producer` connectionFactory, we run
-`curl localhost:8080/actuator/metrics/rabbitmq.connections?tag=name:producer | jq .measurements[].value` which produces the value `1`.
+`curl localhost:8080/actuator/metrics/rabbitmq.connections?tag=name:producer | jq '.measurements[].value'` which produces the value `1`.
 
 
 We have tagged the metrics so that we can identify the originator. These are the tags and [here](resilient-skeleton-spring-rabbitmq/src/main/java/com/pivotal/resilient/CloudConfig.java#L59-L65) you can find where we set them up in the code.
