@@ -5,7 +5,7 @@ logging:
     com.pivotal.resilient: debug
 
 
-tradeService: basic
+tradeService: default
 
 spring:
   application:

@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @Service
-//@EnableBinding(DefaultTradeService.MessagingBridge.class)
+@EnableBinding(DefaultTradeService.MessagingBridge.class)
 @EnableScheduling
 @ConditionalOnProperty(name="tradeService", havingValue = "default", matchIfMissing = false)
 public class DefaultTradeService implements TradeService {
@@ -112,7 +112,7 @@ public class DefaultTradeService implements TradeService {
                 .peek(t -> {
                     logger.info("trade {} failed after exceeding maxAttempts", t.trade.getId());
                     try {
-                        t.task.completeExceptionally(new IllegalStateException("Exceeded maxInFlight"));
+                        t.task.completeExceptionally(new IllegalStateException("Exceeded maxAttempts"));
                     }catch(RuntimeException e) {
                         logger.error("Error occurred while exceptionally completing trade {} due to {}",
                                 t.trade.getId(), e.getMessage());
@@ -147,9 +147,16 @@ public class DefaultTradeService implements TradeService {
     }
     private ConcurrentMap<Long, MessageTracker> pendingTrades = new ConcurrentHashMap<>();
 
-   // @ServiceActivator(inputChannel = "trades.errors")
+    @ServiceActivator(inputChannel = "errorChannel")
+    public void globalError(Message<?> message) {
+        logger.error("Received on errorChannel {}", message);
+
+        error(message);
+    }
+
+    @ServiceActivator(inputChannel = "trades.errors")
     public void error(Message<?> message) {
-        logger.error("Received error {}", message);
+        logger.error("Received on trades.errors {}", message);
 
         if (message.getPayload() instanceof ReturnedAmqpMessageException) {
             try {
@@ -175,7 +182,8 @@ public class DefaultTradeService implements TradeService {
         Long tradeId = (Long)amqpMessage.getMessageProperties().getHeaders().get("tradeId");
         String id = (String)amqpMessage.getMessageProperties().getHeaders().get("correlationId");
         logger.error("Returned Trade {}", tradeId);
-        pendingTrades.get(tradeId).returned(id);
+
+        Optional.ofNullable(pendingTrades.get(tradeId)).ifPresent(t -> t.returned(id));
         return tradeId;
     }
     private Long nackedMessage(NackedAmqpMessageException e) {
@@ -183,17 +191,20 @@ public class DefaultTradeService implements TradeService {
         Long tradeId = (Long)amqpMessage.getHeaders().get("tradeId");
         String id = (String)amqpMessage.getHeaders().get("correlationId");
         logger.error("Nacked Trade {}", tradeId);
-        pendingTrades.get(tradeId).nacked(id);
+        Optional.ofNullable(pendingTrades.get(tradeId)).ifPresent(t -> t.nacked(id));
         return tradeId;
     }
 
 
-   // @ServiceActivator(inputChannel = "trades.confirm")
+    @ServiceActivator(inputChannel = "trades.confirm")
     public void handlePublishConfirmedTrades(Message<Trade> message) {
-        try {
-            Trade trade = message.getPayload();
-            MessageTracker tracker = pendingTrades.get(trade.getId());
+        Trade trade = message.getPayload();
+        Optional.ofNullable(pendingTrades.get(trade.getId())).ifPresent(t -> confirmTrade(message, t));
+    }
 
+    private void confirmTrade(Message<Trade> message, MessageTracker tracker) {
+        try {
+            Trade trade = tracker.trade;
             String id = message.getHeaders().get("correlationId", String.class);
             if (tracker.delivered(id)) {
                 logger.info("Received publish confirm w/id {} => {}", id, trade);
@@ -213,7 +224,6 @@ public class DefaultTradeService implements TradeService {
             e.printStackTrace();
         }
     }
-
     static class MessageState {
         enum State { Sending, Delivered, Nacked, Returned }
         String id;

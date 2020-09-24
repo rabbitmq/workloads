@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+set +x
+
+curl -X POST  -H "Content-Type: application/json" localhost:8080/execute-async -d '{ "accountId": 23 }'
