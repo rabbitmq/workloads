@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.cloud.stream.annotation.Output;
+import org.springframework.cloud.stream.annotation.StreamListener;
 import org.springframework.integration.amqp.support.NackedAmqpMessageException;
 import org.springframework.integration.amqp.support.ReturnedAmqpMessageException;
 import org.springframework.integration.annotation.ServiceActivator;
@@ -83,12 +84,12 @@ public class BasicTradeService implements TradeService {
     }
 
     @ServiceActivator(inputChannel = "errorChannel")
-    public void error2(Message<?> message) {
-        logger.error("Received error2 {}", message);
+    public void globalError(Message<?> message) {
+        logger.error("errorChannel received {}", message);
     }
     @ServiceActivator(inputChannel = "trades.errors")
     public void error(Message<?> message) {
-        logger.error("Received error {}", message);
+        logger.error("trades.errors received {}", message);
 
         if (message.getPayload() instanceof ReturnedAmqpMessageException) {
             try {
