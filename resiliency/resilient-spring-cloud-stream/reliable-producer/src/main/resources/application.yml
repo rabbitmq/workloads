@@ -5,6 +5,8 @@ logging:
     com.pivotal.resilient: debug
 
 
+tradeService: basic
+
 spring:
   application:
     name: durable-consumer

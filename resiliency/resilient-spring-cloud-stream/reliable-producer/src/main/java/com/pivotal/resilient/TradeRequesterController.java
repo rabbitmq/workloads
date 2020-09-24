@@ -19,7 +19,11 @@ public class TradeRequesterController {
     TradeSequencer tradeSequencer;
 
     @PostMapping("/execute")
-    public CompletableFuture<Trade> execute(@RequestBody Trade tradeRequest) {
+    public Trade execute(@RequestBody Trade tradeRequest) {
         return tradeService.send(tradeSequencer.next(tradeRequest));
+    }
+    @PostMapping("/execute-async")
+    public CompletableFuture<Trade> executeAsync(@RequestBody Trade tradeRequest) {
+        return tradeService.sendAsync(tradeSequencer.next(tradeRequest));
     }
 }
