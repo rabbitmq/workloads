@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @Service
-@EnableBinding(DefaultTradeService.MessagingBridge.class)
+//@EnableBinding(DefaultTradeService.MessagingBridge.class)
 @EnableScheduling
 @ConditionalOnProperty(name="tradeService", havingValue = "default", matchIfMissing = false)
 public class DefaultTradeService implements TradeService {
@@ -147,7 +147,7 @@ public class DefaultTradeService implements TradeService {
     }
     private ConcurrentMap<Long, MessageTracker> pendingTrades = new ConcurrentHashMap<>();
 
-    @ServiceActivator(inputChannel = "trades.errors")
+   // @ServiceActivator(inputChannel = "trades.errors")
     public void error(Message<?> message) {
         logger.error("Received error {}", message);
 
@@ -188,7 +188,7 @@ public class DefaultTradeService implements TradeService {
     }
 
 
-    @ServiceActivator(inputChannel = "trades.confirm")
+   // @ServiceActivator(inputChannel = "trades.confirm")
     public void handlePublishConfirmedTrades(Message<Trade> message) {
         try {
             Trade trade = message.getPayload();

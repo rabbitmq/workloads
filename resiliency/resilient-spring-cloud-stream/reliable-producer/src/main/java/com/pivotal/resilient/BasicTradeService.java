@@ -82,6 +82,10 @@ public class BasicTradeService implements TradeService {
 
     }
 
+    @ServiceActivator(inputChannel = "errorChannel")
+    public void error2(Message<?> message) {
+        logger.error("Received error2 {}", message);
+    }
     @ServiceActivator(inputChannel = "trades.errors")
     public void error(Message<?> message) {
         logger.error("Received error {}", message);
