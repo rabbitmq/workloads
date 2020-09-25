@@ -5,7 +5,21 @@ The goal is to propose various types of Spring Cloud Stream applications. Each t
 different levels of data loss and/or downtime tolerance.
 
 **Table of content**
+<!-- TOC depthFrom:2 depthTo:3 withLinks:1 updateOnSave:1 orderedList:0 -->
 
+- [Application types](#application-types)
+	- [Transient consumer](#transient-consumer)
+	- [Durable consumer](#durable-consumer)
+	- [HA Durable consumer](#ha-durable-consumer)
+	- [Reliable consumer](#reliable-consumer)
+	- [Fire-and-forget producer](#fire-and-forget-producer)
+	- [Guarantee Delivery producer](#guarantee-delivery-producer)
+- [Testing Applications](#testing-applications)
+	- [How to deploy RabbitMQ](#how-to-deploy-rabbitmq)
+	- [Verify resiliency of Transient consumer](#verify-resiliency-of-transient-consumer)
+	- [Verify Guarantee of delivery of fire-and-forget producer](#verify-guarantee-of-delivery-of-fire-and-forget-producer)
+
+<!-- /TOC -->
 
 ## Application types
 
@@ -278,7 +292,7 @@ In terms of Spring Cloud Stream, this is what we need to do:
 ## Testing Applications
 
 Out of the 5 applications we have seen, some of them gracefully handle some failures but
-not others. And very applications handle gracefully all kind of failures, or at least,
+not others. And only two applications gracefully handle all kind of failures, or at least,
 the failures we are going to test in this workshop.
 
 The testing methodology is very simple:
@@ -287,29 +301,29 @@ The testing methodology is very simple:
 3. Then pick an application which does gracefully handle it and test it;
 
 The type of failures are:
-1. Resiliency related failures:
-  a. RabbitMQ is not available when application starts
-  b. Restart a cluster node
-  c. Rolling restart of cluster nodes
-  d. Kill/drop connection -consumer and/or producer- (repeatedly)
-  e. Pause nodes
-  f. Unresponsive connections
-2. Guarantee of delivery related failures:
-  a. Consumer fail while processing a message
-  b. Connection drops while processing a message
-  c. Consumer receives a *Poison message*
-  d. Producer fail to send a message (due to connection/channel errors)
-  e. Broker nacks sent message
-  f. Broker returns sent message
-  g. Broker blocks producers
+1. Resiliency related failures:  
+  a. RabbitMQ is not available when application starts  
+  b. Restart a cluster node  
+  c. Rolling restart of cluster nodes  
+  d. Kill/drop connection -consumer and/or producer- (repeatedly)  
+  e. Pause nodes  
+  f. Unresponsive connections  
+2. Guarantee of delivery related failures:  
+  a. Consumer fail while processing a message  
+  b. Connection drops while processing a message  
+  c. Consumer receives a *Poison message*  
+  d. Producer fail to send a message (due to connection/channel errors)  
+  e. Broker nacks sent message  
+  f. Broker returns sent message  
+  g. Broker blocks producers  
 
-Applications:
- A. Transient consumer
- B. Durable consumer
- C. HA Durable consumer
- D. Reliable consumer
- E. Fire-and-forget producer
- F. Guarantee Delivery producer
+Applications:  
+ A. Transient consumer  
+ B. Durable consumer  
+ C. HA Durable consumer  
+ D. Reliable consumer  
+ E. Fire-and-forget producer  
+ F. Guarantee Delivery producer  
 
   |      |  A  | B  | C  | D  | E  | F  |
   |------|-----|----|----|----|----|----|
