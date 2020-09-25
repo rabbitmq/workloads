@@ -1,0 +1,18 @@
+
+
+spring:
+  cloud:
+    stream:
+      binders:
+        local_rabbit:
+          type: rabbit
+          defaultCandidate: true
+          environment:
+            spring:
+              rabbitmq:
+                addresses: localhost:25673
+                username: guest
+                password: guest
+                virtual-host: /
+                publisher-confirms: true
+                publisher-returns: true

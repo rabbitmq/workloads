@@ -492,6 +492,80 @@ management UI on `rmq0`.
 6. Start `rmq2`, `rmq3`
 7. Notice application recovers and keeps publishing. The consumer has lost a few messages though.
 
+#### Failure 8 - Unresponsive connections
+
+We are going to simulate buggy or unresponsive connections.
+
+**Get the environment ready**
+
+1. Launch ToxiProxy
+```
+docker/deploy-toxiproxy
+```
+2. Get a list of proxies currently installed
+```
+$ docker/toxiproxy-cli list
+Name			Listen		Upstream		Enabled		Toxics
+======================================================================================
+no proxies
+```
+3. Create an AMQP proxy to simulate buggy connections. We are going to proxy the first node in the cluster, `rmq0`.
+```
+docker/toxiproxy-cli create rabbit --listen 0.0.0.0:25673 -upstream rmq0:5672
+```
+
+If we list the proxies again, we should see:
+```
+../docker/toxiproxy-cli list
+Name			Listen		Upstream		Enabled		Toxics
+======================================================================================
+rabbit			[::]:25673	rmq0:5672		enabled		None
+
+Hint: inspect toxics with `toxiproxy-cli inspect <proxyName>`
+```
+
+4. Configure our application to connect via `localhost:25673` and launch it.
+```
+SPRING_PROFILES_ACTIVE=toxi ./run.sh
+```
+We configured the `proxi` profile here: [src/main/resources/application-toxi.yml](). It
+just configure a single amqp address `localhost:25673`.
+
+**Simulate connection drop by disabling the proxy**
+
+1. Disable the proxy
+```
+./toxiproxy-cli toggle rabbit
+Proxy rabbit is now disabled
+```
+The application detects the connection dropped:
+```
+o.s.a.r.c.CachingConnectionFactory       Channel shutdown: connection error
+o.s.a.r.c.CachingConnectionFactory       Channel shutdown: connection error
+```
+2. Request a trade
+```
+./request-trade
+```
+It will fail though:
+```
+c.p.r.DefaultTradeService                Sending trade 2 with correlation 1601019379310 . Attempt #1
+o.s.a.r.c.CachingConnectionFactory       Attempting to connect to: [localhost:25673]
+o.a.c.c.C.[.[.[.[dispatcherServlet]      Servlet.service() for servlet [dispatcherServlet] in context with path [] threw exception [Request processing failed; nested exception is org.springframework.messaging.MessageHandlingException: error occurred in message handler [org.springframework.integration.amqp.outbound.AmqpOutboundEndpoint@4578370e]; nested exception is org.springframework.amqp.AmqpIOException: java.io.IOException, failedMessage=GenericMessage [payload=byte[73], headers={resend=true, correlationId=1601019379310, id=da831fec-ea0c-a00b-cc7f-434e3a406a15, contentType=application/json, tradeId=2, account=23, timestamp=1601019379310}]] with root cause
+```
+3. Enable the proxy
+```
+./toxiproxy-cli toggle rabbit
+Proxy rabbit is now enabled
+```
+4. Request a trade should work this time
+```
+./request-trade
+```
+
+**Simulate unresponsive connection**
+
+**TODO**
 
 ### Verify Guarantee of delivery of fire-and-forget producer
 
@@ -574,7 +648,7 @@ If we want to limit the amount of retries and terminate the application we have 
 If we cannot afford to lose messages and/or have downtime of our consumer service then
 we should make the queue highly available. Take a look at [Application with highly available subscriptions](#Application-with-highly-available-subscriptions).
 
-### Verify delivery guarantee on the producer - Ensure the consumer groups' queues exists
+#### Verify delivery guarantee on the producer - Ensure the consumer groups' queues exists
 
 1. Destroy the cluster and recreate it again so that we start without any queues
 ```
@@ -601,7 +675,7 @@ Conclusion: Adding `requiredGroups` setting in the producer, help us in reducing
 amount of message loss but it does not prevent it entirely. It is convenient because we
 can start applications, producer or consumer, in any order. However, we are coupling the producer with the consumer. Also, should we added more consumer groups, we would have to reconfigure our producer application.
 
-### Verify delivery guarantee on the producer - Ensure messages are successfully sent
+#### Verify delivery guarantee on the producer - Ensure messages are successfully sent
 
 1. Launch the producer.
 ```
@@ -662,7 +736,7 @@ PORT=15673 ./unset_limit_on_queue
 ```
 
 
-### Verify delivery guarantee on the consumer when it fails to process a message
+#### Verify delivery guarantee on the consumer when it fails to process a message
 
 1. Launch the producer.
 ```
@@ -679,7 +753,7 @@ cd reliable-consumer
 kill the consumer before it exhausts all the attempts to ensure that the message
 stays in the queue, i.e. it is not lost.
 
-### Verify delivery guarantee on the consumer when it gives up retrying to process a message
+#### Verify delivery guarantee on the consumer when it gives up retrying to process a message
 
 If in the previous scenario, we used `--chaos.maxFailTimes=3` or greater than 3, the message
 would be rejected and dropped/lost because we did not configure the queue with a dead-letter-queue.

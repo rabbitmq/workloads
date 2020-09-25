@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+function stop_if_running {
+  docker rm -f toxiproxy 2>/dev/null || echo "toxiproxy was not running"
+}
+function run {
+  docker run -d --name toxiproxy --net rabbitmq_net \
+    -p 8474:8474 \
+    -p 25673:25673 \
+    shopify/toxiproxy
+}
+
+stop_if_running
+run
