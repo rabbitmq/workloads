@@ -7,11 +7,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.cloud.stream.annotation.Output;
+import org.springframework.context.annotation.Bean;
 import org.springframework.integration.amqp.support.NackedAmqpMessageException;
 import org.springframework.integration.amqp.support.ReturnedAmqpMessageException;
 import org.springframework.integration.annotation.ServiceActivator;
+import org.springframework.integration.channel.PublishSubscribeChannel;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.MessageChannel;
+import org.springframework.messaging.SubscribableChannel;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -147,7 +150,12 @@ public class DefaultTradeService implements TradeService {
     }
     private ConcurrentMap<Long, MessageTracker> pendingTrades = new ConcurrentHashMap<>();
 
-    @ServiceActivator(inputChannel = "errorChannel")
+    @Bean("trades.errors")
+    SubscribableChannel tradesErrors() {
+        return new PublishSubscribeChannel();
+    }
+
+//    @ServiceActivator(inputChannel = "errorChannel")
     public void globalError(Message<?> message) {
         logger.error("Received on errorChannel {}", message);
 
