@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# OTHER VARIABLES
+SERVER_NAME=toxiproxy
+
+function destroy {
+  echo "Destroying $SERVER_NAME  ...."
+  docker kill $SERVER_NAME
+}
+
+destroy
