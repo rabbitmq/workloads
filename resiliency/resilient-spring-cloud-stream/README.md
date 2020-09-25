@@ -313,8 +313,8 @@ The type of failures are:
   b. Connection drops while processing a message  
   c. Consumer receives a *Poison message*  
   d. Producer fail to send a message (due to connection/channel errors)  
-  e. Broker nacks sent message  
-  f. Broker returns sent message  
+  e. Broker nacks a message (i.e. sent message does not get delivered)
+  f. Broker returns a message (i.e. sent message does not get delivered)
   g. Broker blocks producers  
 
 Applications:  
