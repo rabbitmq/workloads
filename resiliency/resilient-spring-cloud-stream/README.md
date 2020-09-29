@@ -8,7 +8,7 @@ Not all applications requires the same level of resiliency, or message delivery 
 tolerance to downtime. For this reason, we are going to create different kinds of consumer and producer applications, where each type gives us certain level of resiliency and/or guarantee
 of delivery.
 
-On the [first section]((#application-types), we introduce various types of applications attending to the their level of resiliency. And on the [second section](#testing-applications), we test those applications from two angles: resiliency and guarantee of delivery.
+On the [first section](#application-types), we introduce various types of applications attending to the their level of resiliency and guarantee of delivery. And on the [second section](#testing-applications), we test those applications from two angles: resiliency and guarantee of delivery.
 
 
 **Table of content**
@@ -27,7 +27,7 @@ On the [first section]((#application-types), we introduce various types of appli
 		- [Can I add more consumer instances to increase throughput](#can-i-add-more-consumer-instances-to-increase-throughput)
 		- [Is this consumer highly available](#is-this-consumer-highly-available)
 		- [What about strict order processing of messages](#what-about-strict-order-processing-of-messages)
-	- [HA Durable consumer](#ha-durable-consumer)
+	- [Highly available Durable consumer](#highly-available-durable-consumer)
 		- [HA Durable consumer with classical mirrored queues](#ha-durable-consumer-with-classical-mirrored-queues)
 		- [HA Durable consumer with quorum queues](#ha-durable-consumer-with-quorum-queues)
 	- [Reliable consumer](#reliable-consumer)
@@ -177,7 +177,7 @@ uptime of queue's hosting node goes down.
 
 Is this suitable for my case? That depends on your business case. If the consumer
 can tolerate a downtime of less than an hour which is the maximum time any of nodes
-can be down then this consumer is suitable. Else, we need to make it HA. Look at the [next](#ha-durable-consumer) type of application.
+can be down then this consumer is suitable. Else, we need to make it HA. Look at the [next](#highly-available-durable-consumer) type of application.
 
 #### What about strict order processing of messages
 
@@ -185,7 +185,7 @@ If we need to have strict ordering of processing of messages we need to use `exc
 
 **TODO** investigate how to set *single-active-consumer* on SCS
 
-### HA Durable consumer
+### Highly available Durable consumer
 
 In order to improve the availability of the [durable-consumer](#durable-consumer) application we need to use highly available queues so that if the queue's hosting node goes down, we switch to a replica/slave node.
 
