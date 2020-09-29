@@ -342,10 +342,10 @@ The type of failures we are going test are:
   f. Pause nodes  
   g. Unresponsive connections  
 2. Guarantee of delivery related failures:  
-  a. Consumer fail while processing a message  
+  a. Consumer fails to process a message  
   b. Connection drops while processing a message  
   c. Consumer receives a *Poison message*  
-  d. Producer fail to send a message (due to connection/channel errors)  
+  d. Producer fails to send a message (due to connection/channel errors)  
   e. Broker nacks a message (i.e. sent message does not get delivered)  
   f. Broker returns a message (i.e. sent message does not get delivered)  
   g. Broker blocks producers  
@@ -353,16 +353,15 @@ The type of failures we are going test are:
 ### Resiliency Matrix
 
 
-
 |      |  Transient consumer  | Durable consumer  | HA Durable consumer  | Reliable consumer  | Fire-and-forget producer  | Guarantee Delivery producer  |
 |------|:-----:|:----:|:----:|:----:|:----:|:----:|
 | [`1.a`](#1a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
-|`1.b`|:white_check_mark:|    |    |    |    |    |   
-|`1.c`|:white_check_mark:|    |    |    |    |    |   
-|`1.d`|:white_check_mark:|    |    |    |    |    |   
-|`1.e`|:white_check_mark:|    |     |    |    |    |   
-|`1.f`|:white_check_mark:|    |     |    |    |    |   
-|`1.g`|     |    |     |    |    |    |   
+|[`1.b`](#1b)|:white_check_mark:|    |    |    |    |    |   
+|[`1.c`](#1c)|:white_check_mark:|    |    |    |    |    |   
+|[`1.d`](#1d)|:white_check_mark:|    |    |    |    |    |   
+|[`1.e`](#1e)|:white_check_mark:|    |     |    |    |    |   
+|[`1.f`](#1f)|:white_check_mark:|    |     |    |    |    |   
+|[`1.g`](#1g)|     |    |     |    |    |    |   
 |`2.a`|      |    |    |    |    |    |   
 |`2.b`|     |    |    |    |    |    |   
 |`2.c`|     |    |    |    |    |    |   
