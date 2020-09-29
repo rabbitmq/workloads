@@ -5,10 +5,7 @@ The goal of this workload is to provide guidance to developers on how to write S
 other words, that it does not loose messages.
 
 Not all applications requires the same level of resiliency, or message delivery guarantee or
-tolerance to downtime. For this reason, we are going to create different kinds of consumer and producer applications, where each type gives us certain level of resiliency and/or guarantee
-of delivery.
-
-On the [first section](#application-types), we introduce various types of applications attending to the their level of resiliency and guarantee of delivery. And on the [second section](#testing-applications), we test those applications from two angles: resiliency and guarantee of delivery.
+tolerance to downtime. For this reason, we are going to create [different kinds of consumer and producer applications](#application-types), where each type gives us certain level of resiliency and/or guarantee of delivery. And then we are going to [test](#testing-applications) them against various [failure scenarios](#failure-scenarios).
 
 
 **Table of content**
