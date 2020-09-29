@@ -345,10 +345,12 @@ The type of failures we are going test are:
   a. Consumer fails to process a message  
   b. Connection drops while processing a message  
   c. Consumer receives a *Poison message*  
-  d. Producer fails to send a message (due to connection/channel errors)  
-  e. Broker nacks a message (i.e. sent message does not get delivered)  
-  f. Broker returns a message (i.e. sent message does not get delivered)  
-  g. Broker blocks producers  
+	d. Consumer gives up after failing to process a message (same as c.)
+  e. Producer fails to send a message (due to connection/channel errors)  
+  f. Broker nacks a message (i.e. sent message does not get delivered)  
+  g. Broker returns a message (i.e. sent message does not get delivered)  
+	h. Queue's hosting node down while sending messages to it (same as g.)
+  i. Broker blocks producers  
 
 ### Resiliency Matrix
 
@@ -362,16 +364,18 @@ The type of failures we are going test are:
 |[`1.e`](#1e)|:white_check_mark:|    |     |    |    |    |   
 |[`1.f`](#1f)|:white_check_mark:|    |     |    |    |    |   
 |[`1.g`](#1g)|     |    |     |    |    |    |   
-|`2.a`|      |    |    |    |    |    |   
-|`2.b`|     |    |    |    |    |    |   
-|`2.c`|     |    |    |    |    |    |   
-|`2.d`|     |    |    |    |    |     |   
-|`2.e`|     |    |    |    |    |    |   
-|`2.f`|     |    |     |    |    |    |   
-|`2.g`|     |    |     |    |    |    |   
+|[`2.a`](#2a)|      |    |    |    |    |    |   
+|[`2.b`](#2b)|     |    |    |    |    |    |   
+|[`2.c`](#2c)|     |    |    |    |    |    |   
+|[`2.d`](#2d)|     |    |    |    |    |     |   
+|[`2.e`](#2e)|     |    |    |    |    |    |   
+|[`2.f`](#2f)|     |    |     |    |    |    |   
+|[`2.g`](#2g)|     |    |     |    |    |    |   
+|[`2.h`](#2h)|     |    |     |    |    |    |   
+|[`2.i`](#2i)|     |    |     |    |    |    |   
 
-:white_check_mark:
-:x:
+:white_check_mark: Application is resilient to the failure
+:x: Application is not resilient to the failure
 
 ### How to deploy RabbitMQ
 
@@ -553,29 +557,7 @@ because the queue is deleted and recreated it again.
 **TODO** Investigate: I noticed that the consumer connection creates 2 channels after it recovers the connection rather than just one. However, it does not keep opening further channels should it
 recovered from additional connection failures.
 
-
-### <a name="1g"></a> Verify guarantee of delivery - 2.g Block producers
-
-We are going to force RabbitMQ to trigger a memory alarm by setting the high water mark to 0.
-This should only impact the producer connections and let consumer connections carry on.
-
-1. Launch both roles (`tradeLogger` and `scheduledTradeRequester`) together in the same application, but the a slower consumer so that we create a queue backlog
-```bash
-./run.sh --tradeLogger=true --scheduledTradeRequester=true --processingTime=5s
-```
-2. Wait a couple of seconds until we produce a backlog
-3. Set high water mark to zero
-```bash
-docker-compose -f ../docker/docker-compose.yml exec rmq0 rabbitmqctl set_vm_memory_high_watermark 0
-```
-4. Watch the queue depth goes to zero, i.e. the consumer is able to consume.
-5. Watch messages stop coming to RabbitMQ. However, they are piling up in the tcp buffers.
-When we restore the high water mark, we will see all those messages sent to RabbitMQ.
-```bash
-docker-compose -f ../docker/docker-compose.yml  exec rmq0 rabbitmqctl set_vm_memory_high_watermark 1.0
-```
-
-### Verify resiliency - 1.e Pause nodes
+### <a name="1e"></a> Verify resiliency - 1.e Pause nodes
 
 We are going to pause a node, which is similar to what happen when a network partition occurs
 and the node is on the minority and we are using *pause_minority* cluster partition handling.
@@ -672,6 +654,95 @@ Proxy rabbit is now enabled
 **Simulate unresponsive connection**
 
 **TODO**
+
+
+
+### <a name="2a"></a> Verify Guarantee of delivery - 2.a Consumer fail to process a message
+
+As long as the consumer is running, messages are delivered with all guarantees:
+  - consumer only acks messages after it has successfully processed them
+  - it processes messages in strict order (prefetch=1)
+
+**TODO** simulate processing failure
+**TODO** test poison messages and how to deal with them
+
+#### :white_check_mark: All consumer types will never lose the message
+
+1. Launch the producer.
+```
+cd reliable-producer
+./run.sh
+```
+2. Launch the consumer. It will fail to process tradeId `3` two times. However, SCS
+ retries it 3 times.
+```
+cd reliable-consumer
+./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=2
+```
+3. Notice in the consumer log how it fails and the message is retried. We can try to
+kill the consumer before it exhausts all the attempts to ensure that the message
+stays in the queue, i.e. it is not lost.
+
+### <a name="2b"></a> Verify Guarantee of delivery - 2.b Connection drops while processing a message
+
+#### :x: Fire-and-forget looses all enqueued messages so far
+
+This time we are launching producer and consumer on separate application/process
+and we are going to perform a rolling restart.
+
+1. Start producer
+  ```bash
+  SPRING_PROFILES_ACTIVE=cluster ./run.sh --scheduledTradeRequester=true
+  ```
+2. Start consumer (on a separate terminal)  
+  ```bash
+  SPRING_PROFILES_ACTIVE=cluster ./run.sh --tradeLogger=true --server.port=8082
+  ```
+3. Rolling restart
+  ```bash
+  ./rolling-restart
+  ```
+4. Watch the consumer logs and eventually we will notice a discrepancy. It has
+received so far 11 trades however this is the 12th trade sent. We lost one.
+  ```
+  Received [11] Trade 12 (account: 2) done
+  ```
+
+### <a name="2c"></a> Verify delivery guarantee - 2.c Consumer receives a Poison message
+
+#### :x: All consumers except the reliable does lose the message
+
+After retrying a number of times, the message is rejected and the broker drops it.
+
+#### :white_check_mark: Reliable consumer does not lose the message but it moves it to a DLQ
+
+1. Launch the producer.
+```
+cd reliable-producer
+./run.sh
+```
+2. Launch the consumer. It will fail to process tradeId `3` two times. However, SCS
+ retries it 3 times.
+```
+cd reliable-consumer
+./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=2
+```
+3. Notice in the consumer log how it fails and the message is retried. We can try to
+kill the consumer before it exhausts all the attempts to ensure that the message
+stays in the queue, i.e. it is not lost.
+
+
+### Verify delivery guarantee - Consumer gives up after failing to process a message
+
+If in the previous scenario, we used `--chaos.maxFailTimes=3` or greater than 3, the message
+would be rejected and dropped/lost because we did not configure the queue with a dead-letter-queue.
+
+To run the `reliable-consumer` with a dlq we are going to run it like this :
+```
+cd reliable-consumer
+SPRING_PROFILES_ACTIVE=dlq ./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=3
+```
+
 
 ### Verify Guarantee of delivery - Connection drops while sending a message
 
@@ -778,44 +849,7 @@ c.p.r.DefaultTradeService                Removing 1 completed trades
 ```
 
 
-### Verify Guarantee of delivery - Consumer fail to process a message
-
-As long as the consumer is running, messages are delivered with all guarantees:
-  - consumer only acks messages after it has successfully processed them
-  - it processes messages in strict order (prefetch=1)
-
-**TODO** simulate processing failure
-**TODO** test poison messages and how to deal with them
-
-#### :white_check_mark: All consumer types will never lose the message
-
-
-### Verify Guarantee of delivery - Connection drops while processing a message
-
-#### :x: Fire-and-forget looses all enqueued messages so far
-
-This time we are launching producer and consumer on separate application/process
-and we are going to perform a rolling restart.
-
-1. Start producer
-  ```bash
-  SPRING_PROFILES_ACTIVE=cluster ./run.sh --scheduledTradeRequester=true
-  ```
-2. Start consumer (on a separate terminal)  
-  ```bash
-  SPRING_PROFILES_ACTIVE=cluster ./run.sh --tradeLogger=true --server.port=8082
-  ```
-3. Rolling restart
-  ```bash
-  ./rolling-restart
-  ```
-4. Watch the consumer logs and eventually we will notice a discrepancy. It has
-received so far 11 trades however this is the 12th trade sent. We lost one.
-  ```
-  Received [11] Trade 12 (account: 2) done
-  ```
-
-### Verify durable consumer - Failure 2 - Shutdown queue hosting node
+### Verify Guarantee of delivery - Queue's hosting node down while sending messages to it
 
 Our consumer will not be able to consume while the queue's hosting node is down. Furthermore,
 if the producer does not use mandatory flag and/or alternate-exchange, those messages are lost too.
@@ -884,30 +918,24 @@ can start applications, producer or consumer, in any order. However, we are coup
 
 
 
-### Verify delivery guarantee - Consumer fails to process a message
 
-1. Launch the producer.
-```
-cd reliable-producer
-./run.sh
-```
-2. Launch the consumer. It will fail to process tradeId `3` two times. However, SCS
- retries it 3 times.
-```
-cd reliable-consumer
-./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=2
-```
-3. Notice in the consumer log how it fails and the message is retried. We can try to
-kill the consumer before it exhausts all the attempts to ensure that the message
-stays in the queue, i.e. it is not lost.
+### <a name="2g"></a> Verify guarantee of delivery - 2.g Block producers
 
-### Verify delivery guarantee - Consumer gives up after failing to process a message
+We are going to force RabbitMQ to trigger a memory alarm by setting the high water mark to 0.
+This should only impact the producer connections and let consumer connections carry on.
 
-If in the previous scenario, we used `--chaos.maxFailTimes=3` or greater than 3, the message
-would be rejected and dropped/lost because we did not configure the queue with a dead-letter-queue.
-
-To run the `reliable-consumer` with a dlq we are going to run it like this :
+1. Launch both roles (`tradeLogger` and `scheduledTradeRequester`) together in the same application, but the a slower consumer so that we create a queue backlog
+```bash
+./run.sh --tradeLogger=true --scheduledTradeRequester=true --processingTime=5s
 ```
-cd reliable-consumer
-SPRING_PROFILES_ACTIVE=dlq ./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=3
+2. Wait a couple of seconds until we produce a backlog
+3. Set high water mark to zero
+```bash
+docker-compose -f ../docker/docker-compose.yml exec rmq0 rabbitmqctl set_vm_memory_high_watermark 0
+```
+4. Watch the queue depth goes to zero, i.e. the consumer is able to consume.
+5. Watch messages stop coming to RabbitMQ. However, they are piling up in the tcp buffers.
+When we restore the high water mark, we will see all those messages sent to RabbitMQ.
+```bash
+docker-compose -f ../docker/docker-compose.yml  exec rmq0 rabbitmqctl set_vm_memory_high_watermark 1.0
 ```
