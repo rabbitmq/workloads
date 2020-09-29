@@ -345,7 +345,7 @@ The type of failures we are going test are:
   a. Consumer fails to process a message  
   b. Connection drops while processing a message  
   c. Consumer receives a *Poison message*  
-	d. Consumer gives up after failing to process a message (same as c.)
+	d. Consumer gives up after failing to process a message (same as c.)  
   e. Producer fails to send a message (due to connection/channel errors)  
   f. Broker nacks a message (i.e. sent message does not get delivered)  
   g. Broker returns a message (i.e. sent message does not get delivered)  
