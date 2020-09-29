@@ -25,15 +25,13 @@ different levels of data loss and/or downtime tolerance.
 
 ### Transient consumer
 
-A transient consumer is one where messages are delivered to the consumer application only when that application is running and connected to the broker. Messages sent while the application is
-disconnected are lost.
+A **transient consumer** only receives messages sent after the consumer connected to the broker and declared its *non-durable* queue bound to the corresponding *exchange*. If the consumer disconnects from the broker, it looses the queue and all its messages.
 
 This type of consumer creates a queue named `<channel_destination_name>.anonymous.<unique_id>` e.g. `q_trade_confirmations.anonymous.XbaJDGmDT7mNEgD6_ru9zw` with this attributes:
   - *non-durable*
   - *exclusive*
   - *auto-delete*   
 
----
 
 We can find an example of this type of consumer in the project [transient-consumer](transient-consumer).
 
@@ -50,7 +48,7 @@ This application automatically declares the AMQP resources such as exchanges, qu
 ELK;
 - keep local-cache up-to-date
 
-#### What about data loss?
+#### What about data loss
 
 As we already know it will not get messages delivered while it is not connected.
 Once connected, the consumer uses *Client Auto Acknowledgement* therefore it will not lose
@@ -71,7 +69,7 @@ non-durable, auto-delete and exclusive.
 queue will be automatically deleted as soon as its last consumer is cancelled or when
 the connection is lost.
 
-#### Is this consumer resilient to connection failures?
+#### Is this consumer resilient to connection failures
 
 There are different reasons why we may experience connections failure:
 
@@ -102,18 +100,16 @@ keep retrying until the resource is declared. Or give up and terminate after N f
 
 ### Durable consumer
 
-A durable consumer means that messages it is subscribed to will be delivered even when it is
-not running at the particular point of time. Once it reconnects to the broker, all the messages that were posted in the meantime will be delivered immediately.
-
----
+A **durable consumer** receives messages sent after the consumer connected to the broker
+and created the *durable queue* bound to the corresponding *exchange*. However, contrary to
+the [Transient consumer](#transient-consumer), when **Durable consumer** disconnects from the broker, the queue remains in the broker receiving more messages. Once the **Durable consumer** reconnects to the broker, all the messages that were posted in the meantime will be delivered.
 
 We can find an example of this type of consumer in the project [durable-consumer](durable-consumer).
-It consists of one durable consumer called `DurableTradeLogger`. This service uses a *Consumer Group*
-called after its name `trade-logger` which creates a durable queue called
+It consists of one durable consumer called `DurableTradeLogger`. This service uses a *Consumer Group* called after its name `trade-logger` which creates a durable queue called
 `queue.trade-logger`.
 
 We switched to durable subscriptions so that we did not lose messages. However, we need to
-ensure that the producer stream uses `deliveryMode: PERSISTENT` which is the default
+ensure that the message producer uses `deliveryMode: PERSISTENT` which is the default
 value though. If the producer did not send messages as persistent, they will be lost
 if the queue's hosting node goes down.
 
@@ -176,13 +172,11 @@ also specify `quorum.enabled: true` in the RabbitMQ Binder's producer bindings.
 
 ### Reliable consumer
 
-By default, Spring Cloud Stream will use client acknowledgement (`acknowledgeMode: AUTO)`.
-Thus, even if our listener threw an exception while processing a message, it would not be lost.
-The message would be returned back to the queue and delivered it again. This retry mechanism
-is enabled by default on SCS as we will see in the [next](#dealing-with-processing-failures) section.
+By default, Spring Cloud Stream uses client acknowledgement (`acknowledgeMode: AUTO)`.
+This means that if our listener threw an exception while processing a message, it would not be lost. Instead, the message is nacked and returned back to the queue and delivered again. This retry mechanism is enabled by default on SCS as we will see in the [next](#dealing-with-processing-failures) section.
 
 In order to test consumer's reliability, we need to simulate failures while processing
-messages. For this reason, we have created another consumer project called [reliable-consumer](reliable-consumer). It still has the same durable consumer called `DurableTradeLogger` however we
+messages. For this reason, we have created another consumer project called [reliable-consumer](reliable-consumer). It still has the same durable consumer called `DurableTradeLogger`.
 
 
 #### Dealing with processing failures
@@ -225,10 +219,14 @@ happening in both, consumer and producer. Those failures are not fatal but annoy
 ### Fire-and-forget producer
 
 This type of producer does not guarantee that the message is delivered to all
-bound queues. Instead, it sends the message and forgets about it. If there were
-issues with the message, the message would be lost.
+bound queues. Instead, it sends the message and forgets about it.
 
----
+The following circumstances will cause a message to be lost however this producer will
+never know it because it does not expect confirmation that it was sent:
+- connection drops with the message in transit
+- the broker rejects the message (e.g. due to *ttl* or *max-length* policy)
+- the broker could not find a destination queue for it
+- the broker failed to accept the message due to an internal error
 
 We can find an example of this type of producer in the project [transient-consumer](transient-consumer). It is the `ScheduledTradeRequester` producer that we have used so far.
 
@@ -317,19 +315,23 @@ The type of failures are:
   f. Broker returns a message (i.e. sent message does not get delivered)  
   g. Broker blocks producers  
 
-Applications:  
- A. Transient consumer  
- B. Durable consumer  
- C. HA Durable consumer  
- D. Reliable consumer  
- E. Fire-and-forget producer  
- F. Guarantee Delivery producer  
 
-  |      |  A  | B  | C  | D  | E  | F  |
-  |------|-----|----|----|----|----|----|
-  | 1.a  |     |    |    |    |    |    |   
-  | 1.b  |     |    |    |    |    |    |   
-  | 1.c  |     |    |    |    |    |    |   
+|      |  Transient consumer  | Durable consumer  | HA Durable consumer  | Reliable consumer  | Fire-and-forget producer  | Guarantee Delivery producer  |
+|------|:-----:|:----:|:----:|:----:|:----:|:----:|
+| `1.a`  |  :heavy_check_mark:    |    |    |    |    |    |   
+| `1.b`  |     |    |    |    |    |    |   
+| `1.c`  |     |    |    |    |    |    |   
+| `1.d`  |     |    |    |    |    |  :x:   |   
+| `1.e`  |     |    |   :x:  |    |    |    |   
+| `1.f`  |     |    |   :x:  |    |    |    |   
+| `2.a`  |  :heavy_check_mark:    |    |    |    |    |    |   
+| `2.b`  |     |    |    |    |    |    |   
+| `2.c`  |     |    |    |    |    |    |   
+| `2.d`  |     |    |    |    |    |  :x:   |   
+| `2.e`  |     |    |   :x:  |    |    |    |   
+| `2.f`  |     |    |   :x:  |    |    |    |   
+| `2.g`  |     |    |   :x:  |    |    |    |   
+
 
 ### How to deploy RabbitMQ
 
@@ -616,7 +618,7 @@ an alternate exchange either.
 - When producer fails to send (i.e. send operation throws an exception) a message,
 the producer is pretty basic and it does not retry it.
 
-#### Verify Guarantee of delivery on the transient consumer while it is subscribed
+### Verify Guarantee of delivery on the transient consumer while it is subscribed
 
 As long as the consumer is running, messages are delivered with all guarantees:
   - consumer only acks messages after it has successfully processed them
@@ -625,7 +627,7 @@ As long as the consumer is running, messages are delivered with all guarantees:
 **TODO** simulate processing failure
 **TODO** test poison messages and how to deal with them
 
-#### Verify zero guarantee of delivery on the transient consumer when connection drops
+### Verify zero guarantee of delivery on the transient consumer when connection drops
 
 This time we are launching producer and consumer on separate application/process
 and we are going to perform a rolling restart.
@@ -648,7 +650,7 @@ received so far 11 trades however this is the 12th trade sent. We lost one.
   Received [11] Trade 12 (account: 2) done
   ```
 
-#### Verify durable consumer - Failure 2 - Shutdown queue hosting node
+### Verify durable consumer - Failure 2 - Shutdown queue hosting node
 
 Our consumer will not be able to consume while the queue's hosting node is down. Furthermore,
 if the producer does not use mandatory flag and/or alternate-exchange, those messages are lost too.
@@ -686,7 +688,7 @@ If we want to limit the amount of retries and terminate the application we have 
 If we cannot afford to lose messages and/or have downtime of our consumer service then
 we should make the queue highly available. Take a look at [Application with highly available subscriptions](#Application-with-highly-available-subscriptions).
 
-#### Verify delivery guarantee on the producer - Ensure the consumer groups' queues exists
+### Verify delivery guarantee on the producer - Ensure the consumer groups' queues exists
 
 1. Destroy the cluster and recreate it again so that we start without any queues
 ```
@@ -713,7 +715,7 @@ Conclusion: Adding `requiredGroups` setting in the producer, help us in reducing
 amount of message loss but it does not prevent it entirely. It is convenient because we
 can start applications, producer or consumer, in any order. However, we are coupling the producer with the consumer. Also, should we added more consumer groups, we would have to reconfigure our producer application.
 
-#### Verify delivery guarantee on the producer - Ensure messages are successfully sent
+### Verify delivery guarantee on the producer - Ensure messages are successfully sent
 
 1. Launch the producer.
 ```
@@ -774,7 +776,7 @@ PORT=15673 ./unset_limit_on_queue
 ```
 
 
-#### Verify delivery guarantee on the consumer when it fails to process a message
+### Verify delivery guarantee on the consumer when it fails to process a message
 
 1. Launch the producer.
 ```
@@ -791,7 +793,7 @@ cd reliable-consumer
 kill the consumer before it exhausts all the attempts to ensure that the message
 stays in the queue, i.e. it is not lost.
 
-#### Verify delivery guarantee on the consumer when it gives up retrying to process a message
+### Verify delivery guarantee on the consumer when it gives up retrying to process a message
 
 If in the previous scenario, we used `--chaos.maxFailTimes=3` or greater than 3, the message
 would be rejected and dropped/lost because we did not configure the queue with a dead-letter-queue.
