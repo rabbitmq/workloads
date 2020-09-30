@@ -697,17 +697,29 @@ and we are going to perform a rolling restart.
 	cd transient-consumer
   ./run.sh --tradeLogger=true --server.port=8082 --processingTime=5s
   ```
-3. Rolling restart
-  ```bash
-  ./rolling-restart
-  ```
-4. Watch the consumer logs and eventually we will notice a discrepancy. It has
-received so far 11 trades however this is the 12th trade sent. We lost one.
-  ```
-  Received [11] Trade 12 (account: 2) done
-  ```
+3. Stop the producer. Take note of the last Trade id sent
+4. Go to the management ui and take note of the messages in the queue.
+5. Go to the management ui and Kill the consumer's connection
+6. Follow the consumer's log and see that it reconnects but it does not receive any messages.
+It has lost them all.
 
 #### :white_check_mark: Durable consumer does not loose the enqueued messages
+
+1. Start producer
+  ```bash
+	cd transient-consumer
+  ./run.sh --scheduledTradeRequester=true
+  ```
+2. Start durable consumer (on a separate terminal) with a message processing time of
+5seconds to produce a backlog in the queue
+  ```bash
+	cd durable-consumer
+  ./run.sh --durableTradeLogger=true --server.port=8082 --processingTime=5s
+  ```
+3. Stop the producer. Take note of the last Trade id sent
+4. Go to the management ui and Kill the consumer's connection
+5. Follow the consumer's log and see that it reconnects and it receives all messages the
+producer sent.
 
 
 ### <a name="2c"></a> Verify delivery guarantee - 2.c Consumer receives a Poison message
