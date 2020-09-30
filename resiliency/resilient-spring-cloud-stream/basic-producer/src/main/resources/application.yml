@@ -6,7 +6,7 @@ logging:
 
 spring:
   application:
-    name: durable-consumer
+    name: basic-producer
   profiles:
     include:
       - management
@@ -14,6 +14,7 @@ spring:
   cloud:
     stream:
       bindings: # spring cloud stream binding configuration
-        durable-trade-logger-input:
+        outboundTradeRequests:
           destination: trades
-          group: trade-logger
+
+

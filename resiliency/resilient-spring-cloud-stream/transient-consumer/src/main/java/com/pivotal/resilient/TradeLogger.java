@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 @EnableBinding(TradeLogger.MessagingBridge.class)
-@ConditionalOnProperty(name="tradeLogger", matchIfMissing = false)
+@ConditionalOnProperty(name="tradeLogger", matchIfMissing = true)
 public class TradeLogger {
     private final Logger logger = LoggerFactory.getLogger(TradeLogger.class);
 
@@ -46,7 +46,7 @@ public class TradeLogger {
     @StreamListener(MessagingBridge.INPUT)
     public void execute(@Header("account") long account,
                         @Header("tradeId") long tradeId,
-                        @Payload String trade) {
+                        @Payload Trade trade) {
 
         firstTradeId.compareAndSet(0, tradeId);
         long missedTrades = tradeId - firstTradeId.get() - receivedTradeCount;

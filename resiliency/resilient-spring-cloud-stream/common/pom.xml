@@ -4,11 +4,11 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<groupId>com.pivotal.resilient</groupId>
-	<artifactId>transient-consumer</artifactId>
+	<artifactId>common</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>jar</packaging>
 
-	<name>transient-consumer</name>
+	<name>common</name>
 	<description>Demo project for Spring Boot</description>
 
 	<parent>
@@ -17,13 +17,8 @@
 			<version>0.0.1-SNAPSHOT</version>
 			<relativePath>../parent</relativePath>
 	</parent>
-
-	<dependencies>
-		<dependency>
-			<groupId>com.pivotal.resilient</groupId>
-			<artifactId>common</artifactId>
-			<version>${project.version}</version>
-		</dependency>
-	</dependencies>
+	<properties>
+	    <spring-boot.repackage.skip>true</spring-boot.repackage.skip>
+	</properties>
 
 </project>

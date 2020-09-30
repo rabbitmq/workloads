@@ -1,0 +1,26 @@
+
+management:
+  security:
+    enabled: false
+  endpoint:
+    health.show-details: always   # required to expose detailed health status information
+    metrics:
+      enabled: true
+  health:
+    binders:
+      enabled: true     # enable binder's health indicators
+  endpoints:
+    web:
+      exposure:
+        include:
+          - health
+          - metrics
+          - info
+          - env
+          - configprops
+          - prometheus
+          - beans
+          - integrationgraph
+
+
+

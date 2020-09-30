@@ -659,7 +659,7 @@ Proxy rabbit is now enabled
 
 ### <a name="2a"></a> Verify Guarantee of delivery - 2.a Consumer fail to process a message
 
-All consumer types uses client acknowledgment therefore they will only ack a message
+:information_source: All consumer types uses client acknowledgment therefore they will only ack a message
 after it has successfully processed it.  
 
 #### :white_check_mark: All consumer types will never lose the message
@@ -683,8 +683,7 @@ message stays in the queue, i.e. it is not lost
 
 #### :x: Transient consumer looses all enqueued messages so far
 
-This time we are launching producer and consumer on separate application/process
-and we are going to perform a rolling restart.
+This time we are launching producer and consumer on separate application/process.
 
 1. Start producer
   ```bash
@@ -722,13 +721,35 @@ producer sent since it started.
 
 :information_source: The durable consumer has not lost the messages which were in the queue
 right before it lost the connection. It has not lost either the messages the producer sent
-while it was reconnecting. 
+while it was reconnecting.
 
 ### <a name="2c"></a> Verify delivery guarantee - 2.c Consumer receives a Poison message
 
-#### :x: All consumers except the reliable does lose the message
+A *Poison message* is a message that the consumer will never be able to process. Common
+cases are that the consumer is not able to parse the message due to schema conflicts, or
+the message carries invalid data.
 
-After retrying a number of times, the message is rejected and the broker drops it.
+:warning: If we do not limit the number of retries, it could crash all consumer instances,
+consume lots of network bandwidth and cpu in the broker.
+
+#### :x: All consumers without a dlq lose the message
+
+:warning: After retrying a number of times, the message is rejected and the broker drops it.
+
+1. Launch the producer.
+```
+cd transient-consumer
+./run.sh --scheduledTradeRequester=true
+```
+2. Launch the reliable consumer. It will fail to process tradeId `3` three times. SCS
+ retries 3 times at most and then it rejects it.
+```
+cd reliable-consumer
+./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=3
+```
+3. Notice in the consumer log how it fails and the message is retried three times and then it is
+rejected, i.e. it is lost.
+
 
 #### :white_check_mark: Reliable consumer does not lose the message but it moves it to a DLQ
 
@@ -737,15 +758,15 @@ After retrying a number of times, the message is rejected and the broker drops i
 cd reliable-producer
 ./run.sh
 ```
-2. Launch the consumer. It will fail to process tradeId `3` two times. However, SCS
- retries it 3 times.
+2. Launch the consumer. But this time we configure it with a dlq.
 ```
 cd reliable-consumer
-./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=2
+SPRING_PROFILES_ACTIVE=dlq ./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=3 --server.port=8082
 ```
-3. Notice in the consumer log how it fails and the message is retried. We can try to
-kill the consumer before it exhausts all the attempts to ensure that the message
-stays in the queue, i.e. it is not lost.
+3. Notice in the consumer log how it fails and the message is retried 3 times and then
+it moves onto the next message.
+4. Go to the management ui and look for a new queue, called `d`. It has our message.
+
 
 
 ### Verify delivery guarantee - Consumer gives up after failing to process a message

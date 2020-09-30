@@ -5,15 +5,12 @@ logging:
     com.pivotal.resilient: debug
 
 spring:
-  application:
-    name: durable-consumer
-  profiles:
-    include:
-      - management
-      - cluster
   cloud:
     stream:
       bindings: # spring cloud stream binding configuration
-        durable-trade-logger-input:
+        outboundTradeRequests:
           destination: trades
-          group: trade-logger
+          producer:
+            requiredGroups:
+              - trade-logger
+

@@ -34,7 +34,8 @@ public class ScheduledTradeRequester {
         MessageChannel outboundTradeRequests();
     }
 
-    @Autowired private MessagingBridge messagingBridge;
+    @Autowired
+    private MessagingBridge messagingBridge;
 
     public ScheduledTradeRequester() {
         logger.info("Created");
@@ -45,17 +46,16 @@ public class ScheduledTradeRequester {
 
     @Scheduled(fixedDelayString = "${tradeRateMs:1000}")
     public void produceTradeRequest() {
-        long tradeId = tradeSequence++;
-        String body = String.format("Trade %d", tradeId);
-        long account = accountRandomizer.nextInt(10);
+        Trade trade = Trade.buy(accountRandomizer.nextInt(10), "VMW", 1000, System.currentTimeMillis());
+        trade.setId(tradeSequence++);
 
-        logger.info("[sent:{}] Requesting {} for account {}", sentTradeCount, body, account);
+        logger.info("[sent:{}] Requesting trade {} for account {}", sentTradeCount, trade.getId(), trade.getAccountId());
 
         // send() always return true so we cannot use it to determine a successful send
         messagingBridge.outboundTradeRequests().send(
-                MessageBuilder.withPayload(body)
-                        .setHeader("tradeId", tradeId)
-                        .setHeader("account", account).build());
+                MessageBuilder.withPayload(trade)
+                        .setHeader("tradeId", trade.getId())
+                        .setHeader("account", trade.getAccountId()).build());
 
         sentTradeCount++;
     }

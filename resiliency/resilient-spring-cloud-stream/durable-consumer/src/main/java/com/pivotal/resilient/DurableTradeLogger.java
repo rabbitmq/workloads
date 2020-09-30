@@ -46,16 +46,16 @@ public class DurableTradeLogger {
     @StreamListener(MessagingBridge.INPUT)
     public void execute(@Header("account") long account,
                         @Header("tradeId") long tradeId,
-                        @Payload String trade) {
+                        @Payload Trade trade) {
 
         firstTradeId.compareAndSet(0, tradeId);
         long missedTrades = tradeId - firstTradeId.get() - receivedTradeCount;
         receivedTradeCount++;
 
-        String tradeConfirm = String.format("[total:%d,missed:%d] %s (account: %d) done",
+        String tradeConfirm = String.format("[total:%d,missed:%d] Trade %d (account: %d) done",
                 receivedTradeCount,
                 missedTrades,
-                trade, account);
+                trade.getId(), account);
         logger.info("Received {}", tradeConfirm);
         try {
             Thread.sleep(processingTime.toMillis());
