@@ -716,11 +716,13 @@ It has lost them all.
 	cd durable-consumer
   ./run.sh --durableTradeLogger=true --server.port=8082 --processingTime=5s
   ```
-3. Stop the producer. Take note of the last Trade id sent
-4. Go to the management ui and Kill the consumer's connection
-5. Follow the consumer's log and see that it reconnects and it receives all messages the
-producer sent.
+3. Go to the management ui and Kill the consumer's connection
+4. Follow the consumer's log and see that it reconnects and it receives all messages the
+producer sent since it started.
 
+:information_source: The durable consumer has not lost the messages which were in the queue
+right before it lost the connection. It has not lost either the messages the producer sent
+while it was reconnecting. 
 
 ### <a name="2c"></a> Verify delivery guarantee - 2.c Consumer receives a Poison message
 
