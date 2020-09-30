@@ -1,70 +1,114 @@
 
-# Spring Cloud Stream Patterns
+# Spring Cloud Stream Resiliency Workshop
 
-The goal of this workload is to provide guidance to developers on how to write Spring Cloud Stream applications which are resilient to failures and guarantee message delivery, or put it
-other words, that it does not loose messages.
+The goal of this workshop is to provide guidance to developers on how to write Spring Cloud Stream applications which are resilient to failures and guarantee message delivery, or put it another words, that it does not loose messages.
 
 Not all applications requires the same level of resiliency, or message delivery guarantee or
 tolerance to downtime. For this reason, we are going to create [different kinds of consumer and producer applications](#application-types), where each type gives us certain level of resiliency and/or guarantee of delivery. And then we are going to [test](#testing-applications) them against various [failure scenarios](#failure-scenarios).
 
 
 **Table of content**
-<!-- TOC depthFrom:2 depthTo:4 withLinks:1 updateOnSave:1 orderedList:0 -->
+<!-- TOC depthFrom:2 depthTo:3 withLinks:1 updateOnSave:1 orderedList:0 -->
 
+- [Getting started](#getting-started)
+	- [Building the code](#building-the-code)
+	- [How projects are structured](#how-projects-are-structured)
+	- [How to deploy RabbitMQ](#how-to-deploy-rabbitmq)
 - [Application types](#application-types)
 	- [Transient consumer](#transient-consumer)
-		- [What is this consumer useful for](#what-is-this-consumer-useful-for)
-		- [What about data loss](#what-about-data-loss)
-		- [Is this consumer highly available](#is-this-consumer-highly-available)
-		- [Is this consumer resilient to connection failures](#is-this-consumer-resilient-to-connection-failures)
-		- [What other failures this consumer has to deal with](#what-other-failures-this-consumer-has-to-deal-with)
 	- [Durable consumer](#durable-consumer)
-		- [What about data loss](#what-about-data-loss)
-		- [Is this consumer highly available](#is-this-consumer-highly-available)
-		- [What about strict order processing of messages](#what-about-strict-order-processing-of-messages)
 	- [Highly available Durable consumer](#highly-available-durable-consumer)
-		- [HA Durable consumer with classical mirrored queues](#ha-durable-consumer-with-classical-mirrored-queues)
-		- [HA Durable consumer with quorum queues](#ha-durable-consumer-with-quorum-queues)
 	- [Reliable consumer](#reliable-consumer)
-		- [Dealing with processing failures](#dealing-with-processing-failures)
-		- [Dealing with processing failures without losing messages](#dealing-with-processing-failures-without-losing-messages)
 	- [Fire-and-forget producer](#fire-and-forget-producer)
-		- [When is this type of producer useful](#when-is-this-type-of-producer-useful)
 	- [Guarantee Delivery producer](#guarantee-delivery-producer)
 - [Testing Applications](#testing-applications)
 	- [Failure scenarios](#failure-scenarios)
 	- [Resiliency Matrix](#resiliency-matrix)
-	- [How to deploy RabbitMQ](#how-to-deploy-rabbitmq)
-	- [<a name="1a"></a> Verify resiliency - 1.a RabbitMQ is not available when application starts](#a-name1aa-verify-resiliency-1a-rabbitmq-is-not-available-when-application-starts)
-		- [:white_check_mark: All applications are resilient to this failure](#whitecheckmark-all-applications-are-resilient-to-this-failure)
-	- [<a name="1b"></a> Verify resiliency - 1.b Restart a cluster node the application is connected to](#a-name1ba-verify-resiliency-1b-restart-a-cluster-node-the-application-is-connected-to)
-	- [<a name="1c"></a> Verify resiliency - 1.c Restart a cluster node hosting the consumer's queue](#a-name1ca-verify-resiliency-1c-restart-a-cluster-node-hosting-the-consumers-queue)
-	- [<a name="1d"></a> Verify resiliency - 1.d Rolling restart of cluster nodes](#a-name1da-verify-resiliency-1d-rolling-restart-of-cluster-nodes)
-	- [<a name="1e"></a><a name="1ep"></a> Verify resiliency - 1.e Kill producer connection (repeatedly)](#a-name1eaa-name1epa-verify-resiliency-1e-kill-producer-connection-repeatedly)
-	- [<a name="1ec"></a> Verify resiliency - 1.e Kill consumer connection (repeatedly)](#a-name1eca-verify-resiliency-1e-kill-consumer-connection-repeatedly)
-	- [<a name="1g"></a> Verify guarantee of delivery - 2.g Block producers](#a-name1ga-verify-guarantee-of-delivery-2g-block-producers)
+	- [Verify resiliency - 1.a RabbitMQ is not available when application starts](#verify-resiliency-1a-rabbitmq-is-not-available-when-application-starts)
+	- [Verify resiliency - 1.b Restart a cluster node the application is connected to](#verify-resiliency-1b-restart-a-cluster-node-the-application-is-connected-to)
+	- [Verify resiliency - 1.c Restart a cluster node hosting the consumer's queue](#verify-resiliency-1c-restart-a-cluster-node-hosting-the-consumers-queue)
+	- [Verify resiliency - 1.d Rolling restart of cluster nodes](#verify-resiliency-1d-rolling-restart-of-cluster-nodes)
+	- [Verify resiliency - 1.e Kill producer connection (repeatedly)](#verify-resiliency-1e-kill-producer-connection-repeatedly)
+	- [Verify resiliency - 1.e Kill consumer connection (repeatedly)](#verify-resiliency-1e-kill-consumer-connection-repeatedly)
 	- [Verify resiliency - 1.e Pause nodes](#verify-resiliency-1e-pause-nodes)
-	- [<a name="1f"></a> Verify resiliency - 1.f Unresponsive connections](#a-name1fa-verify-resiliency-1f-unresponsive-connections)
-	- [Verify Guarantee of delivery - Connection drops while sending a message](#verify-guarantee-of-delivery-connection-drops-while-sending-a-message)
-		- [:x: Fire-and-forget looses the message](#x-fire-and-forget-looses-the-message)
-		- [:white_check_mark: Reliable producer retries the failed operation](#whitecheckmark-reliable-producer-retries-the-failed-operation)
-	- [Verify Guarantee of delivery - RabbitMQ fails to accept a sent message](#verify-guarantee-of-delivery-rabbitmq-fails-to-accept-a-sent-message)
-		- [:x: Fire-and-forget looses a message if RabbitMQ fails to accept it](#x-fire-and-forget-looses-a-message-if-rabbitmq-fails-to-accept-it)
-		- [:white_check_mark: Reliable producer knows when RabbitMQ fails to accept a message](#whitecheckmark-reliable-producer-knows-when-rabbitmq-fails-to-accept-a-message)
-	- [Verify Guarantee of delivery - RabbitMQ cannot route a message](#verify-guarantee-of-delivery-rabbitmq-cannot-route-a-message)
-		- [:x: Fire-and-forget looses a message if RabbitMQ cannot route it](#x-fire-and-forget-looses-a-message-if-rabbitmq-cannot-route-it)
-		- [:white_check_mark: Reliable producer knows when RabbitMQ cannot route a message](#whitecheckmark-reliable-producer-knows-when-rabbitmq-cannot-route-a-message)
-	- [Verify Guarantee of delivery - Consumer fail to process a message](#verify-guarantee-of-delivery-consumer-fail-to-process-a-message)
-		- [:white_check_mark: All consumer types will never lose the message](#whitecheckmark-all-consumer-types-will-never-lose-the-message)
-	- [Verify Guarantee of delivery - Connection drops while processing a message](#verify-guarantee-of-delivery-connection-drops-while-processing-a-message)
-		- [:x: Fire-and-forget looses all enqueued messages so far](#x-fire-and-forget-looses-all-enqueued-messages-so-far)
-	- [Verify durable consumer - Failure 2 - Shutdown queue hosting node](#verify-durable-consumer-failure-2-shutdown-queue-hosting-node)
-	- [Verify delivery guarantee on the producer - Ensure the consumer groups' queues exists](#verify-delivery-guarantee-on-the-producer-ensure-the-consumer-groups-queues-exists)
-	- [Verify delivery guarantee on the producer - Ensure messages are successfully sent](#verify-delivery-guarantee-on-the-producer-ensure-messages-are-successfully-sent)
-	- [Verify delivery guarantee - Consumer fails to process a message](#verify-delivery-guarantee-consumer-fails-to-process-a-message)
-	- [Verify delivery guarantee - Consumer gives up after failing to process a message](#verify-delivery-guarantee-consumer-gives-up-after-failing-to-process-a-message)
+	- [Verify resiliency - 1.f Unresponsive connections](#verify-resiliency-1f-unresponsive-connections)
+	- [Verify Guarantee of delivery - 2.a Consumer fail to process a message](#verify-guarantee-of-delivery-2a-consumer-fail-to-process-a-message)
+	- [Verify Guarantee of delivery - 2.b Connection drops while processing a message](#verify-guarantee-of-delivery-2b-connection-drops-while-processing-a-message)
+	- [Verify delivery guarantee - 2.c Consumer receives a Poison message](#verify-delivery-guarantee-2c-consumer-receives-a-poison-message)
+	- [Verify delivery guarantee - 2.d Consumer gives up after failing to process a message](#verify-delivery-guarantee-2d-consumer-gives-up-after-failing-to-process-a-message)
+	- [Verify Guarantee of delivery - 2.e Connection drops while sending a message](#verify-guarantee-of-delivery-2e-connection-drops-while-sending-a-message)
+	- [Verify Guarantee of delivery - 2.f RabbitMQ fails to accept a sent message](#verify-guarantee-of-delivery-2f-rabbitmq-fails-to-accept-a-sent-message)
+	- [Verify Guarantee of delivery - 2.g RabbitMQ cannot route a message](#verify-guarantee-of-delivery-2g-rabbitmq-cannot-route-a-message)
+	- [Verify Guarantee of delivery - 2.h Queue's hosting node down while sending messages to it](#verify-guarantee-of-delivery-2h-queues-hosting-node-down-while-sending-messages-to-it)
+	- [Verify guarantee of delivery - 2.i Block producers](#verify-guarantee-of-delivery-2i-block-producers)
 
 <!-- /TOC -->
+
+## Getting started
+
+### Building the code
+
+It is highly recommended to build all projects together by running the following
+command from the root of this folder, `resilient-spring-cloud-stream`:
+```bash
+mvn
+```
+
+### How projects are structured
+
+There is a root [pom.xml](pom.xml) that builds all the application types.
+All application types such as `basic-producer` or `transient-consumer` inherits (maven term)
+from a common [parent](parent) project. The `parent` project centralizes dependencies and plugin configuration
+required by the children projects.
+
+All the code shared by the application types resides in the [common](common) project. Therefore,
+all applications types has `common` as a dependency too.
+
+### How to deploy RabbitMQ
+
+By default, all the sample applications are configured to connect to a 3-node cluster.
+Under `src/main/resources` we can find a `application-cluster.yml` file with
+RabbitMQ's binder configuration that looks like this:
+```yaml
+spring:
+  cloud:
+    stream:
+      binders:
+        local_rabbit:
+          type: rabbit
+          defaultCandidate: true
+          environment:
+            spring:
+              rabbitmq:
+                addresses: localhost:5673,localhost:5674,localhost:5675
+                username: guest
+                password: guest
+                virtual-host: /
+
+```
+And every application is configured with the `cluster` profile under their `application.yml`,
+similar to this configuration:
+```yaml
+spring:
+  application:
+    name: transient-consumer
+  profiles:
+    include:
+      - management
+      - cluster
+```
+
+To launch the corresponding 3-node cluster, we run the script:
+```bash
+docker/deploy-rabbit-cluster
+```
+
+To launch the application against a single standalone server, edit `application.yml`
+and remove `cluster` as one of the included Spring profiles. And to deploy a standalone server run:
+```bash
+docker/deploy-rabbit
+```
+> It will deploy a standalone server on port 5672
 
 ## Application types
 
@@ -357,74 +401,29 @@ The type of failures we are going test are:
 
 |      |  Transient consumer  | Durable consumer  | HA Durable consumer  | Reliable consumer  | Fire-and-forget producer  | Guarantee Delivery producer  |
 |------|:-----:|:----:|:----:|:----:|:----:|:----:|
-| [`1.a`](#1a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
-|[`1.b`](#1b)|:white_check_mark:|    |    |    |    |    |   
-|[`1.c`](#1c)|:white_check_mark:|    |    |    |    |    |   
-|[`1.d`](#1d)|:white_check_mark:|    |    |    |    |    |   
-|[`1.e`](#1e)|:white_check_mark:|    |     |    |    |    |   
-|[`1.f`](#1f)|:white_check_mark:|    |     |    |    |    |   
-|[`1.g`](#1g)|     |    |     |    |    |    |   
-|[`2.a`](#2a)|:white_check_mark:|    |    |    |    |    |   
-|[`2.b`](#2b)|:x:|    |    |    |    |    |   
-|[`2.c`](#2c)|     |    |    |    |    |    |   
-|[`2.d`](#2d)|     |    |    |    |    |     |   
-|[`2.e`](#2e)|     |    |    |    |    |    |   
-|[`2.f`](#2f)|     |    |     |    |    |    |   
-|[`2.g`](#2g)|     |    |     |    |    |    |   
-|[`2.h`](#2h)|     |    |     |    |    |    |   
-|[`2.i`](#2i)|     |    |     |    |    |    |   
+| [`1.a`](#user-content-1a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
+|[`1.b`](#user-content-1b)|:white_check_mark:|    |    |    |    |    |   
+|[`1.c`](#user-content-1c)|:white_check_mark:|    |    |    |    |    |   
+|[`1.d`](#user-content-1d)|:white_check_mark:|    |    |    |    |    |   
+|[`1.e`](#user-content-1e)|:white_check_mark:|    |     |    |    |    |   
+|[`1.f`](#user-content-1f)|:white_check_mark:|    |     |    |    |    |   
+|[`1.g`](#user-content-1g)|     |    |     |    |    |    |   
+|[`2.a`](#user-content-2a)|:white_check_mark:|    |    |    |    |    |   
+|[`2.b`](#user-content-2b)|:x:|    |    |    |    |    |   
+|[`2.c`](#user-content-2c)|     |    |    |    |    |    |   
+|[`2.d`](#user-content-2d)|     |    |    |    |    |     |   
+|[`2.e`](#user-content-2e)|     |    |    |    |    |    |   
+|[`2.f`](#user-content-2f)|     |    |     |    |    |    |   
+|[`2.g`](#user-content-2g)|     |    |     |    |    |    |   
+|[`2.h`](#user-content-2h)|     |    |     |    |    |    |   
+|[`2.i`](#user-content-2i)|     |    |     |    |    |    |   
 
 :white_check_mark: Application is resilient to the failure
 :x: Application is not resilient to the failure
 
-### How to deploy RabbitMQ
 
-By default, all the sample applications are configured to connect to a 3-node cluster.
-Under `src/main/resources` we can find a `application-cluster.yml` file with
-RabbitMQ's binder configuration that looks like this:
-```yaml
-spring:
-  cloud:
-    stream:
-      binders:
-        local_rabbit:
-          type: rabbit
-          defaultCandidate: true
-          environment:
-            spring:
-              rabbitmq:
-                addresses: localhost:5673,localhost:5674,localhost:5675
-                username: guest
-                password: guest
-                virtual-host: /
-
-```
-And every application is configured with the `cluster` profile under their `application.yml`,
-similar to this configuration:
-```yaml
-spring:
-  application:
-    name: transient-consumer
-  profiles:
-    include:
-      - management
-      - cluster
-```
-
-To launch the corresponding 3-node cluster, we run the script:
-```bash
-docker/deploy-rabbit-cluster
-```
-
-To launch the application against a single standalone server, edit `application.yml`
-and remove `cluster` as one of the included Spring profiles. And to deploy a standalone server run:
-```bash
-docker/deploy-rabbit
-```
-> It will deploy a standalone server on port 5672
-
-
-### <a name="1a"></a> Verify resiliency - 1.a RabbitMQ is not available when application starts
+<a name="1a"></a>
+### Verify resiliency - 1.a RabbitMQ is not available when application starts
 
 **TODO** provide details with regards retry max attempts and/or frequency if there are any
 `recoveryInterval` is a property of consumer rabbitmq binder.
@@ -445,7 +444,8 @@ docker/deploy-rabbit
   ../docker/deploy-rabbit-cluster
   ```
 
-### <a name="1b"></a> Verify resiliency - 1.b Restart a cluster node the application is connected to
+<a name="1b"></a>
+### Verify resiliency - 1.b Restart a cluster node the application is connected to
 
 Pick the node where application is connected and the queue declared, say it is `rmq0`
 
@@ -466,9 +466,11 @@ We should expect a sequence of logging statements like these two:
   > When the number of trades received matches with the trade id it means that
   the consumer has not missed any trade request yet
 
-### <a name="1c"></a> Verify resiliency - 1.c Restart a cluster node hosting the consumer's queue
+<a name="1c"></a>
+### Verify resiliency - 1.c Restart a cluster node hosting the consumer's queue
 
-### <a name="1d"></a> Verify resiliency - 1.d Rolling restart of cluster nodes
+<a name="1d"></a>
+### Verify resiliency - 1.d Rolling restart of cluster nodes
 
 1. Rolling restart:
   ```bash
@@ -477,7 +479,8 @@ We should expect a sequence of logging statements like these two:
 2. Wait until the script terminate to check how producer and consumer is still working
 (i.e. sending and receiving)
 
-### <a name="1e"></a><a name="1ep"></a> Verify resiliency - 1.e Kill producer connection (repeatedly)
+<a name="1e"></a><a name="1ep"></a>
+### Verify resiliency - 1.e Kill producer connection (repeatedly)
 
 **TODO** Investigate: It would be ideal to name connections based on the application name so that
 it makes easier to identify who is connected. When we set the `connection-name-prefix`, it
@@ -522,7 +525,8 @@ he dependencies of some of the beans in the application context form a cycle:
 2020-09-16 10:00:50.820 ERROR 28370 --- [ 127.0.0.1:5673] o.s.a.r.c.CachingConnectionFactory       : Channel shutdown: connection error; protocol method: #method<connection.close>(reply-code=320, reply-text=CONNECTION_FORCED - Closed via management plugin, class-id=0, method-id=0)
 ```
 
-### <a name="1ec"></a> Verify resiliency - 1.e Kill consumer connection (repeatedly)
+<a name="1ec"></a>
+### Verify resiliency - 1.e Kill consumer connection (repeatedly)
 
 1. Launch consumer with a processingTime of 5 seconds
   ```bash
@@ -557,7 +561,8 @@ because the queue is deleted and recreated it again.
 **TODO** Investigate: I noticed that the consumer connection creates 2 channels after it recovers the connection rather than just one. However, it does not keep opening further channels should it
 recovered from additional connection failures.
 
-### <a name="1e"></a> Verify resiliency - 1.e Pause nodes
+<a name="1e"></a>
+### Verify resiliency - 1.e Pause nodes
 
 We are going to pause a node, which is similar to what happen when a network partition occurs
 and the node is on the minority and we are using *pause_minority* cluster partition handling.
@@ -580,7 +585,8 @@ management UI on `rmq0`.
 6. Start `rmq2`, `rmq3`
 7. Notice application recovers and keeps publishing. The consumer has lost a few messages though.
 
-### <a name="1f"></a> Verify resiliency - 1.f Unresponsive connections
+<a name="1f"></a>
+### Verify resiliency - 1.f Unresponsive connections
 
 We are going to simulate buggy or unresponsive connections.
 
@@ -656,8 +662,8 @@ Proxy rabbit is now enabled
 **TODO**
 
 
-
-### <a name="2a"></a> Verify Guarantee of delivery - 2.a Consumer fail to process a message
+<a name="2a"></a>
+### Verify Guarantee of delivery - 2.a Consumer fail to process a message
 
 :information_source: All consumer types uses client acknowledgment therefore they will only ack a message
 after it has successfully processed it.  
@@ -679,7 +685,8 @@ cd reliable-consumer
 4. Kill the consumer right after the first failed attempted and ensure that the
 message stays in the queue, i.e. it is not lost
 
-### <a name="2b"></a> Verify Guarantee of delivery - 2.b Connection drops while processing a message
+<a name="2b"></a>
+### Verify Guarantee of delivery - 2.b Connection drops while processing a message
 
 #### :x: Transient consumer looses all enqueued messages so far
 
@@ -723,7 +730,8 @@ producer sent since it started.
 right before it lost the connection. It has not lost either the messages the producer sent
 while it was reconnecting.
 
-### <a name="2c"></a> Verify delivery guarantee - 2.c Consumer receives a Poison message
+<a name="2c"></a>
+### Verify delivery guarantee - 2.c Consumer receives a Poison message
 
 A *Poison message* is a message that the consumer will never be able to process. Common
 cases are that the consumer is not able to parse the message due to schema conflicts, or
@@ -768,20 +776,17 @@ it moves onto the next message.
 4. Go to the management ui and look for a new queue, called `d`. It has our message.
 
 
+<a name="2d"></a>
+### Verify delivery guarantee - 2.d Consumer gives up after failing to process a message
 
-### Verify delivery guarantee - Consumer gives up after failing to process a message
+This failure is the same as [2.c](#user-content-2c). It is more a semantic difference.
+What happens if we need to execute a query against a database which is down in all 3 attempts?
+The message would have to be rejected and if we do not want to loose it, it should go to a dlq.
 
-If in the previous scenario, we used `--chaos.maxFailTimes=3` or greater than 3, the message
-would be rejected and dropped/lost because we did not configure the queue with a dead-letter-queue.
+This type of failure, alike a Poison message, are transient.
 
-To run the `reliable-consumer` with a dlq we are going to run it like this :
-```
-cd reliable-consumer
-SPRING_PROFILES_ACTIVE=dlq ./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=3
-```
-
-
-### Verify Guarantee of delivery - Connection drops while sending a message
+<a name="2e"></a>
+### Verify Guarantee of delivery - 2.e Connection drops while sending a message
 
 #### :x: Fire-and-forget looses the message
 
@@ -790,7 +795,8 @@ the producer is pretty basic and it does not retry it.
 
 #### :white_check_mark: Reliable producer retries the failed operation
 
-### Verify Guarantee of delivery - RabbitMQ fails to accept a sent message
+<a name="2f"></a>
+### Verify Guarantee of delivery - 2.f RabbitMQ fails to accept a sent message
 
 #### :x: Fire-and-forget looses a message if RabbitMQ fails to accept it
 - Producer does not use publisher confirmation. If RabbitMQ fail to deliver a message
@@ -846,7 +852,8 @@ with newer ones.
 PORT=15673 ./unset_limit_on_queue
 ```
 
-### Verify Guarantee of delivery - RabbitMQ cannot route a message
+<a name="2g"></a>
+### Verify Guarantee of delivery - 2.g RabbitMQ cannot route a message
 
 #### :x: Fire-and-forget looses a message if RabbitMQ cannot route it
 
@@ -885,8 +892,35 @@ c.p.r.DefaultTradeService                Removing 1 completed trades
 ```
 ```
 
+#### :white_check_mark: Reliable producer ensures the consumer groups' queues exists
 
-### Verify Guarantee of delivery - Queue's hosting node down while sending messages to it
+1. Destroy the cluster and recreate it again so that we start without any queues
+```bash
+./destroy-rabbit-cluster
+./deploy-rabbit-cluster
+```
+2. Launch the producer
+```bash
+./run.sh --scheduledTradeRequester=true
+```
+3. Check the queue `trades.trade-logger` exists and it is getting messages even though
+the consumer has not started yet.
+
+However, our producer will not guarantee delivery when the queue's hosting node is down.
+These are the two scenarios we can encounter:
+
+- The producer starts up and the queue's hosting node is down. In this scenario,
+the producer will attempt to declare it and it will fail. It does not crash though.
+Any attempt to send a message will succeed but the message will go nowhere, it will be lost.
+- The producer starts up and successfully declares the queue. However, later on,
+the queue's hosting node goes down. The messages will go nowhere, they will be lost.
+
+Conclusion: Adding `requiredGroups` setting in the producer, help us in reducing the
+amount of message loss but it does not prevent it entirely. It is convenient because we
+can start applications, producer or consumer, in any order. However, we are coupling the producer with the consumer. Also, should we added more consumer groups, we would have to reconfigure our producer application.
+
+<a name="2h"></a>
+### Verify Guarantee of delivery - 2.h Queue's hosting node down while sending messages to it
 
 Our consumer will not be able to consume while the queue's hosting node is down. Furthermore,
 if the producer does not use mandatory flag and/or alternate-exchange, those messages are lost too.
@@ -924,39 +958,9 @@ If we want to limit the amount of retries and terminate the application we have 
 If we cannot afford to lose messages and/or have downtime of our consumer service then
 we should make the queue highly available. Take a look at [Application with highly available subscriptions](#Application-with-highly-available-subscriptions).
 
-### Verify delivery guarantee on the producer - Ensure the consumer groups' queues exists
 
-1. Destroy the cluster and recreate it again so that we start without any queues
-```bash
-./destroy-rabbit-cluster
-./deploy-rabbit-cluster
-```
-2. Launch the producer
-```bash
-./run.sh --scheduledTradeRequester=true
-```
-3. Check the queue `trades.trade-logger` exists and it is getting messages even though
-the consumer has not started yet.
-
-However, our producer will not guarantee delivery when the queue's hosting node is down.
-These are the two scenarios we can encounter:
-
-- The producer starts up and the queue's hosting node is down. In this scenario,
-the producer will attempt to declare it and it will fail. It does not crash though.
-Any attempt to send a message will succeed but the message will go nowhere, it will be lost.
-- The producer starts up and successfully declares the queue. However, later on,
-the queue's hosting node goes down. The messages will go nowhere, they will be lost.
-
-Conclusion: Adding `requiredGroups` setting in the producer, help us in reducing the
-amount of message loss but it does not prevent it entirely. It is convenient because we
-can start applications, producer or consumer, in any order. However, we are coupling the producer with the consumer. Also, should we added more consumer groups, we would have to reconfigure our producer application.
-
-### Verify delivery guarantee on the producer - Ensure messages are successfully sent
-
-
-
-
-### <a name="2g"></a> Verify guarantee of delivery - 2.g Block producers
+<a name="2i"></a>
+### Verify guarantee of delivery - 2.i Block producers
 
 We are going to force RabbitMQ to trigger a memory alarm by setting the high water mark to 0.
 This should only impact the producer connections and let consumer connections carry on.
