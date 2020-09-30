@@ -23,4 +23,6 @@ spring:
           group: trade-logger
       rabbit: # spring cloud stream rabbit binder configuration
         binder:
-        # connection-name-prefix: hello  Cannot use it due to cycle issue during initialization
+          connection-name-prefix: transient   # Cannot use it due to cycle issue during initialization
+
+

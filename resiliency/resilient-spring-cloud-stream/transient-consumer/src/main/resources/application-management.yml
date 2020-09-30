@@ -3,9 +3,12 @@ management:
   security:
     enabled: false
   endpoint:
-    health.show-details: always
+    health.show-details: always   # required to expose detailed health status information
     metrics:
       enabled: true
+  health:
+    binders:
+      enabled: true     # enable binder's health indicators
   endpoints:
     web:
       exposure:
