@@ -13,7 +13,7 @@
       <module>parent</module>
 			<module>common</module>
 
-			<module>basic-producer</module>
+			<module>fire-and-forget-producer</module>
 			<module>transient-consumer</module>
 			<module>durable-consumer</module>
 			<module>reliable-consumer</module>

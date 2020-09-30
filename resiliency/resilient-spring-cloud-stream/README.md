@@ -308,7 +308,7 @@ never know it because it does not expect confirmation that it was sent:
 - the broker could not find a destination queue for it
 - the broker failed to accept the message due to an internal error
 
-We can find an example of this type of producer in the project [transient-consumer](transient-consumer). It is the `ScheduledTradeRequester` producer that we have used so far.
+We can find an example of this type of producer in the project [fire-and-forget-producer](fire-and-forget-producer). It is the `ScheduledTradeRequester` producer that we have used so far.
 
 #### When is this type of producer useful
 
