@@ -364,8 +364,8 @@ The type of failures we are going test are:
 |[`1.e`](#1e)|:white_check_mark:|    |     |    |    |    |   
 |[`1.f`](#1f)|:white_check_mark:|    |     |    |    |    |   
 |[`1.g`](#1g)|     |    |     |    |    |    |   
-|[`2.a`](#2a)|      |    |    |    |    |    |   
-|[`2.b`](#2b)|     |    |    |    |    |    |   
+|[`2.a`](#2a)|:white_check_mark:|    |    |    |    |    |   
+|[`2.b`](#2b)|:x:|    |    |    |    |    |   
 |[`2.c`](#2c)|     |    |    |    |    |    |   
 |[`2.d`](#2d)|     |    |    |    |    |     |   
 |[`2.e`](#2e)|     |    |    |    |    |    |   
@@ -659,12 +659,8 @@ Proxy rabbit is now enabled
 
 ### <a name="2a"></a> Verify Guarantee of delivery - 2.a Consumer fail to process a message
 
-As long as the consumer is running, messages are delivered with all guarantees:
-  - consumer only acks messages after it has successfully processed them
-  - it processes messages in strict order (prefetch=1)
-
-**TODO** simulate processing failure
-**TODO** test poison messages and how to deal with them
+All consumer types uses client acknowledgment therefore they will only ack a message
+after it has successfully processed it.  
 
 #### :white_check_mark: All consumer types will never lose the message
 
@@ -679,24 +675,27 @@ cd reliable-producer
 cd reliable-consumer
 ./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=2
 ```
-3. Notice in the consumer log how it fails and the message is retried. We can try to
-kill the consumer before it exhausts all the attempts to ensure that the message
-stays in the queue, i.e. it is not lost.
+3. Notice in the consumer log how it fails and the message is retried.
+4. Kill the consumer right after the first failed attempted and ensure that the
+message stays in the queue, i.e. it is not lost
 
 ### <a name="2b"></a> Verify Guarantee of delivery - 2.b Connection drops while processing a message
 
-#### :x: Fire-and-forget looses all enqueued messages so far
+#### :x: Transient consumer looses all enqueued messages so far
 
 This time we are launching producer and consumer on separate application/process
 and we are going to perform a rolling restart.
 
 1. Start producer
   ```bash
-  SPRING_PROFILES_ACTIVE=cluster ./run.sh --scheduledTradeRequester=true
+	cd transient-consumer
+  ./run.sh --scheduledTradeRequester=true
   ```
-2. Start consumer (on a separate terminal)  
+2. Start transient consumer (on a separate terminal) with a message processing time of
+5seconds to produce a backlog in the queue
   ```bash
-  SPRING_PROFILES_ACTIVE=cluster ./run.sh --tradeLogger=true --server.port=8082
+	cd transient-consumer
+  ./run.sh --tradeLogger=true --server.port=8082 --processingTime=5s
   ```
 3. Rolling restart
   ```bash
@@ -707,6 +706,9 @@ received so far 11 trades however this is the 12th trade sent. We lost one.
   ```
   Received [11] Trade 12 (account: 2) done
   ```
+
+#### :white_check_mark: Durable consumer does not loose the enqueued messages
+
 
 ### <a name="2c"></a> Verify delivery guarantee - 2.c Consumer receives a Poison message
 
