@@ -28,6 +28,7 @@ services:
     volumes:
       - ./rabbitmq-cluster.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - ./enabled_plugins:/etc/rabbitmq/enabled_plugins
+      - ./definitions.json:/etc/rabbitmq/definitions.json
     # we want to simulate hitting thresholds
     ulimits:
       nofile:

@@ -11,6 +11,6 @@ spring:
             spring:
               rabbitmq:
                 addresses: localhost:5673,localhost:5674,localhost:5675
-                username: guest
+                username: reliable-consumer
                 password: guest
                 virtual-host: /

@@ -11,7 +11,7 @@ spring:
             spring:
               rabbitmq:
                 addresses: localhost:5673,localhost:5674,localhost:5675
-                username: guest
+                username: reliable-producer
                 password: guest
                 virtual-host: /
                 publisher-confirms: true

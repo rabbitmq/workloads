@@ -4,7 +4,9 @@ logging:
   level:
     com.pivotal.resilient: debug
 
-
+server:
+  port: 8082
+  
 tradeService: default
 
 spring:
@@ -29,4 +31,3 @@ spring:
             producer:
               deliveryMode: PERSISTENT # default value. Here for completeness
               confirmAckChannel: trades.confirm # channel where to receive publish confirms
-

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+docker exec -it rmq0 rabbitmqctl list_connections user pid

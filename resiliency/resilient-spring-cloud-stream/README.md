@@ -652,7 +652,9 @@ Producer applications should be able to deal with this failure especially if the
   ```bash
   fire-and-forget-producer/run.sh
   ```
-2. Kill *producer* connection (via management UI, or by other means) named for instance
+2. Kill *producer* connection
+```
+```
 `rabbitConnectionFactory.publisher#1554b244:2`
   > If our application needs to publish, Spring Cloud Stream creates 2 connections; one for
   publishing and another for consuming. A pure producer application will have 2. A pure consumer
@@ -696,17 +698,19 @@ he dependencies of some of the beans in the application context form a cycle:
 Consumer applications should be able to deal with this failure. In other words, they should
 reconnect and resubscribe.
 
-####
+#### :white_check_mark: All consumers are resilient to this failure
 
-1. Launch consumer with a processingTime of 5 seconds
-  ```bash
-  ./run.sh --tradeLogger=true --processingTime=5s --server.port=8082
-  ```
-2. Launch producer (which uses `tradeRateMs:1000` , i.e. a trade per second)
-  ```bash
-  ./run.sh --scheduledTradeRequester=true
-  ```
+We can try any of the 3 consumer applications. But given that `durable-consumer` already showed
+a weakness (see scenario [1c](#user-content-1c)), we are going to test it here.
 
+1. Launch `durable-consumer`
+  ```bash
+  durable-consumer/run.sh
+  ```
+2. Launch `fire-and-forget-producer`
+  ```bash
+  fire-and-forget-producer/run.sh
+  ```
 3. Kill consumer connection (via management UI, or by other means)
   > Pick that connection which has a consumer in one of its channel
 

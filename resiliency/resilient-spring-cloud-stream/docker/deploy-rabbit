@@ -36,6 +36,7 @@ function start {
       -p $PROMETHEUS_PORT:$PROMETHEUS_PORT \
       -v ${SCRIPT}/${RABBITMQ_CONF:-rabbitmq.conf}:/etc/rabbitmq/rabbitmq.conf:ro \
       -v ${SCRIPT}/enabled_plugins:/etc/rabbitmq/enabled_plugins \
+      -v ${SCRIPT}/definitions.json:/etc/rabbitmq/definitions.json \
       -v $TRUSTED_DIR/basic/result:/etc/cert \
       rabbitmq:3.8-rc-management
 }

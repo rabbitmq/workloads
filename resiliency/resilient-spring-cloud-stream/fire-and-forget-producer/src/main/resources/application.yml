@@ -4,6 +4,9 @@ logging:
   level:
     com.pivotal.resilient: debug
 
+server:
+  port: 8082
+
 spring:
   application:
     name: fire-and-forget
