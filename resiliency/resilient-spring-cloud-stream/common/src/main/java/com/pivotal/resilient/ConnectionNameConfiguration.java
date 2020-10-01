@@ -1,4 +1,4 @@
-package com.pivotal.resilient.chaos;
+package com.pivotal.resilient;
 
 import org.springframework.amqp.rabbit.connection.CachingConnectionFactory;
 import org.springframework.beans.factory.annotation.Value;
