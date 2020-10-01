@@ -68,7 +68,7 @@ various types of applications and what levels of resiliency you can expect from 
 	- [Verify resiliency - 1.b Restart a cluster node the application is connected to](#verify-resiliency-1b-restart-a-cluster-node-the-application-is-connected-to)
 	- [Verify resiliency - 1.c Restart a cluster node hosting the consumer's queue](#verify-resiliency-1c-restart-a-cluster-node-hosting-the-consumers-queue)
 	- [Verify resiliency - 1.d Rolling restart of cluster nodes](#verify-resiliency-1d-rolling-restart-of-cluster-nodes)
-	- [Verify resiliency - 1.e Kill producer connection (repeatedly)](#verify-resiliency-1e-kill-producer-connection-repeatedly)
+	- [Verify resiliency - 1.e Kill producer connection](#verify-resiliency-1e-kill-producer-connection)
 	- [Verify resiliency - 1.e Kill consumer connection (repeatedly)](#verify-resiliency-1e-kill-consumer-connection-repeatedly)
 	- [Verify resiliency - 1.e Pause nodes](#verify-resiliency-1e-pause-nodes)
 	- [Verify resiliency - 1.f Unresponsive connections](#verify-resiliency-1f-unresponsive-connections)
@@ -92,6 +92,9 @@ various types of applications and what levels of resiliency you can expect from 
 git clone https://github.com/rabbitmq/workloads
 cd workloads/resiliency/resilient-spring-cloud-stream
 ```
+
+:information_source: Any sample script, for instance to deploy a rabbitmq cluster,
+ assumes we are on the `workloads/resiliency/resilient-spring-cloud-stream` folder.
 
 ### Building the code
 
@@ -468,36 +471,69 @@ The type of failures we are going test are:
 <a name="1a"></a>
 ### Verify resiliency - 1.a RabbitMQ is not available when application starts
 
-**TODO** provide details with regards retry max attempts and/or frequency if there are any
-`recoveryInterval` is a property of consumer rabbitmq binder.
+It is important that our applications are able to start even when RabbitMQ is not reachable.
+This allows us to separate RabbitMQ's operations from application's deployment.
 
 #### :white_check_mark: All applications are resilient to this failure
 
+We choose the least resilient producer and consumer applications which yet
+they are resilient to this particular failure.
+
+---
 1. Stop RabbitMQ cluster
   ```bash
-  ../docker/destroy-rabbit-cluster
+  docker/destroy-rabbit-cluster  
   ```
-2. Launch application with both roles, producer and consumer
+2. Launch the `fire-and-forget-producer` from one terminal
   ```bash
-  SPRING_PROFILES_ACTIVE=cluster ./run.sh --scheduledTradeRequester=true --tradeLogger=true
+  fire-and-forget-producer/run.sh
   ```
 3. Check for fail attempts to connect in the logs
-4. Start RabbitMQ cluster
+4. Launch the `transient-consumer` from another terminal
+  ```bash
+  transient-consumer/run.sh
+  ```
+5. Check for fail attempts to connect in the logs
+6. Start RabbitMQ cluster and ensure that it starts with all 3-nodes
   ```bash
   ../docker/deploy-rabbit-cluster
+  docker exec -it rmq0 rabbitmqctl cluster_status
   ```
+7. Ensure both applications connect to RabbitMQ
+---
+
+:information_source: **Learnings**
+- **TODO** provide details with regards retry max attempts and/or frequency if there are any
+`recoveryInterval` is a property of consumer rabbitmq binder.
+
 
 <a name="1b"></a>
 ### Verify resiliency - 1.b Restart a cluster node the application is connected to
 
-Pick the node where application is connected and the queue declared, say it is `rmq0`
+For maintenance reasons or simply due to a node failure, the application looses the
+connection with the node it was connected to. The application should be able to reconnect
+to another node.
 
-1. Restart `rmq0` node:
+
+#### :white_check_mark: All applications are resilient to this failure
+
+Once again, we choose the least resilient producer and consumer applications which yet
+they are resilient to this particular failure.
+
+---
+1. Launch the `fire-and-forget-producer` from one terminal
   ```bash
-  docker-compose -f ../docker/docker-compose.yml start rmq0
+  fire-and-forget-producer/run.sh
   ```
-2. Check for reconnect attempts in the logs and how producer and consumer keeps working.
-We should expect a sequence of logging statements like these two:
+2. Launch the `transient-consumer` from another terminal
+  ```bash
+  transient-consumer/run.sh
+  ```
+3. Restart the node where either application is connected to. Let's say it is `rmq0`
+  ```bash
+  docker-compose -f docker/docker-compose.yml restart rmq0
+  ```
+4. Check in the logs how producer and consumer keeps working. We should expect a sequence of logging statements like these two:
   ```
   Requesting Trade 2 for account 0
   Received [2] Trade 2 (account: 0) done
@@ -508,24 +544,137 @@ We should expect a sequence of logging statements like these two:
   number in brackets is the total count of trades received so far.
   > When the number of trades received matches with the trade id it means that
   the consumer has not missed any trade request yet
+---
+
+:warning: **Watch out**
+- It is important that either we configure the binder with a list of
+AMQP addresses like we do (e.g. [application-cluster.yml](fire-and-forget-producer/src/main/resources/application-cluster.yml) ) or use an address which is load-balanced (DNS, or LB).
+
 
 <a name="1c"></a>
 ### Verify resiliency - 1.c Restart a cluster node hosting the consumer's queue
 
+In the previous scenario, [1.b](#user-content-1b), the goal was to test resiliency against
+connection drops. In this scenario, the goal is to test whether the application resiliency when
+the affected node was hosting the application's queue. The application could be a producer sending
+messages to the queue or it could be a consumer.
+
+#### :x: Durable consumers are resilient to this failure but will suffer downtime
+
+:information_source: `durable-consumer` is resilient because it does not crash however it will suffer
+downtime as it will stop getting messages
+
+---
+1. Launch the `durable-consumer` from a terminal
+  ```bash
+  durable-consumer/run.sh
+  ```
+2. Launch the `fire-and-forget-producer` from another terminal
+  ```bash
+  fire-and-forget-producer/run.sh
+  ```
+3. Stop the node hosting the `trades.trade-logger` queue. Let's say it is `rmq0`
+  ```bash
+  docker-compose -f docker/docker-compose.yml stop rmq0
+  ```
+4. Check the `durable-consumer` logs that it is able to reconnect but it is not able to
+declare the queue.
+5. :warning: Notice that `fire-and-forget-producer` is not affected. However, all messages sent after the
+node went down are lost.
+6. Restart the node we stopped earlier
+  ```bash
+  docker-compose -f docker/docker-compose.yml restart rmq0
+  ```
+7. Check the `durable-consumer` logs that it is receiving messages but only messages sent after the
+node came back.
+---
+
+
+#### :white_check_mark: Transient consumers, HA durable consumers and producers in general are resilient to this failure
+
+:information_source: `transient-consumer` is resilient and does not suffer downtime because it automatically
+reconnects and redeclare the queue. Messages are lost but we are focusing here on resiliency not guarantee
+of delivery.
+
+---
+**TODO**
+---
+
 <a name="1d"></a>
 ### Verify resiliency - 1.d Rolling restart of cluster nodes
 
-1. Rolling restart:
+Applications have to be able to deal with RabbitMQ Cluster upgrades. In this scenario,
+we are simulating a *rolling upgrade*. If we wanted to simulate a *full-shutdown upgrade*
+then all we need to do is run `docker/destroy-rabbit-cluster` script instead.
+
+#### :white_check_mark: All applications are resilient to this failure
+
+We can choose any type of consumer and producer application. As an example, we chose
+`durable-consumer` and `fire-and-forget-producer`.
+
+---
+1. Launch the `durable-consumer` from a terminal
   ```bash
-  ./rolling-restart
+  durable-consumer/run.sh
   ```
-2. Wait until the script terminate to check how producer and consumer is still working
+2. Launch the `fire-and-forget-producer` from another terminal
+  ```bash
+  fire-and-forget-producer/run.sh
+  ```
+3. Trigger rolling restart:
+  ```bash
+  docker/rolling-restart
+  ```
+4. Wait until the script terminates to check how producer and consumer are still working
 (i.e. sending and receiving)
+---
+
 
 <a name="1e"></a><a name="1ep"></a>
-### Verify resiliency - 1.e Kill producer connection (repeatedly)
+### Verify resiliency - 1.e Kill producer connection
 
-**TODO** Investigate: It would be ideal to name connections based on the application name so that
+Sometimes a single connection is dropped and not necessarily due to a node crash or being shutdown.
+This can have a affect some parts of an application, while others may continue to work.
+
+How is that? Our application may be configured to use more than one connection (**TODO** give some
+configuration examples if possible) and in that case one connection can go down. Or application
+has both roles, it receives messages and it sends them too. In that case, SCS separates producers
+from consumer connections. A producer connection can go down while the consumer connection stays up.
+
+Producer applications should be able to deal with this failure especially if they occur while sending a message.
+
+#### :white_check_mark: In general all producer applications are resilient to this failure
+
+**TODO** See if we can cause the send operation to fail due to a connection error and see what happens
+
+---
+1. Launch `fire-and-forget-producer`
+  ```bash
+  fire-and-forget-producer/run.sh
+  ```
+2. Kill *producer* connection (via management UI, or by other means) named for instance
+`rabbitConnectionFactory.publisher#1554b244:2`
+  > If our application needs to publish, Spring Cloud Stream creates 2 connections; one for
+  publishing and another for consuming. A pure producer application will have 2. A pure consumer
+  application will have just 1 connection.
+
+3. The producer should recover from it. We should get a similar logging sequence to this one:
+```
+2020-09-16 09:57:03.618  INFO 28370 --- [   scheduling-1] c.p.resilient.ScheduledTradeRequester    : [sent:23] Requesting Trade 24 for account 4
+2020-09-16 09:57:08.471 ERROR 28370 --- [ 127.0.0.1:5673] o.s.a.r.c.CachingConnectionFactory       : Channel shutdown: connection error; protocol method: #method<connection.close>(reply-code=320, reply-text=CONNECTION_FORCED - Closed via management plugin, class-id=0, method-id=0)
+2020-09-16 09:57:08.620  INFO 28370 --- [   scheduling-1] c.p.resilient.ScheduledTradeRequester    : [sent:24] Requesting Trade 25 for account 7
+2020-09-16 09:57:08.621  INFO 28370 --- [   scheduling-1] o.s.a.r.c.CachingConnectionFactory       : Attempting to connect to: [localhost:5673, localhost:5674, localhost:5675]
+2020-09-16 09:57:08.638  INFO 28370 --- [   scheduling-1] o.s.a.r.c.CachingConnectionFactory       : Created new connection: rabbitConnectionFactory.publisher#1554b244:2/SimpleConnection@1796c24f [delegate=amqp://guest@127.0.0.1:5673/, localPort= 53480]
+```
+---
+
+:warning: **Watch out**
+- We are not testing guarantee of delivery. Therefore, the goal is to ensure the application does not
+crash when the connection drops, and not to retry the send operation. The latter is necessary if we want
+to ensure guarantee of delivery, i.e. we do not want to lose the message.
+
+
+:warning: It would be ideal to name connections based on the application name so that
 it makes easier to identify who is connected. When we set the `connection-name-prefix`, it
 fails with
 ```
@@ -541,35 +690,13 @@ he dependencies of some of the beans in the application context form a cycle:
 └─────┘
 ```
 
-
-1. Launch producer only
-  ```bash
-  ./run.sh --scheduledTradeRequester=true
-  ```
-2. Kill *producer* connection (via management UI, or by other means) named for instance
-`rabbitConnectionFactory.publisher#1554b244:2`
-  > Spring Cloud Stream will automatically create 2 connections if we have at least
-  one producer channel. The producer connection has the label producer on its name
-
-3. The producer should recover from it. We should get a similar logging sequence to this one:
-```
-2020-09-16 09:57:03.618  INFO 28370 --- [   scheduling-1] c.p.resilient.ScheduledTradeRequester    : [sent:23] Requesting Trade 24 for account 4
-2020-09-16 09:57:08.471 ERROR 28370 --- [ 127.0.0.1:5673] o.s.a.r.c.CachingConnectionFactory       : Channel shutdown: connection error; protocol method: #method<connection.close>(reply-code=320, reply-text=CONNECTION_FORCED - Closed via management plugin, class-id=0, method-id=0)
-2020-09-16 09:57:08.620  INFO 28370 --- [   scheduling-1] c.p.resilient.ScheduledTradeRequester    : [sent:24] Requesting Trade 25 for account 7
-2020-09-16 09:57:08.621  INFO 28370 --- [   scheduling-1] o.s.a.r.c.CachingConnectionFactory       : Attempting to connect to: [localhost:5673, localhost:5674, localhost:5675]
-2020-09-16 09:57:08.638  INFO 28370 --- [   scheduling-1] o.s.a.r.c.CachingConnectionFactory       : Created new connection: rabbitConnectionFactory.publisher#1554b244:2/SimpleConnection@1796c24f [delegate=amqp://guest@127.0.0.1:5673/, localPort= 53480]
-```
-
-4. Kill the other connection named for instance `rabbitConnectionFactory#1554b244:2`
-
-5. The producer detects the connection was closed but it does not reopen it again.
-  **TODO** explore the implications of this
-```
-2020-09-16 10:00:50.820 ERROR 28370 --- [ 127.0.0.1:5673] o.s.a.r.c.CachingConnectionFactory       : Channel shutdown: connection error; protocol method: #method<connection.close>(reply-code=320, reply-text=CONNECTION_FORCED - Closed via management plugin, class-id=0, method-id=0)
-```
-
 <a name="1ec"></a>
 ### Verify resiliency - 1.e Kill consumer connection (repeatedly)
+
+Consumer applications should be able to deal with this failure. In other words, they should
+reconnect and resubscribe.
+
+####
 
 1. Launch consumer with a processingTime of 5 seconds
   ```bash

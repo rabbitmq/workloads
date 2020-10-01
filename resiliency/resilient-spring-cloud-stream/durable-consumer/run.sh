@@ -1,4 +1,5 @@
+#!/usr/bin/env bash
 
-#export SPRING_PROFILES_ACTIVE=Cloud,datadog
+SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-java  -jar target/durable-consumer-0.0.1-SNAPSHOT.jar $@
+java  -jar $SCRIPT/target/durable-consumer-0.0.1-SNAPSHOT.jar $@

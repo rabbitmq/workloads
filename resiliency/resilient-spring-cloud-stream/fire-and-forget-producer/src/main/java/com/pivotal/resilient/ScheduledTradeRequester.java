@@ -21,7 +21,7 @@ import java.util.Random;
 @Service
 @EnableBinding(ScheduledTradeRequester.MessagingBridge.class)
 @EnableScheduling
-@ConditionalOnProperty(name="scheduledTradeRequester", matchIfMissing = false)
+@ConditionalOnProperty(name="scheduledTradeRequester", matchIfMissing = true)
 public class ScheduledTradeRequester {
     private final Logger logger = LoggerFactory.getLogger(ScheduledTradeRequester.class);
     private Random accountRandomizer = new Random(System.currentTimeMillis());

@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 @EnableBinding(DurableTradeLogger.MessagingBridge.class)
-@ConditionalOnProperty(name="durableTradeLogger", matchIfMissing = false)
+@ConditionalOnProperty(name="durableTradeLogger", matchIfMissing = true)
 public class DurableTradeLogger {
     private final Logger logger = LoggerFactory.getLogger(DurableTradeLogger.class);
 

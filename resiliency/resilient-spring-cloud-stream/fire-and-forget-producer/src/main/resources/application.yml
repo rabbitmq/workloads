@@ -6,7 +6,7 @@ logging:
 
 spring:
   application:
-    name: basic-producer
+    name: fire-and-forget
   profiles:
     include:
       - management
@@ -16,5 +16,3 @@ spring:
       bindings: # spring cloud stream binding configuration
         outboundTradeRequests:
           destination: trades
-
-
