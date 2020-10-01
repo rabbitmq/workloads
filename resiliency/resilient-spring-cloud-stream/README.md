@@ -561,7 +561,7 @@ messages to the queue or it could be a consumer.
 
 #### :x: Durable consumers are resilient to this failure but will suffer downtime
 
-:information_source: `durable-consumer` is resilient because it does not crash however it will suffer
+:warning: `durable-consumer` is resilient because it does not crash however it will suffer
 downtime as it will stop getting messages
 
 ---
@@ -675,22 +675,6 @@ Producer applications should be able to deal with this failure especially if the
 crash when the connection drops, and not to retry the send operation. The latter is necessary if we want
 to ensure guarantee of delivery, i.e. we do not want to lose the message.
 
-
-:warning: It would be ideal to name connections based on the application name so that
-it makes easier to identify who is connected. When we set the `connection-name-prefix`, it
-fails with
-```
-he dependencies of some of the beans in the application context form a cycle:
-
-   binderHealthIndicator defined in org.springframework.cloud.stream.binder.rabbit.config.RabbitServiceAutoConfiguration$RabbitHealthIndicatorConfiguration
-      ↓
-   rabbitTemplate defined in org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration$RabbitTemplateConfiguration
-┌─────┐
-|  rabbitConnectionFactory defined in org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration$RabbitConnectionFactoryCreator
-↑     ↓
-|  org.springframework.cloud.stream.binder.rabbit.config.RabbitMessageChannelBinderConfiguration (field private org.springframework.amqp.rabbit.connection.ConnectionFactory org.springframework.cloud.stream.binder.rabbit.config.RabbitMessageChannelBinderConfiguration.rabbitConnectionFactory)
-└─────┘
-```
 
 <a name="1ec"></a>
 ### Verify resiliency - 1.e Kill consumer connection (repeatedly)
