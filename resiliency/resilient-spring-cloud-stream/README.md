@@ -27,15 +27,22 @@ To follow this workshop you need:
 
 1. Go straight to [Getting started](#getting-started) so that you get all the sample
  code and learn how to build it.
- Applications provided in this workshop have been configured to access a 3-node cluster running at localhost.
- This workshop provides various scripts to start and stop a 3-node cluster using Docker.
 
-2. Then continue with the section [Application types](#application-types) where you will learn why we have
-created various types of applications and what levels of resiliency we can expect from each type.
-By the end of this section, you have identified the type of application you need.
+   Applications provided in this workshop have been configured to access a 3-node cluster running at localhost.
+   This workshop provides various scripts to start and stop a 3-node cluster using Docker.
 
-3. And finally, we move onto the last section [Testing Applications](#testing-applications) where we demonstrate the resiliency of these applications. First we learn the type of failures we are going to test. And then, for each type of failure, we will run two scenarios. The **unhappy** path, where we test an application which is resilient to the failure. And a **happy** path, where we test an application which is resilient to the failure. There is a [resiliency matrix](#resiliency-matrix) that can help us assess which
-application is right for me depending on what failures is able to handle.
+2. Then continue with the section [Application types](#application-types) where you will learn why there are
+various types of applications and what levels of resiliency you can expect from each type.
+
+    By the end of this section, you have identified the type of application you need.
+
+3. And finally, you move onto the last section [Testing Applications](#testing-applications) where you are  going to test the resiliency of these applications.
+
+    First you will learn the type of failures we are going to test.
+
+    And then, for each type of failure, you will run two scenarios. The **unhappy** path -prefixed with the symbol :x:- where you test an application which is **not** resilient to the failure. And a **happy** path -prefixed with the symbol :white_check_mark:- where you test an application which is resilient to the failure.
+
+    There is a [resiliency matrix](#resiliency-matrix) that can help you assess which application is right for you depending on what failures is able to handle.
 
 **Table of content**
 <!-- TOC depthFrom:2 depthTo:3 withLinks:1 updateOnSave:1 orderedList:0 -->
