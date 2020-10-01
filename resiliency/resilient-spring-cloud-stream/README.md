@@ -38,9 +38,7 @@ various types of applications and what levels of resiliency you can expect from 
 
 3. And finally, you move onto the last section [Testing Applications](#testing-applications) where you are  going to test the resiliency of these applications.
 
-    First you will learn the type of failures we are going to test.
-
-    And then, for each type of failure, you will run two scenarios. The **unhappy** path -prefixed with the symbol :x:- where you test an application which is **not** resilient to the failure. And a **happy** path -prefixed with the symbol :white_check_mark:- where you test an application which is resilient to the failure.
+    For each type of failure, there are two test scenarios. The **unhappy** path -prefixed with the symbol :x:- where you test an application which is **not** resilient to the failure. And a **happy** path -prefixed with the symbol :white_check_mark:- where you test an application which is resilient to the failure.
 
     There is a [resiliency matrix](#resiliency-matrix) that can help you assess which application is right for you depending on what failures is able to handle.
 
@@ -429,27 +427,20 @@ the failures we are going to test in this workshop.
 
 The type of failures we are going test are:
 
-1. Resiliency related failures:  
-  a. RabbitMQ is not available when application starts  
-  b. Restart/Shutdown a cluster node the application is connected to  
-	c. Restart/Shutdown a cluster node hosting the consumer's queue  
-  d. Rolling restart of cluster nodes   
-  e. Kill/drop connection -consumer and/or producer  
-  f. Pause nodes  
-  g. Unresponsive connections  
-2. Guarantee of delivery related failures:  
-  a. Consumer fails to process a message  
-  b. Connection drops while processing a message  
-  c. Consumer receives a *Poison message*  
-	d. Consumer gives up after failing to process a message (same as c.)  
-  e. Producer fails to send a message (due to connection/channel errors)  
-  f. Broker nacks a message (i.e. sent message does not get delivered)  
-  g. Broker returns a message (i.e. sent message does not get delivered)  
-	h. Queue's hosting node down while sending messages to it (same as g.)
-  i. Broker blocks producers  
+| 1 | Resiliency | 2 | Guarantee of delivery |
+|:------:|-----|:----:|----|
+|a|RabbitMQ is not available when application starts|a |Consumer fails to process a message|
+|b|Restart/Shutdown a cluster node the application is connected to| b|Connection drops while processing a message|
+|c|Restart/Shutdown a cluster node hosting the consumer's queue|c |Consumer receives a *Poison message*|
+|d|Rolling restart of cluster nodes|d |Consumer gives up after failing to process a message (same as c.)|
+|e|Kill/drop connection -consumer and/or producer|e |Producer fails to send a message (due to connection/channel errors)|
+|f|Pause nodes|f |Broker nacks a message (i.e. sent message does not get delivered)|
+|g|Unresponsive connections|g |Broker returns a message (i.e. sent message does not get delivered)|
+| | |h |Queue's hosting node down while sending messages to it (same as g.)|
+| | |i |Broker blocks producers  |
+
 
 ### Resiliency Matrix
-
 
 |      |  Transient consumer  | Durable consumer  | HA Durable consumer  | Reliable consumer  | Fire-and-forget producer  | Reliable producer  |
 |------|:-----:|:----:|:----:|:----:|:----:|:----:|
