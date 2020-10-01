@@ -3,14 +3,49 @@
 
 The goal of this workshop is to provide guidance to developers on how to write Spring Cloud Stream applications which are resilient to failures and guarantee message delivery, or put it another words, that it does not loose messages.
 
-Not all applications requires the same level of resiliency, or message delivery guarantee or
-tolerance to downtime. For this reason, we are going to create [different kinds of consumer and producer applications](#application-types), where each type gives us certain level of resiliency and/or guarantee of delivery. And then we are going to [test](#testing-applications) them against various [failure scenarios](#failure-scenarios).
+## What you will learn
 
+This is a self-guided workshop on which you will learn:
+- levels of resiliency
+- what patterns/techniques/configurations to use to achieve certain level of resiliency
+- how to test the resiliency's levels
+
+## Audience
+
+This workshop is intended for developers who are already using Spring Cloud Stream or
+planning to use it. This is not a workshop to learn Spring Cloud Stream. Therefore, it requires
+some knowledge of Spring Cloud Stream and Spring Boot to follow it.
+
+## Prerequisites
+
+To follow this workshop you need:
+- Java 1.8
+- Maven 3.6.2 or more recent
+- Docker
+
+## How to follow the workshop
+
+1. Go straight to [Getting started](#getting-started) so that you get all the sample
+ code and learn how to build it.
+ Applications provided in this workshop have been configured to access a 3-node cluster running at localhost.
+ This workshop provides various scripts to start and stop a 3-node cluster using Docker.
+
+2. Then continue with the section [Application types](#application-types) where you will learn why we have
+created various types of applications and what levels of resiliency we can expect from each type.
+By the end of this section, you have identified the type of application you need.
+
+3. And finally, we move onto the last section [Testing Applications](#testing-applications) where we demonstrate the resiliency of these applications. First we learn the type of failures we are going to test. And then, for each type of failure, we will run two scenarios. The **unhappy** path, where we test an application which is resilient to the failure. And a **happy** path, where we test an application which is resilient to the failure. There is a [resiliency matrix](#resiliency-matrix) that can help us assess which
+application is right for me depending on what failures is able to handle.
 
 **Table of content**
 <!-- TOC depthFrom:2 depthTo:3 withLinks:1 updateOnSave:1 orderedList:0 -->
 
+- [What you will learn](#what-you-will-learn)
+- [Audience](#audience)
+- [Prerequisites](#prerequisites)
+- [How to follow the workshop](#how-to-follow-the-workshop)
 - [Getting started](#getting-started)
+	- [Get the entire workshop](#get-the-entire-workshop)
 	- [Building the code](#building-the-code)
 	- [How projects are structured](#how-projects-are-structured)
 	- [How to deploy RabbitMQ](#how-to-deploy-rabbitmq)
@@ -20,7 +55,7 @@ tolerance to downtime. For this reason, we are going to create [different kinds 
 	- [Highly available Durable consumer](#highly-available-durable-consumer)
 	- [Reliable consumer](#reliable-consumer)
 	- [Fire-and-forget producer](#fire-and-forget-producer)
-	- [Guarantee Delivery producer](#guarantee-delivery-producer)
+	- [Reliable producer](#reliable-producer)
 - [Testing Applications](#testing-applications)
 	- [Failure scenarios](#failure-scenarios)
 	- [Resiliency Matrix](#resiliency-matrix)
@@ -45,6 +80,13 @@ tolerance to downtime. For this reason, we are going to create [different kinds 
 <!-- /TOC -->
 
 ## Getting started
+
+### Get the entire workshop
+
+```
+git clone https://github.com/rabbitmq/workloads
+cd workloads/resiliency/resilient-spring-cloud-stream
+```
 
 ### Building the code
 
@@ -111,6 +153,9 @@ docker/deploy-rabbit
 > It will deploy a standalone server on port 5672
 
 ## Application types
+
+Not all applications requires the same level of resiliency, or message delivery guarantee or
+tolerance to downtime. For this reason, we are going to create [different kinds of consumer and producer applications](#application-types), where each type gives us certain level of resiliency and/or guarantee of delivery. And then we are going to [test](#testing-applications) them against various [failure scenarios](#failure-scenarios).
 
 ### Transient consumer
 
@@ -317,7 +362,7 @@ We can find an example of this type of producer in the project [fire-and-forget-
 - When consumers use some eviction strategy in their queues, either max-length or ttl.
 
 
-### Guarantee Delivery producer
+### Reliable producer
 
 First of all, let's clarify what we mean by guarantee of delivery.
 
@@ -399,7 +444,7 @@ The type of failures we are going test are:
 ### Resiliency Matrix
 
 
-|      |  Transient consumer  | Durable consumer  | HA Durable consumer  | Reliable consumer  | Fire-and-forget producer  | Guarantee Delivery producer  |
+|      |  Transient consumer  | Durable consumer  | HA Durable consumer  | Reliable consumer  | Fire-and-forget producer  | Reliable producer  |
 |------|:-----:|:----:|:----:|:----:|:----:|:----:|
 | [`1.a`](#user-content-1a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
 |[`1.b`](#user-content-1b)|:white_check_mark:|    |    |    |    |    |   
@@ -409,7 +454,7 @@ The type of failures we are going test are:
 |[`1.f`](#user-content-1f)|:white_check_mark:|    |     |    |    |    |   
 |[`1.g`](#user-content-1g)|     |    |     |    |    |    |   
 |[`2.a`](#user-content-2a)|:white_check_mark:|    |    |    |    |    |   
-|[`2.b`](#user-content-2b)|:x:|    |    |    |    |    |   
+|[`2.b`](#user-content-2b)|:x:|:white_check_mark:|    |    |    |    |   
 |[`2.c`](#user-content-2c)|     |    |    |    |    |    |   
 |[`2.d`](#user-content-2d)|     |    |    |    |    |     |   
 |[`2.e`](#user-content-2e)|     |    |    |    |    |    |   
