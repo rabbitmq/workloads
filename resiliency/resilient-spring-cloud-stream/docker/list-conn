@@ -2,4 +2,4 @@
 
 SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-docker exec -it rmq0 rabbitmqctl list_connections user pid
+curl -s -u guest:guest localhost:${PORT:-15673}/api/connections | jq -r '.[]| [.name,.user_provided_name,.user,.node]|@tsv'

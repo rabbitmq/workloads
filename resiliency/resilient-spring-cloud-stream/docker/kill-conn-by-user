@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-list=`docker exec -it rmq0 rabbitmqctl list_connections user pid | grep $1 | awk -F ' ' '{print $2}'`
-for v in $list; do
-  echo "killing $v"
-  docker exec -it rmq0 rabbitmqctl close_connection ${v/$'\r'/} 'chaos'
-done

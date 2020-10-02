@@ -510,9 +510,25 @@ they are resilient to this particular failure.
 <a name="1b"></a>
 ### Verify resiliency - 1.b Restart a cluster node the application is connected to
 
-For maintenance reasons or simply due to a node failure, the application looses the
+For maintenance reasons or due to a node failure, the application looses the
 connection with the node it was connected to. The application should be able to reconnect
 to another node.
+
+To identify which application is connected we can use two techniques:
+- **Each application has its own RabbitMQ user**. Via the management ui/api we can identify who is connected
+as shown in the image below.
+
+   The 3-node cluster is automatically [configured](docker/definitions.json) with one user for each type of application.
+   In a cloud environments like Tanzu Application Service, applications get granted a unique UUID as username making this method less useful.
+
+   ![identify connections](assets/connections.png)
+
+- **Use the application's name to name the connection** as shown in the previous image (e.g. `fire-and-forget#2.publisher`). SCS RabbitMQ binder
+implements a good practice which consists in separating producer connections from non-producer connections.
+Producer connections are suffixed with `.publisher`.
+
+  :warning: Due to an [issue](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit/issues/307) we cannot configure the connection's name via configuration as suggested [here](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit/blob/master/README.adoc#rabbitmq-binder-properties). We can find
+  a [work-around](common/src/main/java/com/pivotal/resilient/ConnectionNameConfiguration.java) under the [common](common) project which configures the connection's name so that it matches the application's name.
 
 
 #### :white_check_mark: All applications are resilient to this failure
@@ -529,11 +545,21 @@ they are resilient to this particular failure.
   ```bash
   transient-consumer/run.sh
   ```
-3. Restart the node where either application is connected to. Let's say it is `rmq0`
+3. Identify the node the application is connected to. We run the following
+convenient script:
+  ```bash
+  docker/list-conn
+  ```
+  We should get an output similar to this:
+  ```
+  172.24.0.1:34078 -> 172.24.0.5:5672	fire-and-forget-producer	rabbit@rmq0
+  172.24.0.1:60938 -> 172.24.0.5:5672	fire-and-forget-producer	rabbit@rmq0
+  ```
+4. Restart the node where either application is connected to. Let's say it is `rmq0`
   ```bash
   docker-compose -f docker/docker-compose.yml restart rmq0
   ```
-4. Check in the logs how producer and consumer keeps working. We should expect a sequence of logging statements like these two:
+5. Check in the logs how producer and consumer keeps working. We should expect a sequence of logging statements like these two:
   ```
   Requesting Trade 2 for account 0
   Received [2] Trade 2 (account: 0) done
@@ -597,7 +623,7 @@ reconnects and redeclare the queue. Messages are lost but we are focusing here o
 of delivery.
 
 ---
-**TODO**
+Repeat the same steps as in the previous scenario but using `transient-consumer` instead.
 ---
 
 <a name="1d"></a>
@@ -633,13 +659,9 @@ We can choose any type of consumer and producer application. As an example, we c
 <a name="1e"></a><a name="1ep"></a>
 ### Verify resiliency - 1.e Kill producer connection
 
-Sometimes a single connection is dropped and not necessarily due to a node crash or being shutdown.
-This can have a affect some parts of an application, while others may continue to work.
-
-How is that? Our application may be configured to use more than one connection (**TODO** give some
-configuration examples if possible) and in that case one connection can go down. Or application
-has both roles, it receives messages and it sends them too. In that case, SCS separates producers
-from consumer connections. A producer connection can go down while the consumer connection stays up.
+Sometimes a single connection is dropped and not necessarily due to a node crash.
+This can impact some parts of an application while others may continue to work. Such is the
+case when we have consumer and producers running within the same application.
 
 Producer applications should be able to deal with this failure especially if they occur while sending a message.
 
@@ -652,13 +674,12 @@ Producer applications should be able to deal with this failure especially if the
   ```bash
   fire-and-forget-producer/run.sh
   ```
-2. Kill *producer* connection
-```
-```
-`rabbitConnectionFactory.publisher#1554b244:2`
-  > If our application needs to publish, Spring Cloud Stream creates 2 connections; one for
-  publishing and another for consuming. A pure producer application will have 2. A pure consumer
-  application will have just 1 connection.
+2. Kill *publisher* connection.
+  ```bash
+  docker/list-conn
+  docker/kill-conn-grep fire-and-forget-producer
+  ```
+  > With the last command we are actually killing the two connections the fire-and-forget-producer has.
 
 3. The producer should recover from it. We should get a similar logging sequence to this one:
 ```
@@ -695,9 +716,10 @@ a weakness (see scenario [1c](#user-content-1c)), we are going to test it here.
   ```bash
   fire-and-forget-producer/run.sh
   ```
-3. Kill consumer connection (via management UI, or by other means)
-  > Pick that connection which has a consumer in one of its channel
-
+3. Kill consumer connection
+  ```bash
+  docker/kill-conn-grep durable-consumer
+  ```
 4. The consumer should recover from it. We should get a similar logging sequence to this one:
 ```
 2020-09-16 10:34:25.373  INFO 30872 --- [3mb6uTnFmfrJQ-1] com.pivotal.resilient.TradeLogger        : Received [total:7,missed:0] Trade 7 (account: 3) done
@@ -728,20 +750,24 @@ and the node is on the minority and we are using *pause_minority* cluster partit
 We are going to shutdown all nodes (`rmq2`, `rmq3`) except one (`rmq0`) where our applications
 are connected to. This will automatically pause the last standing node because it is in minority.
 
-1. Launch both roles together
-```bash
-./run.sh --tradeLogger=true --scheduledTradeRequester=true --processingTime=5s
-```
-2. Wait till we have produced a message backlog
-3. Stop `rmq2`, `rmq3`
-```bash
-docker-compose -f ../docker/docker-compose.yml  stop rmq1 rmq2
-```
-4. Notice connection errors in the application logs. Also we have lost connection to the
+1. Launch a producer
+  ```bash
+  fire-and-forget-producer/run.sh --tradeLogger=true --scheduledTradeRequester=true --processingTime=5s
+  ```
+2. Launch a consumer
+  ```bash
+  transient-consumer/run.sh --processingTime=5s
+  ```
+3. Wait till we have produced a message backlog
+4. Stop `rmq2`, `rmq3`
+  ```bash
+  docker-compose -f ../docker/docker-compose.yml  stop rmq1 rmq2
+  ```
+5. Notice connection errors in the application logs. Also we have lost connection to the
 management UI on `rmq0`.
-5. Application keeps trying to publish but it fails
-6. Start `rmq2`, `rmq3`
-7. Notice application recovers and keeps publishing. The consumer has lost a few messages though.
+6. Application keeps trying to publish but it fails
+7. Start `rmq2`, `rmq3`
+8. Notice application recovers and keeps publishing. The consumer has lost a few messages though.
 
 <a name="1f"></a>
 ### Verify resiliency - 1.f Unresponsive connections
@@ -751,37 +777,37 @@ We are going to simulate buggy or unresponsive connections.
 **Get the environment ready**
 
 1. Launch ToxiProxy
-```bash
-docker/deploy-toxiproxy
-```
+  ```bash
+  docker/deploy-toxiproxy
+  ```
 2. Get a list of proxies currently installed
-```bash
-$ docker/toxiproxy-cli list
-Name			Listen		Upstream		Enabled		Toxics
-======================================================================================
-no proxies
-```
+  ```bash
+  $ docker/toxiproxy-cli list
+  Name			Listen		Upstream		Enabled		Toxics
+  ======================================================================================
+  no proxies
+  ```
 3. Create an AMQP proxy to simulate buggy connections. We are going to proxy the first node in the cluster, `rmq0`.
-```bash
-docker/toxiproxy-cli create rabbit --listen 0.0.0.0:25673 -upstream rmq0:5672
-```
+  ```bash
+  docker/toxiproxy-cli create rabbit --listen 0.0.0.0:25673 -upstream rmq0:5672
+  ```
 
-If we list the proxies again, we should see:
-```bash
-../docker/toxiproxy-cli list
-Name			Listen		Upstream		Enabled		Toxics
-======================================================================================
-rabbit			[::]:25673	rmq0:5672		enabled		None
+  If we list the proxies again, we should see:
+  ```bash
+  ../docker/toxiproxy-cli list
+  Name			Listen		Upstream		Enabled		Toxics
+  ======================================================================================
+  rabbit			[::]:25673	rmq0:5672		enabled		None
 
-Hint: inspect toxics with `toxiproxy-cli inspect <proxyName>`
-```
+  Hint: inspect toxics with `toxiproxy-cli inspect <proxyName>`
+  ```
 
 4. Configure our application to connect via `localhost:25673` and launch it.
-```
-SPRING_PROFILES_ACTIVE=toxi ./run.sh
-```
-We configured the `proxi` profile here: [src/main/resources/application-toxi.yml](). It
-just configure a single amqp address `localhost:25673`.
+  ```
+  SPRING_PROFILES_ACTIVE=toxi ./run.sh
+  ```
+  We configured the `proxi` profile here: [src/main/resources/application-toxi.yml](). It
+  just configure a single amqp address `localhost:25673`.
 
 **Simulate connection drop by disabling the proxy**
 
@@ -829,16 +855,16 @@ after it has successfully processed it.
 #### :white_check_mark: All consumer types will never lose the message
 
 1. Launch the producer.
-```
-cd reliable-producer
-./run.sh
-```
+  ```bash
+  cd reliable-producer
+  ./run.sh
+  ```
 2. Launch the consumer. It will fail to process tradeId `3` two times. However, SCS
  retries it 3 times.
-```
-cd reliable-consumer
-./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=2
-```
+  ```bash
+  cd reliable-consumer
+  ./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=2
+  ```
 3. Notice in the consumer log how it fails and the message is retried.
 4. Kill the consumer right after the first failed attempted and ensure that the
 message stays in the queue, i.e. it is not lost
