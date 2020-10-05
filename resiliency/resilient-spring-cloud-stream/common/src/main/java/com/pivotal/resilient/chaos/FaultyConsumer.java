@@ -1,6 +1,8 @@
 package com.pivotal.resilient.chaos;
 
 import com.pivotal.resilient.Trade;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
 import org.springframework.stereotype.Component;
 
@@ -11,13 +13,16 @@ import java.util.function.Predicate;
 
 @Component
 public class FaultyConsumer implements Consumer<Trade> {
+    private final Logger logger = LoggerFactory.getLogger(FaultyConsumer.class);
+
     private Map<Long, Integer> timesFailed = new HashMap<>();
 
     private Predicate<Trade> shouldFailThisTrade;
     private Predicate<Trade> hasExceededMaxFailures;
+    private ChaosMonkeyProperties properties;
 
     public FaultyConsumer(ChaosMonkeyProperties properties) {
-
+        this.properties = properties;
         shouldFailThisTrade = t->t.getId() == properties.getTradeId();
         hasExceededMaxFailures = t-> {
             Integer times = timesFailed.get(t.getId());
@@ -27,10 +32,19 @@ public class FaultyConsumer implements Consumer<Trade> {
 
     public void accept(Trade trade) {
         if (shouldFailThisTrade.test(trade)) {
-            timesFailed.compute(trade.getId(), (aLong, integer) -> integer == null ? 1 : integer++);
-            if (hasExceededMaxFailures.test(trade))
-                throw new AmqpRejectAndDontRequeueException("ChaosMonkey " + trade.getId());
-            else throw new RuntimeException("ChaosMonkey " + trade.getId());
+            int attempts = timesFailed.compute(trade.getId(), (aLong, integer) -> integer == null ? 1 : ++integer);
+            logger.warn("Simulating failure. Attempts:{}", attempts);
+            if (hasExceededMaxFailures.test(trade)) {
+                logger.warn("Simulating failure. Has exceeded maxTimes:{}. next:{}", properties.getMaxFailTimes(),
+                        properties.getActionAfterMaxFailTimes().name());
+                if (ChaosMonkeyProperties.ActionAfterMaxFailTimes.reject.equals(properties.getActionAfterMaxFailTimes()))
+                    throw new AmqpRejectAndDontRequeueException(
+                            String.format("ChaosMonkey+Reject trade %d due after %d attempts", trade.getId(), attempts));
+                else if (ChaosMonkeyProperties.ActionAfterMaxFailTimes.exit.equals(properties.getActionAfterMaxFailTimes())) {
+                    System.exit(-1);
+                }
+            }else throw new RuntimeException(String.format("ChaosMoney on trade %d after %d attempts",
+                    trade.getId(), attempts));
         }
     }
 }

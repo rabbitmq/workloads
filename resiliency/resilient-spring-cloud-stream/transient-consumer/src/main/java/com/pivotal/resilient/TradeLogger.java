@@ -1,5 +1,6 @@
 package com.pivotal.resilient;
 
+import com.pivotal.resilient.chaos.FaultyConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,9 +36,10 @@ public class TradeLogger {
 
     @Value("${processingTime:1s}")
     private Duration processingTime;
+    @Autowired private FaultyConsumer faultyConsumer;
+    private TrackMissingTrades missingTradesTracker = new TrackMissingTrades();
 
-    private volatile long receivedTradeCount;
-    private AtomicLong firstTradeId = new AtomicLong();
+    private long processedTradeCount;
 
     public TradeLogger() {
         logger.info("Created");
@@ -48,22 +50,29 @@ public class TradeLogger {
                         @Header("tradeId") long tradeId,
                         @Payload Trade trade) {
 
-        firstTradeId.compareAndSet(0, tradeId);
-        long missedTrades = tradeId - firstTradeId.get() - receivedTradeCount;
-        receivedTradeCount++;
+        missingTradesTracker.accept(trade);
 
-        String tradeConfirm = String.format("[total:%d,missed:%d] %s (account: %d) done",
-                receivedTradeCount,
-                missedTrades,
-                trade, account);
-        logger.info("Received {}", tradeConfirm);
+        logger.info("Received {} done", trade);
         try {
             Thread.sleep(processingTime.toMillis());
+            faultyConsumer.accept(trade);
+            logger.info("Successfully Processed trade {}", trade.getId());
+            processedTradeCount++;
+        } catch (RuntimeException e) {
+            logger.info("Failed to processed trade {} due to {}", trade.getId(), e.getMessage());
+            throw e;
         } catch (InterruptedException e) {
             e.printStackTrace();
         } finally {
-            logger.info("Processed {}", tradeConfirm);
+            logSummary(trade);
         }
+
+    }
+    private void logSummary(Trade trade) {
+        logger.info("Trade summary after trade {}: total received:{}, missed:{}, processed:{}",
+                trade.getId(), missingTradesTracker.getReceivedTradeCount(),
+                missingTradesTracker.getMissedTradeCount(),
+                processedTradeCount);
     }
 
 }

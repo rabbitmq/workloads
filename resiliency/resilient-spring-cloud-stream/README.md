@@ -43,46 +43,7 @@ various types of applications and what levels of resiliency you can expect from 
     There is a [resiliency matrix](#resiliency-matrix) that can help you assess which application is right for you depending on what failures is able to handle.
 
 **Table of content**
-<!-- TOC depthFrom:2 depthTo:3 withLinks:1 updateOnSave:1 orderedList:0 -->
 
-- [What you will learn](#what-you-will-learn)
-- [Audience](#audience)
-- [Prerequisites](#prerequisites)
-- [How to follow the workshop](#how-to-follow-the-workshop)
-- [Getting started](#getting-started)
-	- [Get the entire workshop](#get-the-entire-workshop)
-	- [Building the code](#building-the-code)
-	- [How projects are structured](#how-projects-are-structured)
-	- [How to deploy RabbitMQ](#how-to-deploy-rabbitmq)
-- [Application types](#application-types)
-	- [Transient consumer](#transient-consumer)
-	- [Durable consumer](#durable-consumer)
-	- [Highly available Durable consumer](#highly-available-durable-consumer)
-	- [Reliable consumer](#reliable-consumer)
-	- [Fire-and-forget producer](#fire-and-forget-producer)
-	- [Reliable producer](#reliable-producer)
-- [Testing Applications](#testing-applications)
-	- [Failure scenarios](#failure-scenarios)
-	- [Resiliency Matrix](#resiliency-matrix)
-	- [Verify resiliency - 1.a RabbitMQ is not available when application starts](#verify-resiliency-1a-rabbitmq-is-not-available-when-application-starts)
-	- [Verify resiliency - 1.b Restart a cluster node the application is connected to](#verify-resiliency-1b-restart-a-cluster-node-the-application-is-connected-to)
-	- [Verify resiliency - 1.c Restart a cluster node hosting the consumer's queue](#verify-resiliency-1c-restart-a-cluster-node-hosting-the-consumers-queue)
-	- [Verify resiliency - 1.d Rolling restart of cluster nodes](#verify-resiliency-1d-rolling-restart-of-cluster-nodes)
-	- [Verify resiliency - 1.e Kill producer connection](#verify-resiliency-1e-kill-producer-connection)
-	- [Verify resiliency - 1.e Kill consumer connection (repeatedly)](#verify-resiliency-1e-kill-consumer-connection-repeatedly)
-	- [Verify resiliency - 1.e Pause nodes](#verify-resiliency-1e-pause-nodes)
-	- [Verify resiliency - 1.f Unresponsive connections](#verify-resiliency-1f-unresponsive-connections)
-	- [Verify Guarantee of delivery - 2.a Consumer fail to process a message](#verify-guarantee-of-delivery-2a-consumer-fail-to-process-a-message)
-	- [Verify Guarantee of delivery - 2.b Connection drops while processing a message](#verify-guarantee-of-delivery-2b-connection-drops-while-processing-a-message)
-	- [Verify delivery guarantee - 2.c Consumer receives a Poison message](#verify-delivery-guarantee-2c-consumer-receives-a-poison-message)
-	- [Verify delivery guarantee - 2.d Consumer gives up after failing to process a message](#verify-delivery-guarantee-2d-consumer-gives-up-after-failing-to-process-a-message)
-	- [Verify Guarantee of delivery - 2.e Connection drops while sending a message](#verify-guarantee-of-delivery-2e-connection-drops-while-sending-a-message)
-	- [Verify Guarantee of delivery - 2.f RabbitMQ fails to accept a sent message](#verify-guarantee-of-delivery-2f-rabbitmq-fails-to-accept-a-sent-message)
-	- [Verify Guarantee of delivery - 2.g RabbitMQ cannot route a message](#verify-guarantee-of-delivery-2g-rabbitmq-cannot-route-a-message)
-	- [Verify Guarantee of delivery - 2.h Queue's hosting node down while sending messages to it](#verify-guarantee-of-delivery-2h-queues-hosting-node-down-while-sending-messages-to-it)
-	- [Verify guarantee of delivery - 2.i Block producers](#verify-guarantee-of-delivery-2i-block-producers)
-
-<!-- /TOC -->
 
 ## Getting started
 
@@ -433,14 +394,15 @@ The type of failures we are going test are:
 | 1 | Resiliency | 2 | Guarantee of delivery |
 |:------:|-----|:----:|----|
 |a|RabbitMQ is not available when application starts|a |Consumer fails to process a message|
-|b|Restart/Shutdown a cluster node the application is connected to| b|Connection drops while processing a message|
-|c|Restart/Shutdown a cluster node hosting the consumer's queue|c |Consumer receives a *Poison message*|
-|d|Rolling restart of cluster nodes|d |Consumer gives up after failing to process a message (same as c.)|
-|e|Kill/drop connection -consumer and/or producer|e |Producer fails to send a message (due to connection/channel errors)|
-|f|Pause nodes|f |Broker nacks a message (i.e. sent message does not get delivered)|
-|g|Unresponsive connections|g |Broker returns a message (i.e. sent message does not get delivered)|
-| | |h |Queue's hosting node down while sending messages to it (same as g.)|
-| | |i |Broker blocks producers  |
+|b|Restart/Shutdown a cluster node the application is connected to| b|Consumer terminates while processing a message|
+|c|Restart/Shutdown a cluster node hosting the consumer's queue|c |Connection drops while processing a message|
+|d|Rolling restart of cluster nodes|d |Consumer receives a *Poison message*|
+|e|Kill/drop connection -consumer and/or producer|e|Consumer gives up after failing to process a message (same as c.)|
+|f|Pause nodes|f |Producer fails to send a message (due to connection/channel errors)|
+|g|Unresponsive connections|g |Broker nacks a message (i.e. sent message does not get delivered)|
+| | |h |Broker returns a message (i.e. sent message does not get delivered)|
+| | |i |Queue's hosting node down while sending messages to it (same as g.)|
+| | |j |Broker blocks producers  |
 
 
 ### Resiliency Matrix
@@ -454,15 +416,16 @@ The type of failures we are going test are:
 |[`1.e`](#user-content-1e)|:white_check_mark:|    |     |    |    |    |   
 |[`1.f`](#user-content-1f)|:white_check_mark:|    |     |    |    |    |   
 |[`1.g`](#user-content-1g)|     |    |     |    |    |    |   
-|[`2.a`](#user-content-2a)|:white_check_mark:|    |    |    |    |    |   
-|[`2.b`](#user-content-2b)|:x:|:white_check_mark:|    |    |    |    |   
-|[`2.c`](#user-content-2c)|     |    |    |    |    |    |   
-|[`2.d`](#user-content-2d)|     |    |    |    |    |     |   
+|[`2.a`](#user-content2a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|   
+|[`2.b`](#user-content-2b)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|
+|[`2.c`](#user-content-2c)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|
+|[`2.d`](#user-content2d)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|   
 |[`2.e`](#user-content-2e)|     |    |    |    |    |    |   
 |[`2.f`](#user-content-2f)|     |    |     |    |    |    |   
 |[`2.g`](#user-content-2g)|     |    |     |    |    |    |   
 |[`2.h`](#user-content-2h)|     |    |     |    |    |    |   
 |[`2.i`](#user-content-2i)|     |    |     |    |    |    |   
+|[`2.j`](#user-content-2j)|     |    |     |    |    |    |   
 
 :white_check_mark: Application is resilient to the failure
 :x: Application is not resilient to the failure
@@ -774,6 +737,26 @@ management UI on `rmq0`.
 
 We are going to simulate buggy or unresponsive connections.
 
+**About ToxiProxy**
+  Toxiproxy is a framework for simulating network conditions. It consists of 2 parts:
+    - toxiproxy - server component that allows us to create proxies at runtime
+    - toxiproxy-cli - client application that allows us to interact with toxiproxy to create proxies.
+
+  In diagram below illustrates how it works. First we launch `toxiproxy-cli` so that
+  we create a proxy called `rabbit` that listens on port `25673` and forwards it to
+  `5673` where our real RabbitMQ node is listening.
+  Then we configure our application to use `localhost:25673` (the proxy) as RabbitMQ address.
+
+  With this setup all traffic goes thru the proxy and now we can introduce buggy behaviours like
+  dropping connections and/ introduce latency.
+
+  ```
+      [toxiproxy-cli]----->8474:[toxiproxy]
+                                [---------]
+         [application]--->25673:[rabbit   ]---->5673:[real-rabbit]
+
+  ```
+
 **Get the environment ready**
 
 1. Launch ToxiProxy
@@ -789,7 +772,7 @@ We are going to simulate buggy or unresponsive connections.
   ```
 3. Create an AMQP proxy to simulate buggy connections. We are going to proxy the first node in the cluster, `rmq0`.
   ```bash
-  docker/toxiproxy-cli create rabbit --listen 0.0.0.0:25673 -upstream rmq0:5672
+  docker/toxiproxy-cli create rabbit --listen 0.0.0.0:25673 --upstream rmq0:5672
   ```
 
   If we list the proxies again, we should see:
@@ -849,28 +832,121 @@ Proxy rabbit is now enabled
 <a name="2a"></a>
 ### Verify Guarantee of delivery - 2.a Consumer fail to process a message
 
-:information_source: All consumer types uses client acknowledgment therefore they will only ack a message
-after it has successfully processed it.  
+Sometimes the consumer cannot process the message and it fails. It could be a
+*transient* failure which means that after a few attempts, the consumer succeeds to process it.
+However, there other times when the consumer exhausts all attempts to process it. This could be down
+to problems with message itself (e.g. wrong/missing headers, unable to parse body, or
+  schema incompatible), or infrastructure failures such as unable to connect to the database.
+
+In this scenario, we are going to verify that in case of a *transient* failure, our consumer
+does not lose the message.
+
+**How to simulate processing failures**
+
+`transient-consumer` and `reliable-consumer` allows us to:
+  - throw a generic `RuntimeException` when it receives a trade with certain `tradeId` (`--chaos.tradeId`)
+  - configure how many times we want to repeatedly fail it (`--chaos.maxFailTimes`)
+  - and whether to do nothing after we have retried `maxFailTimes` (`--chaos.actionAfterMaxFailTimes=nothing`) which is the default behaviour or to throw `AmqpRejectAndDontRequeueException` (`--chaos.actionAfterMaxFailTimes=reject`) or to abruptly terminate (`--chaos.actionAfterMaxFailTimes=exit`).
+
+By default, SCS will retry it [maxAttempts](https://cloud.spring.io/spring-cloud-static/spring-cloud-stream/current/reference/html/spring-cloud-stream.html#_retry_template_and_retrybackoff) times, which is by default,
+3 times. And after that it rejects the message.
+
+For this scenario, we are going to simulate a transient failure (e.g. a one-off failure) and verify that this
+message is not lost thanks to the retry mechanism.
 
 #### :white_check_mark: All consumer types will never lose the message
+
+:information_source: To guarantee we do not lose messages, consumers must use [client AUTO acknowledgment](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-consumer-properties). This means a consumer will only ack a message after it has successfully processed it. And if an exception occurs -except for `AmqpRejectAndDontRequeueException`, the message is nacked (i.e. it goes back to the queue so that it can be redelivered again).
+
+We will verify it on the `transient-consumer`.
 
 1. Launch the producer.
   ```bash
   cd reliable-producer
   ./run.sh
   ```
-2. Launch the consumer. It will fail to process tradeId `3` two times. However, SCS
- retries it 3 times.
+2. Launch the consumer. It will fail to process tradeId `3` only two times (< `maxAttempts`) and it succeeds
+on the first attempt.
   ```bash
-  cd reliable-consumer
+  cd transient-consumer
   ./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=2
   ```
-3. Notice in the consumer log how it fails and the message is retried.
+3. Notice in the consumer log how it fails 2 times and on the 3rd attempt it succeeds.
+  ```
+  Received Trade{ tradeId=3 accountId=6 asset=VMW amount=1000 buy=true timestamp=1601887222068} done
+  Simulating failure. Attempts:1
+  Failed to processed trade 3 due to ChaosMoney on trade 3 after 1 attempts
+  Trade summary after trade 3: total received:3, missed:0, processed:2
+
+  Received Trade{ tradeId=3 accountId=6 asset=VMW amount=1000 buy=true timestamp=1601887222068} done
+  Simulating failure. Attempts:2
+  Failed to processed trade 3 due to ChaosMoney on trade 3 after 2 attempts
+  Trade summary after trade 3: total received:4, missed:0, processed:2
+
+  Received Trade{ tradeId=3 accountId=6 asset=VMW amount=1000 buy=true timestamp=1601887222068} done
+  Simulating failure. Attempts:3
+  Simulating failure. Has exceeded maxTimes:2. next:nothing
+  Successfully Processed trade 3
+  ```
+
+We have verified that `trade 3` is not lost.
+
+<a name="2b"></a>
+### Verify Guarantee of delivery - 2.b Consumer terminates while processing a message
+
+Here we are simulating a rather severe failure that causes the application to crash
+while processing a message.
+
+We will verify it on the `durable-consumer`.
+
+1. Launch the producer.
+  ```bash
+  cd reliable-producer
+  ./run.sh
+  ```
+2. Launch the consumer. It will fail to process tradeId `3` only two times (< `maxAttempts`) and then it terminates
+  ```bash
+  cd durable-consumer
+  ./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=2 --chaos.actionAfterMaxFailTimes=exit
+  ```
+3. Notice in the consumer log how it fails 2 times and on the 3rd attempt it terminates.
+  ```
+  ...
+
+  Simulating failure. Attempts:3
+  Simulating failure. Has exceeded maxTimes:2. next:exit
+  Trying to unbind 'durable-trade-logger-input', but no binding found.
+  Removing {logging-channel-adapter:_org.springframework.integration.errorLogger} as a subscriber to the 'errorChannel' channel
+  Channel 'durable-consumer.errorChannel' has 0 subscriber(s).
+  stopped bean '_org.springframework.integration.errorLogger'
+
+  ...
+  ```
+4. The message, `trade 3`, is not lost. If we run our consumer again without any `chaos` setting we will
+see that the first message is `trade 3`.
+  ```bash
+  ./run.sh
+  ```
+
+  ```
+  Received Trade{ tradeId=3 accountId=6 asset=VMW amount=1000 buy=true timestamp=1601887222068} done
+  Successfully Processed trade 3
+  ```
+
+
+#### :x: Transient consumers will lose the message and all the remaining enqueued messages
+
+This is due to the nature of this consumer. Messages' live depend on the consumer's live.
+
+#### :white_check_mark: Only durable consumers will never lose the message
+
+
+
 4. Kill the consumer right after the first failed attempted and ensure that the
 message stays in the queue, i.e. it is not lost
 
 <a name="2b"></a>
-### Verify Guarantee of delivery - 2.b Connection drops while processing a message
+### Verify Guarantee of delivery - 2.c Connection drops while processing a message
 
 #### :x: Transient consumer looses all enqueued messages so far
 
@@ -915,7 +991,7 @@ right before it lost the connection. It has not lost either the messages the pro
 while it was reconnecting.
 
 <a name="2c"></a>
-### Verify delivery guarantee - 2.c Consumer receives a Poison message
+### Verify delivery guarantee - 2.d Consumer receives a Poison message
 
 A *Poison message* is a message that the consumer will never be able to process. Common
 cases are that the consumer is not able to parse the message due to schema conflicts, or
@@ -961,7 +1037,7 @@ it moves onto the next message.
 
 
 <a name="2d"></a>
-### Verify delivery guarantee - 2.d Consumer gives up after failing to process a message
+### Verify delivery guarantee - 2.e Consumer gives up after failing to process a message
 
 This failure is the same as [2.c](#user-content-2c). It is more a semantic difference.
 What happens if we need to execute a query against a database which is down in all 3 attempts?
@@ -970,7 +1046,7 @@ The message would have to be rejected and if we do not want to loose it, it shou
 This type of failure, alike a Poison message, are transient.
 
 <a name="2e"></a>
-### Verify Guarantee of delivery - 2.e Connection drops while sending a message
+### Verify Guarantee of delivery - 2.f Connection drops while sending a message
 
 #### :x: Fire-and-forget looses the message
 
@@ -980,7 +1056,7 @@ the producer is pretty basic and it does not retry it.
 #### :white_check_mark: Reliable producer retries the failed operation
 
 <a name="2f"></a>
-### Verify Guarantee of delivery - 2.f RabbitMQ fails to accept a sent message
+### Verify Guarantee of delivery - 2.g RabbitMQ fails to accept a sent message
 
 #### :x: Fire-and-forget looses a message if RabbitMQ fails to accept it
 - Producer does not use publisher confirmation. If RabbitMQ fail to deliver a message
@@ -1037,7 +1113,7 @@ PORT=15673 ./unset_limit_on_queue
 ```
 
 <a name="2g"></a>
-### Verify Guarantee of delivery - 2.g RabbitMQ cannot route a message
+### Verify Guarantee of delivery - 2.h RabbitMQ cannot route a message
 
 #### :x: Fire-and-forget looses a message if RabbitMQ cannot route it
 
@@ -1104,7 +1180,7 @@ amount of message loss but it does not prevent it entirely. It is convenient bec
 can start applications, producer or consumer, in any order. However, we are coupling the producer with the consumer. Also, should we added more consumer groups, we would have to reconfigure our producer application.
 
 <a name="2h"></a>
-### Verify Guarantee of delivery - 2.h Queue's hosting node down while sending messages to it
+### Verify Guarantee of delivery - 2.i Queue's hosting node down while sending messages to it
 
 Our consumer will not be able to consume while the queue's hosting node is down. Furthermore,
 if the producer does not use mandatory flag and/or alternate-exchange, those messages are lost too.
@@ -1144,7 +1220,7 @@ we should make the queue highly available. Take a look at [Application with high
 
 
 <a name="2i"></a>
-### Verify guarantee of delivery - 2.i Block producers
+### Verify guarantee of delivery - 2.j Block producers
 
 We are going to force RabbitMQ to trigger a memory alarm by setting the high water mark to 0.
 This should only impact the producer connections and let consumer connections carry on.

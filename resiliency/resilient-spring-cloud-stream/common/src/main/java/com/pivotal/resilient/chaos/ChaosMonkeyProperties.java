@@ -7,8 +7,19 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "chaos")
 public class ChaosMonkeyProperties {
 
+    public ActionAfterMaxFailTimes getActionAfterMaxFailTimes() {
+        return actionAfterMaxFailTimes;
+    }
+
+    public void setActionAfterMaxFailTimes(ActionAfterMaxFailTimes actionAfterMaxFailTimes) {
+        this.actionAfterMaxFailTimes = actionAfterMaxFailTimes;
+    }
+
+    public static enum ActionAfterMaxFailTimes { nothing, reject, exit }
+
     private int maxFailTimes = 2;
     private long tradeId = 3;
+    private ActionAfterMaxFailTimes actionAfterMaxFailTimes = ActionAfterMaxFailTimes.nothing;
 
     public int getMaxFailTimes() {
         return maxFailTimes;
@@ -25,5 +36,7 @@ public class ChaosMonkeyProperties {
     public void setTradeId(long tradeId) {
         this.tradeId = tradeId;
     }
+
+
 }
 

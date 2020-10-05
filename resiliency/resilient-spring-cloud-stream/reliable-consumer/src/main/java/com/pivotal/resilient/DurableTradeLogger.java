@@ -1,13 +1,11 @@
 package com.pivotal.resilient;
 
-import com.pivotal.resilient.chaos.ChaosMonkeyProperties;
 import com.pivotal.resilient.chaos.FaultyConsumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.stream.annotation.EnableBinding;
 import org.springframework.cloud.stream.annotation.Input;
 import org.springframework.cloud.stream.annotation.StreamListener;
@@ -15,7 +13,6 @@ import org.springframework.messaging.SubscribableChannel;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.util.function.Consumer;
 
 @Service
 @EnableBinding(DurableTradeLogger.MessagingBridge.class)
@@ -64,23 +61,9 @@ public class DurableTradeLogger {
 
     private void logSummary(Trade trade) {
         logger.info("Trade summary after trade {}: total received:{}, missed:{}, processed:{}",
-                trade.getId(), missingTradesTracker.receivedTradeCount,
-                missingTradesTracker.missedTradeCount,
+                trade.getId(), missingTradesTracker.getReceivedTradeCount(),
+                missingTradesTracker.getMissedTradeCount(),
                 processedTradeCount);
     }
 
-    class TrackMissingTrades implements Consumer<Trade> {
-        private long missedTradeCount;
-        private long lastTradeId = -1;
-        private long receivedTradeCount;
-
-        @Override
-        public void accept(Trade trade) {
-            receivedTradeCount++;
-            if (lastTradeId > -1 && lastTradeId != trade.id) {
-                if (trade.id > lastTradeId + 1) missedTradeCount++;
-            }
-            lastTradeId = trade.id;
-        }
-    }
 }
