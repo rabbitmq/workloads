@@ -416,10 +416,10 @@ The type of failures we are going test are:
 |[`1.e`](#user-content-1e)|:white_check_mark:|    |     |    |    |    |   
 |[`1.f`](#user-content-1f)|:white_check_mark:|    |     |    |    |    |   
 |[`1.g`](#user-content-1g)|     |    |     |    |    |    |   
-|[`2.a`](#user-content2a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|   
+|[`2.a`](#user-content-2a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|   
 |[`2.b`](#user-content-2b)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|
 |[`2.c`](#user-content-2c)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|
-|[`2.d`](#user-content2d)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|   
+|[`2.d`](#user-content-2d)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|   
 |[`2.e`](#user-content-2e)|     |    |    |    |    |    |   
 |[`2.f`](#user-content-2f)|     |    |     |    |    |    |   
 |[`2.g`](#user-content-2g)|     |    |     |    |    |    |   
@@ -938,7 +938,7 @@ see that the first message is `trade 3`.
   ```
 
 
-<a name="2b"></a>
+<a name="2c"></a>
 ### Verify Guarantee of delivery - 2.c Connection drops while processing a message
 
 #### :x: Transient consumer looses all enqueued messages so far
@@ -1003,7 +1003,7 @@ right before it lost the connection. It has not lost either the messages the pro
 while it was reconnecting.
 
 
-<a name="2c"></a>
+<a name="2d"></a>
 ### Verify delivery guarantee - 2.d Consumer receives a Poison message
 
 A *Poison message* is a message that the consumer will never be able to process. Common
@@ -1054,13 +1054,16 @@ rejected, i.e. it is lost.
 
   ```
 4. Notice the last logging statement about `republishToDlq`. This is just a warning that we do not have an
-alternate route -a.k.a dlq- for our rejected message.
+alternate route -a.k.a dlq- for our rejected message. We are addressing this issue in the happy scenario below.
 
 
-#### :white_check_mark: Reliable consumer does not lose the message but it moves it to a DLQ
+#### :white_check_mark: Consumers with queues configured with DLQ do not lose the message
 
-:information_source: We are going to fix the delivery guarantee issue in another consumer project called
-`reliable-producer`. We are going to configure our consumer channel with a dead-letter-queue in the `application-dlq.yaml`[reliable-consumer/src/main/resources/application-dlq.yaml].
+In order to demonstrate *dead-letter-queues* we are going to use the [reliable-consumer](reliable-consumer) project.
+
+**Required configuration changes**
+
+ We are going to configure our consumer channel with a *dead-letter-queue* in the [application-dlq.yaml](reliable-consumer/src/main/resources/application-dlq.yaml).
   ```yaml
   spring:
     cloud:
@@ -1070,16 +1073,60 @@ alternate route -a.k.a dlq- for our rejected message.
             durable-trade-logger-input:
               consumer:
                 autoBindDlq: true
+                republishToDlq: false  # default is true
 
+  ```  
+  We enable the `dlq` Spring Boot profile:
+  ```yaml
+  spring:
+    application:
+      name: reliable-consumer
+    profiles:
+      include:
+        - management
+        - cluster
+        - dlq   # <-- activate dlq
   ```
-  > application.yml automatically activates the `dlq` profile
+  With these two changes, SCS does the following:
+  - Creates a `DLX` exchange
+  - Creates a `trades.trade-logger.dlq` queue
+  - Declares a `trades.trade-logger` queue with `x-dead-letter-exchange: trades.trade-logger.dlq`
 
-:warning: SCS configures a queue with a dead-letter-exchange right when it declares it by passing some *x-args*. It is very convenient but it has some important implications. Once we declare a queue we cannot change
-its configuration. Our queue `trades.trade-logger` was declared as *durable* without any arguments. Now, our
-`reliable-consumer` application will declared it with a `x-dead-letter-exchange` argument however it will fail with the following error:
+:warning: It is very convenient that SCS declares the queue fully configured with the DLQ however it has some important implications. Once we declare a queue we cannot change its configuration. If you have followed the
+workshop up to this point, we already have a `trades.trade-logger` queue declared as *durable* without any arguments. Now, our `reliable-consumer` application tries to declare it with a `x-dead-letter-exchange` argument however it will fail with the following error:
 ```
 Channel shutdown: channel error; protocol method: #method<channel.close>(reply-code=406, reply-text=PRECONDITION_FAILED - inequivalent arg 'x-dead-letter-exchange' for queue 'trades.trade-logger' in vhost '/': received the value 'DLX' of type 'longstr' but current is none, class-id=50, method-id=10)
 ```
+
+**Two ways DLQ mechanisms available in SCS**
+
+SCS Rabbit binder gives us two DLQ mechanisms. Let's start with the standard
+RabbitMQ mechanism and then continue with a more advanced one.
+
+In the **standard RabbitMQ mechanism** -which is disabled by the default- to get a message to a
+DLQ we reject it and RabbitMQ does the job. This is the simplest and the most reliable way because
+RabbitMQ will ensure the message gets to the DLQ.
+The dead-lettering process adds an array to the header of each dead-lettered message named `x-death`. This array contains an entry for each dead lettering event, identified by a pair of `{queue, reason}`. Each such entry is a table that consists of several fields. More details [here](https://www.rabbitmq.com/dlx.html#effects).
+Below is a screenshot from the management ui of `trade 3` dead-lettered.
+![x-death-trade-3](assets/x-death.png). As we can see, the exact reason why it failed is unknown. All we know is that it was rejected.
+
+To enable this mechanism, we use the configuration at [application-dlq.yaml](reliable-consumer/src/main/resources/application-dlq.yaml#L10) which disables the advanced mechanism.
+
+In the **advanced mechanism provided by SCS RabbitMQ Binder** -which is enabled by default- to get a message to a DLQ we reject it but SCS, under the covers, nacks it and publishes it to the DLQ with a different set of
+headers which gives us details such as:
+  - `x-exception-message` It carries the exception's message
+  - `x-exception-stacktrace` It carries the whole stacktrace. :warning: This could have [important implications](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#spring-cloud-stream-rabbit-frame-max-headroom)
+  - `x-original-exchange`
+  - `x-original-routingKey`
+
+Below is a screenshot from the management ui of `trade 3` dead-lettered.
+![x-dql-message](assets/x-dlq-message.png).
+
+To enable this mechanism, we use the configuration at [application-republis-dql.yaml](reliable-consumer/src/main/resources/application-republish-dlq.yaml#L10) which restores its default value.
+
+
+----
+Let's verify the scenario:
 
 1. Launch the producer.
   ```bash
@@ -1101,7 +1148,7 @@ Check the depth of the queue has 1 message.
   ```
 
 
-<a name="2d"></a>
+<a name="2e"></a>
 ### Verify delivery guarantee - 2.e Consumer gives up after failing to process a message
 
 This failure is the same as [2.c](#user-content-2c). It is more a semantic difference.
@@ -1110,7 +1157,7 @@ The message would have to be rejected and if we do not want to loose it, it shou
 
 This type of failure, alike a Poison message, are transient.
 
-<a name="2e"></a>
+<a name="2f"></a>
 ### Verify Guarantee of delivery - 2.f Connection drops while sending a message
 
 #### :x: Fire-and-forget looses the message
@@ -1120,7 +1167,8 @@ the producer is pretty basic and it does not retry it.
 
 #### :white_check_mark: Reliable producer retries the failed operation
 
-<a name="2f"></a>
+
+<a name="2g"></a>
 ### Verify Guarantee of delivery - 2.g RabbitMQ fails to accept a sent message
 
 #### :x: Fire-and-forget looses a message if RabbitMQ fails to accept it
