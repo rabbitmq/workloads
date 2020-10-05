@@ -6,14 +6,17 @@ logging:
 
 spring:
   application:
-    name: durable-consumer
+    name: reliable-consumer
   profiles:
     include:
       - management
       - cluster
+      - dlq
   cloud:
     stream:
       bindings: # spring cloud stream binding configuration
         durable-trade-logger-input:
           destination: trades
           group: trade-logger
+          consumer:
+            maxAttempts: 3  # default is 3

@@ -17,3 +17,5 @@ spring:
         durable-trade-logger-input:
           destination: trades
           group: trade-logger
+          consumer:
+            maxAttempts: 3  # default is 3

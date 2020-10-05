@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+function check_queue_depth {
+  depth=`curl -s -u guest:guest localhost:${PORT:-15673}/api/queues/%2F/$1 | jq .messages_ready`
+  echo "There are $depth messages in the $1 queue"
+}
+
+check_queue_depth $1

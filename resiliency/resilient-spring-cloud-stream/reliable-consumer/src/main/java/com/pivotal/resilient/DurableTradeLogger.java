@@ -50,8 +50,11 @@ public class DurableTradeLogger {
             Thread.sleep(processingTime.toMillis());
             faultyConsumer.accept(trade);
             successfully = true;
-        } catch (RuntimeException | InterruptedException e) {
+        } catch (RuntimeException e) {
             logger.error("An error occurred while processing trade {}. Reason: {}", trade.getId(), e.getMessage());
+            throw e;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         } finally {
             logger.info("Processed {} {} ", trade, successfully ? "success" : "failed");
             if (successfully) processedTradeCount++;

@@ -897,7 +897,11 @@ We have verified that `trade 3` is not lost.
 Here we are simulating a rather severe failure that causes the application to crash
 while processing a message.
 
-We will verify it on the `durable-consumer`.
+#### :x: Transient consumers will lose the message and all the remaining enqueued messages
+
+This is due to the nature of this consumer. Messages' live depend on the consumer's live.
+
+#### :white_check_mark: Only durable consumers will never lose the message
 
 1. Launch the producer.
   ```bash
@@ -934,17 +938,6 @@ see that the first message is `trade 3`.
   ```
 
 
-#### :x: Transient consumers will lose the message and all the remaining enqueued messages
-
-This is due to the nature of this consumer. Messages' live depend on the consumer's live.
-
-#### :white_check_mark: Only durable consumers will never lose the message
-
-
-
-4. Kill the consumer right after the first failed attempted and ensure that the
-message stays in the queue, i.e. it is not lost
-
 <a name="2b"></a>
 ### Verify Guarantee of delivery - 2.c Connection drops while processing a message
 
@@ -954,41 +947,61 @@ This time we are launching producer and consumer on separate application/process
 
 1. Start producer
   ```bash
-	cd transient-consumer
-  ./run.sh --scheduledTradeRequester=true
+	cd fire-and-forget-producer
+  ./run.sh
   ```
 2. Start transient consumer (on a separate terminal) with a message processing time of
 5seconds to produce a backlog in the queue
   ```bash
 	cd transient-consumer
-  ./run.sh --tradeLogger=true --server.port=8082 --processingTime=5s
+  ./run.sh --processingTime=5s
   ```
-3. Stop the producer. Take note of the last Trade id sent
-4. Go to the management ui and take note of the messages in the queue.
-5. Go to the management ui and Kill the consumer's connection
-6. Follow the consumer's log and see that it reconnects but it does not receive any messages.
-It has lost them all.
+3. Wait until we have a few messages in the queue and then stop the producer. You
+can use the script below to check the queue depth.
+  ```bash
+  docker/check-queue-depth trades.trade-logger
+  ```
+4. Kill the consumer's connection
+  ```bash
+  docker/kill-conn-grep transient-consumer
+  ```
+
+  It should print out the messages in the queue before killing the connection:
+  ```
+  There are 9 messages in the trades.trade-logger queue
+  ```
+4. Verify that the consumer reconnects but it has lost all enqueued messages
+
 
 #### :white_check_mark: Durable consumer does not loose the enqueued messages
 
 1. Start producer
   ```bash
-	cd transient-consumer
-  ./run.sh --scheduledTradeRequester=true
+	cd fire-and-forget-producer
+  ./run.sh
   ```
 2. Start durable consumer (on a separate terminal) with a message processing time of
 5seconds to produce a backlog in the queue
   ```bash
 	cd durable-consumer
-  ./run.sh --durableTradeLogger=true --server.port=8082 --processingTime=5s
+  ./run.sh --processingTime=5s
   ```
-3. Go to the management ui and Kill the consumer's connection
-4. Follow the consumer's log and see that it reconnects and it receives all messages the
+3. Wait until we have a few messages in the queue and then stop the producer. You
+can use the script below to check the queue depth.
+  ```bash
+  docker/check-queue-depth trades.trade-logger
+  ```
+4. Kill the consumer's connection
+  ```bash
+  docker/kill-conn-grep durable-consumer
+  ```
+5. Follow the consumer's log and see that it reconnects and it receives all messages the
 producer sent since it started.
 
 :information_source: The durable consumer has not lost the messages which were in the queue
 right before it lost the connection. It has not lost either the messages the producer sent
 while it was reconnecting.
+
 
 <a name="2c"></a>
 ### Verify delivery guarantee - 2.d Consumer receives a Poison message
@@ -997,43 +1010,95 @@ A *Poison message* is a message that the consumer will never be able to process.
 cases are that the consumer is not able to parse the message due to schema conflicts, or
 the message carries invalid data.
 
-:warning: If we do not limit the number of retries, it could crash all consumer instances,
-consume lots of network bandwidth and cpu in the broker.
+:warning: As we already know, SCS limits the number of retries otherwise it could crash all consumer instances,
+and consume lots of network bandwidth and cpu in the broker.
 
 #### :x: All consumers without a dlq lose the message
 
 :warning: After retrying a number of times, the message is rejected and the broker drops it.
 
 1. Launch the producer.
-```
-cd transient-consumer
-./run.sh --scheduledTradeRequester=true
-```
-2. Launch the reliable consumer. It will fail to process tradeId `3` three times. SCS
- retries 3 times at most and then it rejects it.
-```
-cd reliable-consumer
-./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=3
-```
+  ```bash
+  cd fire-and-forget-producer
+  ./run.sh
+  ```
+2. Launch the durable consumer that fails tradeId `3` three times. But SCS
+ retries at most 3 times before rejecting it.
+  ```bash
+  cd durable-consumer
+  ./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=3
+  ```
 3. Notice in the consumer log how it fails and the message is retried three times and then it is
 rejected, i.e. it is lost.
+  ```
+  Received Trade{ tradeId=3 accountId=0 asset=VMW amount=1000 buy=true timestamp=1601890884488} done
+  Simulating failure. Attempts:1
+  Failed to processed trade 3 due to ChaosMoney on trade 3 after 1 attempts
+  Trade summary after trade 3: total received:1, missed:0, processed:0
+
+  Received Trade{ tradeId=3 accountId=0 asset=VMW amount=1000 buy=true timestamp=1601890884488} done
+  Simulating failure. Attempts:2
+  Failed to processed trade 3 due to ChaosMoney on trade 3 after 2 attempts
+  Trade summary after trade 3: total received:2, missed:0, processed:0
+
+  Received Trade{ tradeId=3 accountId=0 asset=VMW amount=1000 buy=true timestamp=1601890884488} done
+  Simulating failure. Attempts:3
+  Failed to processed trade 3 due to ChaosMoney on trade 3 after 3 attempts
+  Trade summary after trade 3: total received:3, missed:0, processed:0
+
+  Exception thrown while invoking DurableTradeLogger#execute[3 args]; nested exception is java.lang.RuntimeException: ChaosMoney on trade 3 after 3 attempts, failedMessage=GenericMessage [payload=byte[87], headers={amqp_receivedDeliveryMode=PERSISTENT, amqp_receivedExchange=trades, amqp_deliveryTag=1, deliveryAttempt=3, amqp_consumerQueue=trades.trade-logger, amqp_redelivered=true, amqp_receivedRoutingKey=trades, amqp_timestamp=Mon Oct 05 11:41:24 CEST 2020, amqp_messageId=4994a7d6-d114-ceb6-0600-3b897c68b48c, id=6345e726-4582-0a7a-c27f-9d1719ae17f7, amqp_consumerTag=amq.ctag-VnRS4Jm24Bxwpl83zhjQbw,
+    ...
+  Caused by: java.lang.RuntimeException: ChaosMoney on trade 3 after 3 attempts
+
+  'republishToDlq' is true, but the 'DLX' dead letter exchange is not present; disabling 'republishToDlq'
+
+  ```
+4. Notice the last logging statement about `republishToDlq`. This is just a warning that we do not have an
+alternate route -a.k.a dlq- for our rejected message.
 
 
 #### :white_check_mark: Reliable consumer does not lose the message but it moves it to a DLQ
 
+:information_source: We are going to fix the delivery guarantee issue in another consumer project called
+`reliable-producer`. We are going to configure our consumer channel with a dead-letter-queue in the `application-dlq.yaml`[reliable-consumer/src/main/resources/application-dlq.yaml].
+  ```yaml
+  spring:
+    cloud:
+      stream:
+        rabbit:
+          bindings:
+            durable-trade-logger-input:
+              consumer:
+                autoBindDlq: true
+
+  ```
+  > application.yml automatically activates the `dlq` profile
+
+:warning: SCS configures a queue with a dead-letter-exchange right when it declares it by passing some *x-args*. It is very convenient but it has some important implications. Once we declare a queue we cannot change
+its configuration. Our queue `trades.trade-logger` was declared as *durable* without any arguments. Now, our
+`reliable-consumer` application will declared it with a `x-dead-letter-exchange` argument however it will fail with the following error:
+```
+Channel shutdown: channel error; protocol method: #method<channel.close>(reply-code=406, reply-text=PRECONDITION_FAILED - inequivalent arg 'x-dead-letter-exchange' for queue 'trades.trade-logger' in vhost '/': received the value 'DLX' of type 'longstr' but current is none, class-id=50, method-id=10)
+```
+
 1. Launch the producer.
-```
-cd reliable-producer
-./run.sh
-```
-2. Launch the consumer. But this time we configure it with a dlq.
-```
-cd reliable-consumer
-SPRING_PROFILES_ACTIVE=dlq ./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=3 --server.port=8082
-```
-3. Notice in the consumer log how it fails and the message is retried 3 times and then
+  ```bash
+  cd fire-and-forget-producer
+  ./run.sh
+  ```
+2. Go to the management ui and delete the `trades.trade-logger` queue
+3. Launch the consumer.
+  ```bash
+  cd reliable-consumer
+  ./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=3
+  ```
+4. Notice in the consumer log how it fails and the message is retried 3 times and then
 it moves onto the next message.
-4. Go to the management ui and look for a new queue, called `d`. It has our message.
+5. However, the message was not lost and it is not in the new dlq queue.
+Check the depth of the queue has 1 message.
+  ```bash
+  docker/check-queue-depth trades.trade-logger.dlq
+  ```
 
 
 <a name="2d"></a>
