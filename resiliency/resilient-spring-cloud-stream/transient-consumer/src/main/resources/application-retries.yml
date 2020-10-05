@@ -1,0 +1,19 @@
+
+# https://cloud.spring.io/spring-cloud-static/spring-cloud-stream/current/reference/html/spring-cloud-stream.html#_retry_template_and_retrybackoff
+
+spring:
+  cloud:
+    stream:
+      bindings: # spring cloud stream binding configuration
+        default:
+          consumer:
+            # default value is 3
+            maxAttempts: 3
+            # default 1000
+            backOffInitialInterval: 1000
+            # default 10000
+            backOffMaxInterval: 10000
+            # default 2.0
+            backOffMultiplier: 2.0
+            # Whether to retry when listen throws an exception not listed in retryableExceptions, default is true
+            defaultRetryable: true

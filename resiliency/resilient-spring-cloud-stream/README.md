@@ -848,11 +848,18 @@ does not lose the message.
   - configure how many times we want to repeatedly fail it (`--chaos.maxFailTimes`)
   - and whether to do nothing after we have retried `maxFailTimes` (`--chaos.actionAfterMaxFailTimes=nothing`) which is the default behaviour or to throw `AmqpRejectAndDontRequeueException` (`--chaos.actionAfterMaxFailTimes=reject`) or to abruptly terminate (`--chaos.actionAfterMaxFailTimes=exit`).
 
-By default, SCS will retry it [maxAttempts](https://cloud.spring.io/spring-cloud-static/spring-cloud-stream/current/reference/html/spring-cloud-stream.html#_retry_template_and_retrybackoff) times, which is by default,
-3 times. And after that it rejects the message.
+**SCS and retries**
 
-For this scenario, we are going to simulate a transient failure (e.g. a one-off failure) and verify that this
-message is not lost thanks to the retry mechanism.
+By default, SCS will retry a message as many times as indicated by [maxAttempts](https://cloud.spring.io/spring-cloud-static/spring-cloud-stream/current/reference/html/spring-cloud-stream.html#_retry_template_and_retrybackoff), which is by default, 3 times. However, if it is set to 1, SCS will not try it again. SCS relies on Spring's RetryTemplate to implement this retry mechanism. Once, `maxAttempts` is reached, the message is rejected.
+> We can configure exponential backoff retries via configuration. See the sample configuration file [application-retries.yml](transient-consumer/src/main/resources/application-retries.yml) we use in the transient-consumer.
+> If we want to have greater control on the retry logic we can provide a RestTemplate bean annotated with `@StreamRetryTemplate`. For instance, we could use different settings for different set of exceptions.
+
+There are two ways to reject a message in SCS which is controlled by [requeueRejected](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit/blob/master/README.adoc#rabbitmq-consumer-properties) consumer's setting.
+- when `requeueRejected: false` (default), the message is *rejected* in terms of RabbitMQ, i.e. the message is dropped if the queue does not have a DLQ or instead routed to the DLQ.
+- when `requeueRejected: true`, the message is *nacked* in terms of RabbitMQ, i.e. it goes back to the queue to be redelivered again.
+
+:warning: If we change `requeueRejected` to true we have to change our application so that it throws `AmqpRejectAndDontRequeueException` when we want to stop requeuing. Otherwise we could kill our consumer application and cause bigger problems.
+
 
 #### :white_check_mark: All consumer types will never lose the message
 
@@ -1088,8 +1095,8 @@ In order to demonstrate *dead-letter-queues* we are going to use the [reliable-c
         - dlq   # <-- activate dlq
   ```
   With these two changes, SCS does the following:
-  - Creates a `DLX` exchange
-  - Creates a `trades.trade-logger.dlq` queue
+  - Creates a *direct* exchange named `DLX`
+  - Creates a `trades.trade-logger.dlq` queue bound to the `DLX` with a routing key of `trades.trade-logger`
   - Declares a `trades.trade-logger` queue with `x-dead-letter-exchange: trades.trade-logger.dlq`
 
 :warning: It is very convenient that SCS declares the queue fully configured with the DLQ however it has some important implications. Once we declare a queue we cannot change its configuration. If you have followed the
@@ -1155,7 +1162,8 @@ This failure is the same as [2.c](#user-content-2c). It is more a semantic diffe
 What happens if we need to execute a query against a database which is down in all 3 attempts?
 The message would have to be rejected and if we do not want to loose it, it should go to a dlq.
 
-This type of failure, alike a Poison message, are transient.
+This type of failure, alike a Poison message, are transient. Transient messages should be retried however we cannot suspend or delay the listener. If we want to automatically retry messages after a configurable delay there is a mechanism explained [here](https://cloud.spring.io/spring-cloud-stream-binder-rabbit/multi/multi__retry_with_the_rabbitmq_binder.html).
+
 
 <a name="2f"></a>
 ### Verify Guarantee of delivery - 2.f Connection drops while sending a message

@@ -11,10 +11,10 @@ spring:
     include:
       - management
       - cluster
+      - retries
   cloud:
     stream:
       bindings: # spring cloud stream binding configuration
         trade-logger-input:
           destination: trades
-          consumer:
-            maxAttempts: 3  # default is 3
+

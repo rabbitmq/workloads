@@ -4,6 +4,7 @@ import com.pivotal.resilient.Trade;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.amqp.AmqpRejectAndDontRequeueException;
+import org.springframework.amqp.ImmediateAcknowledgeAmqpException;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
@@ -37,12 +38,18 @@ public class FaultyConsumer implements Consumer<Trade> {
             if (hasExceededMaxFailures.test(trade)) {
                 logger.warn("Simulating failure. Has exceeded maxTimes:{}. next:{}", properties.getMaxFailTimes(),
                         properties.getActionAfterMaxFailTimes().name());
-                if (ChaosMonkeyProperties.ActionAfterMaxFailTimes.reject.equals(properties.getActionAfterMaxFailTimes()))
-                    throw new AmqpRejectAndDontRequeueException(
-                            String.format("ChaosMonkey+Reject trade %d due after %d attempts", trade.getId(), attempts));
-                else if (ChaosMonkeyProperties.ActionAfterMaxFailTimes.exit.equals(properties.getActionAfterMaxFailTimes())) {
-                    System.exit(-1);
+                switch(properties.getActionAfterMaxFailTimes()) {
+                    case immediateAck:
+                        throw new ImmediateAcknowledgeAmqpException(
+                                String.format("ChaosMonkey+ImmediateAck trade %d due after %d attempts", trade.getId(), attempts));
+                    case reject:
+                        throw new AmqpRejectAndDontRequeueException(
+                                String.format("ChaosMonkey+Reject trade %d due after %d attempts", trade.getId(), attempts));
+                    case exit:
+                    default:
+                        System.exit(-1);
                 }
+
             }else throw new RuntimeException(String.format("ChaosMoney on trade %d after %d attempts",
                     trade.getId(), attempts));
         }

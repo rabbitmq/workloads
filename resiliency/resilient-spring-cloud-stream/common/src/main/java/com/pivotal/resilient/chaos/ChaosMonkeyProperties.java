@@ -15,7 +15,7 @@ public class ChaosMonkeyProperties {
         this.actionAfterMaxFailTimes = actionAfterMaxFailTimes;
     }
 
-    public static enum ActionAfterMaxFailTimes { nothing, reject, exit }
+    public static enum ActionAfterMaxFailTimes { nothing, reject, immediateAck, exit }
 
     private int maxFailTimes = 2;
     private long tradeId = 3;
