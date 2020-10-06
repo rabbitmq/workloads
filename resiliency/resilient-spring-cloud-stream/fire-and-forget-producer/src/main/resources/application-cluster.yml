@@ -2,15 +2,6 @@
 
 
 spring:
-  rabbitmq:
-    template:
-      retry:
-        enabled: false # Whether publishing retries are enabled.
-        initial-interval: 1000ms # Duration between the first and second attempt to deliver a message.
-        max-attempts: 10 # Maximum number of attempts to deliver a message.
-        max-interval: 10000ms # Maximum duration between attempts.
-        multiplier: 1 # Multiplier to apply to the previous retry interval.
-
   cloud:
     stream:
       binders:
@@ -25,11 +16,3 @@ spring:
                 username: fire-and-forget-producer
                 password: guest
                 virtual-host: /
-                template:
-                  mandatory: true
-                  retry:
-                    enabled: false # Whether publishing retries are enabled.
-                    initial-interval: 1000ms # Duration between the first and second attempt to deliver a message.
-                    max-attempts: 10 # Maximum number of attempts to deliver a message.
-                    max-interval: 10000ms # Maximum duration between attempts.
-                    multiplier: 1 # Multiplier to apply to the previous retry interval.

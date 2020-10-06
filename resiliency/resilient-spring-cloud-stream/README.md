@@ -92,8 +92,8 @@ various types of applications and what levels of resiliency you can expect from 
 	- [:white_check_mark: Consumers with queues configured with DLQ do not lose the message](#whitecheckmark-consumers-with-queues-configured-with-dlq-do-not-lose-the-message)
 - [Verify delivery guarantee - 2.e Consumer gives up after failing to process a message](#verify-delivery-guarantee-2e-consumer-gives-up-after-failing-to-process-a-message)
 - [Verify Guarantee of delivery - 2.f Connection drops while sending a message](#verify-guarantee-of-delivery-2f-connection-drops-while-sending-a-message)
-	- [:x: Fire-and-forget looses the message](#x-fire-and-forget-looses-the-message)
-	- [:white_check_mark: Reliable producer retries the failed operation](#whitecheckmark-reliable-producer-retries-the-failed-operation)
+	- [:x: Fire-and-forget is not resilient and fails to send it](#x-fire-and-forget-is-not-resilient-and-fails-to-send-it)
+	- [:white_check_mark: Fire-and-forget is now resilient and retries when it fails](#whitecheckmark-fire-and-forget-is-now-resilient-and-retries-when-it-fails)
 - [Verify Guarantee of delivery - 2.g RabbitMQ fails to accept a sent message](#verify-guarantee-of-delivery-2g-rabbitmq-fails-to-accept-a-sent-message)
 	- [:x: Fire-and-forget looses a message if RabbitMQ fails to accept it](#x-fire-and-forget-looses-a-message-if-rabbitmq-fails-to-accept-it)
 	- [:white_check_mark: Reliable producer knows when RabbitMQ fails to accept a message](#whitecheckmark-reliable-producer-knows-when-rabbitmq-fails-to-accept-a-message)
@@ -821,25 +821,25 @@ management UI on `rmq0`.
 We are going to simulate buggy or unresponsive connections.
 
 **About ToxiProxy**
-  Toxiproxy is a framework for simulating network conditions. It consists of 2 parts:
-    - toxiproxy - server component that allows us to create proxies at runtime
-    - toxiproxy-cli - client application that allows us to interact with toxiproxy to create proxies.
+Toxiproxy is a framework for simulating network conditions. It consists of 2 parts:
+  - toxiproxy - server component that allows us to create proxies at runtime
+  - toxiproxy-cli - client application that allows us to interact with toxiproxy to create proxies.
 
-  In diagram below illustrates how it works. First we launch `toxiproxy-cli` so that
-  we create a proxy called `rabbit` that listens on port `25673` and forwards it to
-  `5673` where our real RabbitMQ node is listening.
-  Then we configure our application to use `localhost:25673` (the proxy) as RabbitMQ address.
+In diagram below illustrates how it works. First we launch `toxiproxy-cli` so that
+we create a proxy called `rabbit` that listens on port `25673` and forwards it to
+`5673` where our real RabbitMQ node is listening.
+Then we configure our application to use `localhost:25673` (the proxy) as RabbitMQ address.
 
-  With this setup all traffic goes thru the proxy and now we can introduce buggy behaviours like
-  dropping connections and/ introduce latency.
+With this setup all traffic goes thru the proxy and now we can introduce buggy behaviours like
+dropping connections and/ introduce latency.
 
-  ```
-      [toxiproxy-cli]----->8474:[toxiproxy]
-                                [---------]
-         [application]--->25673:[rabbit   ]---->5673:[real-rabbit]
+```
+    [toxiproxy-cli]----->8474:[toxiproxy]
+                              [---------]
+       [application]--->25673:[rabbit   ]---->5673:[real-rabbit]
 
-  ```
-
+```
+<a name="toxiproxy-ready"></a>
 **Get the environment ready**
 
 1. Launch ToxiProxy
@@ -878,10 +878,10 @@ We are going to simulate buggy or unresponsive connections.
 **Simulate connection drop by disabling the proxy**
 
 1. Disable the proxy
-```bash
-./toxiproxy-cli toggle rabbit
-Proxy rabbit is now disabled
-```
+  ```bash
+  ./toxiproxy-cli toggle rabbit
+  Proxy rabbit is now disabled
+  ```
 The application detects the connection dropped:
 ```
 o.s.a.r.c.CachingConnectionFactory       Channel shutdown: connection error
@@ -1279,23 +1279,85 @@ Something can go wrong right when we are sending a message. These could be the r
 When any of these situations occur we expect the publish operation to retry the message before
 giving up and throwing an exception to the caller.
 
-### :x: Fire-and-forget looses the message
+### :x: Fire-and-forget is not resilient and fails to send it
 
-The default SCS configuration will not retry fail send operations. This is regardless whether
-we configure the `spring.rabbitmq.template.retry` attributes.
+By default, SCS will not retry fail send operations. We are going to use the `fire-and-forget-producer` to test it.
 
-We are going to use the `fire-and-forget-producer` to test this unhappy scenario.
+1. Get [toxi proxy ready](#user-content-toxi-proxy-ready) if you have not done it yet.
+2. Disable the proxy
+  ```bash
+  docker/toxiproxy-cli toggle rabbit
+  Proxy rabbit is now disabled
+  ```
+3. Launch fire-and-forget-producer which connects via the proxy
+  ```
+  SPRING_PROFILES_ACTIVE=toxi fire-and-forget-producer/run.sh
+  ```
+4. Notice that every send operation throws an exception. They are not retried.
+5. Enable the proxy
+  ```bash
+  docker/toxiproxy-cli toggle rabbit
+  Proxy rabbit is now enabled
+  ```
+6. The producer should be able to send now.
 
-**TODO VERIFY**
 
-### :white_check_mark: Reliable producer retries the failed operation
+### :white_check_mark: Fire-and-forget is now resilient and retries when it fails
 
-If we inject a `RetryTemplate` `@Bean` with our retry settings, SCS uses it and we now
-have a resilient producer.
+All we need to do is enable *retry mechanism* via configuration as shown below. This is from
+[application-retries.yml](fire-and-forget-producer/src/main/resources/application-retries.yml):
+```yaml
+spring:
+  cloud:
+    stream:
+      binders:
+        local_rabbit:
+          type: rabbit
+          defaultCandidate: true
+          environment:            
+            spring:
+              rabbitmq:
+                template:
+                  retry:
+                    enabled: true # Whether publishing retries are enabled.
+                    initial-interval: 1000ms # Duration between the first and second attempt to deliver a message.
+                    max-attempts: 5 # Maximum number of attempts to deliver a message.
+                    max-interval: 10000ms # Maximum duration between attempts.
+                    multiplier: 1 # Multiplier to apply to the previous retry interval.
 
-We have applied this changes to the `resilient-producer` project.
+```
 
-**TODO WORK IN PROGRESS**
+We are going to test this configuration in the `fire-and-forget-producer`. All we need to do is enable the profile that we will do via the command line. However, the `reliable-producer` does activate the profile automatically via configuration.
+
+
+1. Get [toxi proxy ready](#user-content-toxi-proxy-ready) if you have not done it yet.
+2. Disable the proxy
+  ```bash
+  docker/toxiproxy-cli toggle rabbit
+  Proxy rabbit is now disabled
+  ```
+3. Launch fire-and-forget-producer which connects via the proxy
+  ```
+  SPRING_PROFILES_ACTIVE=toxi,retries fire-and-forget-producer/run.sh
+  ```
+4. Notice that every send operation fails but it is retried 5 times and then it throws an exception.
+  ```
+  Retry: count=0
+  Attempting to connect to: [localhost:25673]
+  Checking for rethrow: count=1
+  Retry: count=1
+  Attempting to connect to: [localhost:25673]
+  Checking for rethrow: count=2
+  Retry: count=2
+  ```
+  > The extra logging statements like `Retry:` or `Checking for rethrow:` comes from the
+  RetryTemplate class. See logging configuration in [application.yml](fire-and-forget-producer/src/main/resources/application.yml)
+
+5. Enable the proxy
+  ```bash
+  docker/toxiproxy-cli toggle rabbit
+  Proxy rabbit is now enabled
+  ```
 
 <br/>
 <br/>

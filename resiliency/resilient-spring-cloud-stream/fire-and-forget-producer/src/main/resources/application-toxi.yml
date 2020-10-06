@@ -1,0 +1,13 @@
+
+
+spring:
+  cloud:
+    stream:
+      binders:
+        local_rabbit:
+          type: rabbit
+          defaultCandidate: true
+          environment:
+            spring:
+              rabbitmq:
+                addresses: localhost:25673
