@@ -1208,13 +1208,31 @@ This type of failure, alike a Poison message, are transient. Transient messages 
 <a name="2f"></a>
 ### Verify Guarantee of delivery - 2.f Connection drops while sending a message
 
+Something can go wrong right when we are sending a message. These could be the reasons:
+- it is not possible to establish any connection
+- the connection drops while sending
+- there is a channel failure (e.g. exchange does not exist, mandatory message could not be routed)
+
+When any of these situations occur we expect the publish operation to retry the message before
+giving up and throwing an exception to the caller.
+
 #### :x: Fire-and-forget looses the message
 
-- When producer fails to send (i.e. send operation throws an exception) a message,
-the producer is pretty basic and it does not retry it.
+The default SCS configuration will not retry fail send operations. This is regardless whether
+we configure the `spring.rabbitmq.template.retry` attributes.
+
+We are going to use the `fire-and-forget-producer` to test this unhappy scenario.
+
+**TODO VERIFY**
 
 #### :white_check_mark: Reliable producer retries the failed operation
 
+If we inject a `RetryTemplate` `@Bean` with our retry settings, SCS uses it and we now
+have a resilient producer.
+
+We have applied this changes to the `resilient-producer` project.
+
+**TODO WORK IN PROGRESS**
 
 <a name="2g"></a>
 ### Verify Guarantee of delivery - 2.g RabbitMQ fails to accept a sent message
