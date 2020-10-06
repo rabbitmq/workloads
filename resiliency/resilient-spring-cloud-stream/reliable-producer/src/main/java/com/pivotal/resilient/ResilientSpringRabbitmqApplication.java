@@ -10,7 +10,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class ResilientSpringRabbitmqApplication {
 
 
-	//@Bean
+	@Bean
 	public RetryTemplate retryPublish() {
 		RetryTemplate t = new RetryTemplate();
 		return t;

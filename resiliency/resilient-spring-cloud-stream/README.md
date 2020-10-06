@@ -43,7 +43,47 @@ various types of applications and what levels of resiliency you can expect from 
     There is a [resiliency matrix](#resiliency-matrix) that can help you assess which application is right for you depending on what failures is able to handle.
 
 **Table of content**
+<!-- TOC depthFrom:2 depthTo:3 withLinks:1 updateOnSave:1 orderedList:0 -->
 
+- [What you will learn](#what-you-will-learn)
+- [Audience](#audience)
+- [Prerequisites](#prerequisites)
+- [How to follow the workshop](#how-to-follow-the-workshop)
+- [Getting started](#getting-started)
+	- [Get the entire workshop](#get-the-entire-workshop)
+	- [Building the code](#building-the-code)
+	- [How projects are structured](#how-projects-are-structured)
+	- [How to deploy RabbitMQ](#how-to-deploy-rabbitmq)
+- [Application types](#application-types)
+	- [Transient consumer](#transient-consumer)
+	- [Durable consumer](#durable-consumer)
+	- [Highly available Durable consumer](#highly-available-durable-consumer)
+	- [Reliable consumer](#reliable-consumer)
+	- [Fire-and-forget producer](#fire-and-forget-producer)
+	- [Reliable producer](#reliable-producer)
+- [Testing Applications](#testing-applications)
+	- [Failure scenarios](#failure-scenarios)
+	- [Resiliency Matrix](#resiliency-matrix)
+	- [Verify resiliency - 1.a RabbitMQ is not available when application starts](#verify-resiliency-1a-rabbitmq-is-not-available-when-application-starts)
+	- [Verify resiliency - 1.b Restart a cluster node the application is connected to](#verify-resiliency-1b-restart-a-cluster-node-the-application-is-connected-to)
+	- [Verify resiliency - 1.c Restart a cluster node hosting the consumer's queue](#verify-resiliency-1c-restart-a-cluster-node-hosting-the-consumers-queue)
+	- [Verify resiliency - 1.d Rolling restart of cluster nodes](#verify-resiliency-1d-rolling-restart-of-cluster-nodes)
+	- [Verify resiliency - 1.e Kill producer connection](#verify-resiliency-1e-kill-producer-connection)
+	- [Verify resiliency - 1.e Kill consumer connection (repeatedly)](#verify-resiliency-1e-kill-consumer-connection-repeatedly)
+	- [Verify resiliency - 1.e Pause nodes](#verify-resiliency-1e-pause-nodes)
+	- [Verify resiliency - 1.f Unresponsive connections](#verify-resiliency-1f-unresponsive-connections)
+	- [Verify Guarantee of delivery - 2.a Consumer fail to process a message](#verify-guarantee-of-delivery-2a-consumer-fail-to-process-a-message)
+	- [Verify Guarantee of delivery - 2.b Consumer terminates while processing a message](#verify-guarantee-of-delivery-2b-consumer-terminates-while-processing-a-message)
+	- [Verify Guarantee of delivery - 2.c Connection drops while processing a message](#verify-guarantee-of-delivery-2c-connection-drops-while-processing-a-message)
+	- [Verify delivery guarantee - 2.d Consumer receives a Poison message](#verify-delivery-guarantee-2d-consumer-receives-a-poison-message)
+	- [Verify delivery guarantee - 2.e Consumer gives up after failing to process a message](#verify-delivery-guarantee-2e-consumer-gives-up-after-failing-to-process-a-message)
+	- [Verify Guarantee of delivery - 2.f Connection drops while sending a message](#verify-guarantee-of-delivery-2f-connection-drops-while-sending-a-message)
+	- [Verify Guarantee of delivery - 2.g RabbitMQ fails to accept a sent message](#verify-guarantee-of-delivery-2g-rabbitmq-fails-to-accept-a-sent-message)
+	- [Verify Guarantee of delivery - 2.h RabbitMQ cannot route a message](#verify-guarantee-of-delivery-2h-rabbitmq-cannot-route-a-message)
+	- [Verify Guarantee of delivery - 2.i Queue's hosting node down while sending messages to it](#verify-guarantee-of-delivery-2i-queues-hosting-node-down-while-sending-messages-to-it)
+	- [Verify guarantee of delivery - 2.j Block producers](#verify-guarantee-of-delivery-2j-block-producers)
+
+<!-- /TOC -->
 
 ## Getting started
 
