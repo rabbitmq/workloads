@@ -95,7 +95,7 @@ various types of applications and what levels of resiliency you can expect from 
 	- [:x: Fire-and-forget is not resilient and fails to send it](#x-fire-and-forget-is-not-resilient-and-fails-to-send-it)
 	- [:white_check_mark: Fire-and-forget is now resilient and retries when it fails](#whitecheckmark-fire-and-forget-is-now-resilient-and-retries-when-it-fails)
 - [Verify Guarantee of delivery - 2.g RabbitMQ fails to accept a sent message](#verify-guarantee-of-delivery-2g-rabbitmq-fails-to-accept-a-sent-message)
-	- [:x: Fire-and-forget looses a message if RabbitMQ fails to accept it](#x-fire-and-forget-looses-a-message-if-rabbitmq-fails-to-accept-it)
+	- [:x: Fire-and-forget looses messages if RabbitMQ fails to accept it](#x-fire-and-forget-looses-messages-if-rabbitmq-fails-to-accept-it)
 	- [:white_check_mark: Reliable producer knows when RabbitMQ fails to accept a message](#whitecheckmark-reliable-producer-knows-when-rabbitmq-fails-to-accept-a-message)
 - [Verify Guarantee of delivery - 2.h RabbitMQ cannot route a message](#verify-guarantee-of-delivery-2h-rabbitmq-cannot-route-a-message)
 	- [:x: Fire-and-forget looses a message if RabbitMQ cannot route it](#x-fire-and-forget-looses-a-message-if-rabbitmq-cannot-route-it)
@@ -1366,49 +1366,87 @@ We are going to test this configuration in the `fire-and-forget-producer`. All w
 <a name="2g"></a>
 ## Verify Guarantee of delivery - 2.g RabbitMQ fails to accept a sent message
 
-### :x: Fire-and-forget looses a message if RabbitMQ fails to accept it
-- Producer does not use publisher confirmation. If RabbitMQ fail to deliver a message
-to a queue due to an internal issue or simply because the RabbitMQ rejects it, the
-producer is not aware of it.
+Our send operation has completed successfully, but has it really succeeded?
+i.e. has the message made it to a queue? what if the broker dies right before it gets the message?
+
+In this scenario we are going to test an scenario where RabbitMQ fails to deliver a message to a queue.
+There could be 2 main reasons:
+- RabbitMQ internal failure
+- RabbitMQ reject policy due to exceeding max-length policy
+
+We are going to test the latter.  
+
+### :x: Fire-and-forget looses messages if RabbitMQ fails to accept it
+
+`fire-and-forget-producer` as its name implies does not care what happens afterwards.
+Therefore it does not use [publisher confirmation](https://www.rabbitmq.com/confirms.html).
+
+1. Launch the consumer slower than the producer to cause a backlog.
+  ```bash
+  durable-consumer/run.sh --processingTime=5s
+  ./run.sh
+  ```
+2. Launch the producer.
+  ```bash
+  fire-and-forget-producer/run.sh
+  ./run.sh
+  ```
+3. Put a [max-length](https://www.rabbitmq.com/maxlength.html) limit on the queue by invoking the following script
+  ```bash
+  PORT=15673 docker/set_limit_on_queue trade-logger 3
+  ```
+4. Notice how the consumer does not get all the sent messages. The consumer is 5 times slower so
+there will be point when the queue is full and messages are dropped. However, the sender does not know they are being dropped.
+
 
 ### :white_check_mark: Reliable producer knows when RabbitMQ fails to accept a message
 
+To make our producer more resilient we have to use publisher confirmations. But that adds a
+complication to our application's design because those notifications arrive asynchronously.
+
+We have implemented a solution in the `reliable-producer` project. This solution gives us the following
+advantages:
+- We can make the caller wait until the message is sent
+- We can make the caller not to wait however should the message failed we invoke a fallback strategy. In order dummy solution, we log it but we could have stored in a persistent store like a db or send it another queue.
+- Failed messages are retried as many times as required before giving up
+
+
 1. Launch the producer.
-```bash
-cd reliable-producer
-./run.sh
+  ```bash
+  reliable-producer/run.sh
+  ./run.sh
 ```
-2. Request a trade (offline way)
-```bash
-./request-trade
+2. Request a trade (without the caller waiting for confirmation, a.k.a. offline)
+  ```bash
+  reliable-producer/request-trade
+  ```
+3. Check that it sent a message to the `trades.trade-logger` queue
 ```
-3. Check that it sent a message go to the `trades.trade-logger` queue and also new logging statements that informs the message was successfully sent.
-```
-c.p.r.DefaultTradeService                [attempts:0,sent:0] Requesting Trade{tradeId=1accountId=23asset=nullamount=0buy=falsetimestamp=0}
-c.p.r.DefaultTradeService                Sending trade 1 with correlation 1600954559449 . Attempt #1
-c.p.r.DefaultTradeService                Sent trade 1
-c.p.r.DefaultTradeService                Received publish confirm w/id 1600954559449 => Trade{tradeId=1accountId=23asset=nullamount=0buy=falsetimestamp=0}
-c.p.r.DefaultTradeService                Removing 1 completed trades
+c.p.r.DefaultTradeService        [attempts:0,sent:0] Requesting Trade{tradeId=1accountId=23asset=nullamount=0buy=falsetimestamp=0}
+c.p.r.DefaultTradeService        Sending trade 1 with correlation 1600954559449 . Attempt #1
+c.p.r.DefaultTradeService        Sent trade 1
+c.p.r.DefaultTradeService        Received publish confirm w/id 1600954559449 => Trade{tradeId=1accountId=23asset=nullamount=0buy=falsetimestamp=0}
+c.p.r.DefaultTradeService        Removing 1 completed trades
 ```
 4. Put a max-length limit on the queue by invoking the following script that puts a policy.
-```
-PORT=15674 ./set_limit_on_queue trade-logger 3
-```
-> PORT=15674 allows us to target the first node in the cluster otherwise it would use 15672
+  ```bash
+  PORT=15673 docker/set_limit_on_queue trade-logger 3
+  ```
+  > PORT=15673 allows us to target the first node in the cluster otherwise it would use 15672
 
 5. Request a trade (offline way)
-```
-./request-trade
-```
+  ```bash
+  reliable-producer/request-trade
+  ```
 
 6. Notice that it fails and it retries 3 times. See also that our http request succeeded.
 ```
 ```
 
 7. Request a trade (interactive way)
-```
-./request-trade-async
-```
+  ```bash
+  reliable-producer/request-trade-async
+  ```
 
 8. Notice that it fails and it retries 3 times. See also that our http request failed.
 ```
@@ -1416,9 +1454,9 @@ PORT=15674 ./set_limit_on_queue trade-logger 3
 
 9. Remove the max-length limit and we see the producer successfully sends pending trades and continues
 with newer ones.
-```
-PORT=15673 ./unset_limit_on_queue
-```
+  ```bash
+  PORT=15673 docker/unset_limit_on_queue
+  ```
 
 <br/>
 <br/>
@@ -1427,24 +1465,44 @@ PORT=15673 ./unset_limit_on_queue
 <a name="2g"></a>
 ## Verify Guarantee of delivery - 2.h RabbitMQ cannot route a message
 
+Our send operation has completed successfully, but has the message really gone to a queue?
+We know that `fire-and-forget-producer` did not care about it. We also learnt
+that the `reliable-producer` uses *publisher confirmations* to ensure that the message was
+successfully handled by RabbitMQ.
+However, if the exchange we are sending to does not have any queue bindigs, the send is considered successful.
+Therefore, *publisher confirmations* is not enough to guarantee delivery.
+
+We need to use *publisher returns* too, another type of notification, to ensure that the
+message was actually delivered to a queue. It is an asynchronous mechanism like the *publisher confirmations*.
+
+Instead, if we want the send operation to immediately fail we send the message with a *mandatory* flag.
+Thus, the caller knows whether the message made to a queue or not.
+**However, We have not been able to turn this flag on yet on SCS.**
+
+
 ### :x: Fire-and-forget looses a message if RabbitMQ cannot route it
 
-- Producer does not use mandatory flag hence if there are no queues bound to the exchange
-associated to the outbound channel, the message is lost. The exchange is not configured with
-an alternate exchange either.
+The `fire-and-forgot-producer` does not use any of the mechanisms mentioned so far. Therefore, it will lose the message if there are no queues where to send it.
+
+To test it, all we need to do is remove the bindings on the durable queue `trades.trade-logger` if it is there and then launch the `fire-and-forget-producer`. You will notice that it reports successful sends however
+those messages are going nowhere.
+
 
 ### :white_check_mark: Reliable producer knows when RabbitMQ cannot route a message
 
+We enable *publisher returns* on the `reliable-producer`. We leverage the same solution we implemented
+for *publisher confirmations* which allows us to retry messages if they fail to get to a queue.
+And also, we opt to wait or not for its completion.
+
 1. Launch the producer.
-```bash
-cd reliable-producer
-./run.sh
-```
+  ```bash
+  reliable-producer/run.sh
+  ```
 2. Request a trade (offline way)
-```bash
-./request-trade
-```
-3. Check that it sent a message go to the `trades.trade-logger` queue and also new logging statements that informs the message was successfully sent.
+  ```bash
+  reliable-producer/request-trade
+  ```
+3. Check that it sent a message to the `trades.trade-logger` queue and also new logging statements that informs the message was successfully sent.
 ```
 c.p.r.DefaultTradeService                [attempts:0,sent:0] Requesting Trade{tradeId=1accountId=23asset=nullamount=0buy=falsetimestamp=0}
 c.p.r.DefaultTradeService                Sending trade 1 with correlation 1600954559449 . Attempt #1
@@ -1455,10 +1513,10 @@ c.p.r.DefaultTradeService                Removing 1 completed trades
 
 4. Remove the binding of `trades.trade-logger` queue so that messages do not get to any queue.
 
-5. Request a trade (interactive way)
-```
-./request-trade-async
-```
+5. Request a trade (interactive way, i.e. waiting for its completion)
+  ```bash
+  reliable-producer/request-trade-async
+  ```
 
 6. Notice that it fails and it retries 3 times. See also that our http request failed.
 ```
@@ -1466,19 +1524,25 @@ c.p.r.DefaultTradeService                Removing 1 completed trades
 
 ### :white_check_mark: Reliable producer ensures the consumer groups' queues exists
 
-1. Destroy the cluster and recreate it again so that we start without any queues
-```bash
-./destroy-rabbit-cluster
-./deploy-rabbit-cluster
-```
-2. Launch the producer
-```bash
-./run.sh --scheduledTradeRequester=true
-```
-3. Check the queue `trades.trade-logger` exists and it is getting messages even though
-the consumer has not started yet.
+In this scenario we are going to test a mechanism provided by SCS on the producer to ensure
+the consumer queues are always there. This is a way to prevent message loss. It works by
+listing the consumers' group destination queues. When the producer starts up, it declares those
+queues before sending any message, as shown below:
 
-However, our producer will not guarantee delivery when the queue's hosting node is down.
+```yaml
+spring.cloud:
+  stream:
+    bindings: # spring cloud stream binding configuration
+      outboundTradeRequests:
+        destination: trades
+        producer:
+          errorChannelEnabled: true # send failures are sent to an error channel for the destination
+          requiredGroups:
+            - trade-logger
+```
+[application.yaml](reliable-producer/src/main/resources/application.yml)
+
+However, the producer will not guarantee delivery when the queue's hosting node is down.
 These are the two scenarios we can encounter:
 
 - The producer starts up and the queue's hosting node is down. In this scenario,
@@ -1490,6 +1554,19 @@ the queue's hosting node goes down. The messages will go nowhere, they will be l
 Conclusion: Adding `requiredGroups` setting in the producer, help us in reducing the
 amount of message loss but it does not prevent it entirely. It is convenient because we
 can start applications, producer or consumer, in any order. However, we are coupling the producer with the consumer. Also, should we added more consumer groups, we would have to reconfigure our producer application.
+
+
+1. Destroy the cluster and recreate it again so that we start without any queues
+  ```bash
+  ./destroy-rabbit-cluster
+  ./deploy-rabbit-cluster
+  ```
+2. Launch the producer
+  ```bash
+  reliable-producer/run.sh
+  ```
+3. Check the queue `trades.trade-logger` exists and it is getting messages even though
+the consumer has not started yet.
 
 
 <br/>

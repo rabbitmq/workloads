@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+set -x
+
+PATTERN=${1:?First parameter is the policy pattern}
+MAX_LENGTH=${2:-1}
+
+curl -v -u guest:guest -X PUT localhost:${PORT:-15672}/api/policies/%2f/limit \
+    -d '{ "pattern": '"'$PATTERN'"',  "priority": 1 ,"definition": {"max-length":'" $MAX_LENGTH "', "overflow": "reject-publish" } }'
