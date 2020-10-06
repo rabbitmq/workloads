@@ -1,6 +1,16 @@
 
 
+
 spring:
+  rabbitmq:
+    template:
+      retry:
+        enabled: false # Whether publishing retries are enabled.
+        initial-interval: 1000ms # Duration between the first and second attempt to deliver a message.
+        max-attempts: 10 # Maximum number of attempts to deliver a message.
+        max-interval: 10000ms # Maximum duration between attempts.
+        multiplier: 1 # Multiplier to apply to the previous retry interval.
+
   cloud:
     stream:
       binders:
@@ -8,9 +18,18 @@ spring:
           type: rabbit
           defaultCandidate: true
           environment:
+            #  https://docs.spring.io/spring-boot/docs/2.1.8.RELEASE/reference/html/common-application-properties.html
             spring:
               rabbitmq:
                 addresses: localhost:5673,localhost:5674,localhost:5675
                 username: fire-and-forget-producer
                 password: guest
                 virtual-host: /
+                template:
+                  mandatory: true
+                  retry:
+                    enabled: false # Whether publishing retries are enabled.
+                    initial-interval: 1000ms # Duration between the first and second attempt to deliver a message.
+                    max-attempts: 10 # Maximum number of attempts to deliver a message.
+                    max-interval: 10000ms # Maximum duration between attempts.
+                    multiplier: 1 # Multiplier to apply to the previous retry interval.

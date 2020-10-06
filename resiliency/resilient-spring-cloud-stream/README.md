@@ -848,22 +848,22 @@ does not lose the message.
   - configure how many times we want to repeatedly fail it (`--chaos.maxFailTimes`)
   - and whether to do nothing after we have retried `maxFailTimes` (`--chaos.actionAfterMaxFailTimes=nothing`) which is the default behaviour or to throw `AmqpRejectAndDontRequeueException` (`--chaos.actionAfterMaxFailTimes=reject`) or to abruptly terminate (`--chaos.actionAfterMaxFailTimes=exit`).
 
-**SCS and retries**
+**Retries in Spring Cloud Stream**
 
-By default, SCS will retry a message as many times as indicated by [maxAttempts](https://cloud.spring.io/spring-cloud-static/spring-cloud-stream/current/reference/html/spring-cloud-stream.html#_retry_template_and_retrybackoff), which is by default, 3 times. However, if it is set to 1, SCS will not try it again. SCS relies on Spring's RetryTemplate to implement this retry mechanism. Once, `maxAttempts` is reached, the message is rejected.
+By default, SCS will retry a message as many times as indicated by [maxAttempts](https://cloud.spring.io/spring-cloud-static/spring-cloud-stream/current/reference/html/spring-cloud-stream.html#_retry_template_and_retrybackoff), which is by default, 3 times. However, if it is set to 1, SCS will not try it again. SCS relies on Spring's `RetryTemplate` to implement this retry mechanism. Once, `maxAttempts` is reached, the message is rejected.
 > We can configure exponential backoff retries via configuration. See the sample configuration file [application-retries.yml](transient-consumer/src/main/resources/application-retries.yml) we use in the transient-consumer.
-> If we want to have greater control on the retry logic we can provide a RestTemplate bean annotated with `@StreamRetryTemplate`. For instance, we could use different settings for different set of exceptions.
+> If we want to have greater control on the retry logic we can provide a RestTemplate bean annotated with `@StreamRetryTemplate`.
 
-There are two ways to reject a message in SCS which is controlled by [requeueRejected](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit/blob/master/README.adoc#rabbitmq-consumer-properties) consumer's setting.
+Once SCS has decided to reject a message, there are two ways to do it which is controlled by [requeueRejected](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit/blob/master/README.adoc#rabbitmq-consumer-properties) consumer's setting.
 - when `requeueRejected: false` (default), the message is *rejected* in terms of RabbitMQ, i.e. the message is dropped if the queue does not have a DLQ or instead routed to the DLQ.
 - when `requeueRejected: true`, the message is *nacked* in terms of RabbitMQ, i.e. it goes back to the queue to be redelivered again.
 
-:warning: If we change `requeueRejected` to true we have to change our application so that it throws `AmqpRejectAndDontRequeueException` when we want to stop requeuing. Otherwise we could kill our consumer application and cause bigger problems.
+:warning: If we use `requeueRejected: true` then our application eventually has to throw  `AmqpRejectAndDontRequeueException` otherwise the message will be bouncing back and forth forever. This could kill our consumer application and/or cause bigger problems.
 
 
-#### :white_check_mark: All consumer types will never lose the message
+#### :white_check_mark: All consumer types should retry the message before giving up
 
-:information_source: To guarantee we do not lose messages, consumers must use [client AUTO acknowledgment](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-consumer-properties). This means a consumer will only ack a message after it has successfully processed it. And if an exception occurs -except for `AmqpRejectAndDontRequeueException`, the message is nacked (i.e. it goes back to the queue so that it can be redelivered again).
+:information_source: To guarantee we do not lose messages, consumers must use [client AUTO acknowledgment](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-consumer-properties), which is the default value. This means a consumer will only ack a message after it has successfully processed it. And if an exception occurs -except for `AmqpRejectAndDontRequeueException`, the message is retried before giving up. As we learnt earlier, depending on whether the queue has a DLQ, the message will be lost or not. We will cover this in the [scenario 2.d](#user-content-2d).
 
 We will verify it on the `transient-consumer`.
 

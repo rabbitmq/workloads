@@ -3,9 +3,16 @@ logging:
   pattern.console: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%-40.40logger{1}){cyan} %msg %n"
   level:
     com.pivotal.resilient: debug
+    org:
+      springframework:
+        retry:
+          support:
+            RetryTemplate: debug
 
 server:
   port: 8082
+
+tradeRateMs: 5000
 
 spring:
   application:
@@ -19,3 +26,4 @@ spring:
       bindings: # spring cloud stream binding configuration
         outboundTradeRequests:
           destination: trades
+
