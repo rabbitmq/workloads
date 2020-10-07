@@ -283,7 +283,7 @@ the messages are not sent with the *persistent flag*. By default, Spring Cloud S
 send messages as persistent unless we change it. Non-persistent messages are only kept
 in memory and if the queue's hosting node goes down, they will be lost.
 
-*IMPORTANT*: We are always taking about queued messages. We are not talking yet about all kind of messages, including those which are about to be sent by the producer.
+*IMPORTANT*: We are always talking about queued messages. We are not talking yet about all kind of messages, including those which are about to be sent by the producer.
 
 
 #### Is this consumer highly available
@@ -361,7 +361,7 @@ services over http, jdbc, etc.
 Once the consumer has exceeded the maximum of number of retries, we want to move the message to an
 error queue so that we do not lose it and it can be handled separately.
 
-SCS RabbitMQ binder allows to configure a queue with a dead-letter-queue. All we need to do is
+SCS RabbitMQ binder allows us to configure a queue with a dead-letter-queue. All we need to do is
 add a `autoBindDlq: true` to the consumer channel. Check out [application-dlq](reliable-consumer/src/main/resources/application-dlq.yml).
 
 
