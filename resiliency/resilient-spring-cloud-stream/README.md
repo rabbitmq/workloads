@@ -57,7 +57,7 @@ various types of applications and what levels of resiliency you can expect from 
 - [Application types](#application-types)
 	- [Transient consumer](#transient-consumer)
 	- [Durable consumer](#durable-consumer)
-	- [Highly available Durable consumer](#highly-available-durable-consumer)
+	- [Highly available durable consumer](#highly-available-durable-consumer)
 	- [Reliable consumer](#reliable-consumer)
 	- [Fire-and-forget producer](#fire-and-forget-producer)
 	- [Reliable producer](#reliable-producer)
@@ -133,17 +133,17 @@ mvn
 ### How projects are structured
 
 There is a root [pom.xml](pom.xml) that builds all the application types.
-All application types such as `basic-producer` or `transient-consumer` inherits (maven term)
+All application types such as `fire-and-forget-producer` or `transient-consumer` inherits (maven term)
 from a common [parent](parent) project. The `parent` project centralizes dependencies and plugin configuration
 required by the children projects.
 
-All the code shared by the application types resides in the [common](common) project. Therefore,
+Common code shared by all application types resides in the [common](common) project. Therefore,
 all applications types has `common` as a dependency too.
 
 ### How to deploy RabbitMQ
 
-By default, all the sample applications are configured to connect to a 3-node cluster.
-Under `src/main/resources` we can find a `application-cluster.yml` file with
+By default, all applications are configured to connect to a 3-node cluster.
+Under `src/main/resources` of each application project there is an `application-cluster.yml` file with
 RabbitMQ's binder configuration that looks like this:
 ```yaml
 spring:
@@ -162,8 +162,7 @@ spring:
                 virtual-host: /
 
 ```
-And every application is configured with the `cluster` profile under their `application.yml`,
-similar to this configuration:
+And every application is configured with the `cluster` profile in their `application.yml`:
 ```yaml
 spring:
   application:
@@ -174,43 +173,71 @@ spring:
       - cluster
 ```
 
-To launch the corresponding 3-node cluster, we run the script:
+To launch the 3-node cluster, we run the script:
 ```bash
 docker/deploy-rabbit-cluster
 ```
 
-To launch the application against a single standalone server, edit `application.yml`
-and remove `cluster` as one of the included Spring profiles. And to deploy a standalone server run:
-```bash
-docker/deploy-rabbit
-```
-> It will deploy a standalone server on port 5672
-
 ## Application types
 
 Not all applications requires the same level of resiliency, or message delivery guarantee or
-tolerance to downtime. For this reason, we are going to create [different kinds of consumer and producer applications](#application-types), where each type gives us certain level of resiliency and/or guarantee of delivery. And then we are going to [test](#testing-applications) them against various [failure scenarios](#failure-scenarios).
+tolerance to downtime. For this reason, we are going to create different kinds of consumer and producer applications, where each type gives us certain level of resiliency and/or guarantee of delivery.
 
 ### Transient consumer
 
 A **transient consumer** only receives messages which were sent after the consumer has connected to the broker and declared its *non-durable* queue bound to the corresponding *exchange*. If the consumer disconnects from the broker, it looses the queue and all its messages.
 
-This type of consumer creates a queue named `<channel_destination_name>.anonymous.<unique_id>` e.g. `q_trade_confirmations.anonymous.XbaJDGmDT7mNEgD6_ru9zw` with this attributes:
+This type of consumer creates a queue named `<channel_destination_name>.anonymous.<unique_id>` e.g. `trades.anonymous.3pxLDAVsRBWQE_DmgVHaYg` with this attributes:
   - *non-durable*
   - *exclusive*
   - *auto-delete*   
 
 We can find an example of this type of consumer in the project [transient-consumer](transient-consumer).
 
-It consists of 2 Spring `@Service`(s):
-- `ScheduledTradeRequester` is a producer service
-- `TradeLogger` is a transient consumer service
+It consists of an Spring `@Service`(s) called `TradeLogger`. Here is a snippet of code with the relevant parts.
 
-**TODO** Does it help to include some snippets of SCS configuration and sample code?
+```Java
+@Service
+@EnableBinding(TradeLogger.MessagingBridge.class)
+@ConditionalOnProperty(name="tradeLogger", matchIfMissing = true)
+public class TradeLogger {
+
+  interface MessagingBridge {
+
+        String INPUT = "trade-logger-input";
+
+        @Input(INPUT)
+        SubscribableChannel tradeRequests();
+
+    }
+    ...
+
+    @StreamListener(MessagingBridge.INPUT)
+    public void execute(@Header("account") long account,
+                    @Header("tradeId") long tradeId,
+                    @Payload Trade trade) {
+
+    }
+}
+```
+
+And the corresponding SCS configuration:
+
+```yaml
+spring:
+  cloud:
+    stream:
+      bindings: # spring cloud stream binding configuration
+        trade-logger-input:
+          destination: trades
+
+```
 
 This application automatically declares the AMQP resources such as exchanges, queues and bindings.
 
 #### What is this consumer useful for
+
+This type of consumer is useful in use cases like these ones:
 
 - monitoring/dashboard applications which provide real-time stats;
 - audit/logger applications which sends messages to a persistent state such as
@@ -305,7 +332,7 @@ If we need to have strict ordering of processing of messages we need to use `exc
 
 **TODO** investigate how to set *single-active-consumer* on SCS
 
-### Highly available Durable consumer
+### Highly available durable consumer
 
 In order to improve the availability of the [durable-consumer](#durable-consumer) application we need to use highly available queues so that if the queue's hosting node goes down, the broker is able to elect a replica/slave node as master node.
 

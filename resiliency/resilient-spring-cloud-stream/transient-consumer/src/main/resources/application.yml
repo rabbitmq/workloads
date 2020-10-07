@@ -11,7 +11,7 @@ spring:
     include:
       - management
       - cluster
-      - retries
+      - retries # completely optional
   cloud:
     stream:
       bindings: # spring cloud stream binding configuration
