@@ -88,9 +88,11 @@ various types of applications and what levels of resiliency you can expect from 
 	- [:x: Transient consumer looses all enqueued messages so far](#x-transient-consumer-looses-all-enqueued-messages-so-far)
 	- [:white_check_mark: Durable consumer does not loose the enqueued messages](#whitecheckmark-durable-consumer-does-not-loose-the-enqueued-messages)
 - [Verify delivery guarantee-2d Consumer receives a Poison message](#verify-delivery-guarantee-2d-consumer-receives-a-poison-message)
-	- [:x: All consumers without a dlq lose the message](#x-all-consumers-without-a-dlq-lose-the-message)
+	- [:x: All consumers without a DLQ lose the message](#x-all-consumers-without-a-dlq-lose-the-message)
 	- [:white_check_mark: Consumers with queues configured with DLQ do not lose the message](#whitecheckmark-consumers-with-queues-configured-with-dlq-do-not-lose-the-message)
+	- [:white_check_mark: Consumers should not retry poison message neither lose it](#whitecheckmark-consumers-should-not-retry-poison-message-neither-lose-it)
 - [Verify delivery guarantee-2e Consumer gives up after failing to process a message](#verify-delivery-guarantee-2e-consumer-gives-up-after-failing-to-process-a-message)
+	- [:white_check_mark: Transient failures should be delayed and retried without blocking newer messages](#whitecheckmark-transient-failures-should-be-delayed-and-retried-without-blocking-newer-messages)
 - [Verify Guarantee of delivery-2f Connection drops while sending a message](#verify-guarantee-of-delivery-2f-connection-drops-while-sending-a-message)
 	- [:x: Fire-and-forget is not resilient and fails to send it](#x-fire-and-forget-is-not-resilient-and-fails-to-send-it)
 	- [:white_check_mark: Fire-and-forget is now resilient and retries when it fails](#whitecheckmark-fire-and-forget-is-now-resilient-and-retries-when-it-fails)
@@ -503,9 +505,8 @@ This allows us to separate RabbitMQ's operations from application's deployment.
 
 ### :white_check_mark: All applications are resilient to this failure
 
-We choose the least resilient producer and consumer applications which yet
-they are resilient to this particular failure.
-
+We are demonstrating that, by default, SCS applications are resilient to failure. To do
+so, we start with the simplest applications: `fire-and-forget-producer` and `transient-consumer`.
 
 1. Stop RabbitMQ cluster
   ```bash
@@ -515,23 +516,19 @@ they are resilient to this particular failure.
   ```bash
   fire-and-forget-producer/run.sh
   ```
-3. Check for fail attempts to connect in the logs
+3. Check the logs for connection fail attempts
 4. Launch the `transient-consumer` from another terminal
   ```bash
   transient-consumer/run.sh
   ```
-5. Check for fail attempts to connect in the logs
+5. Check the logs for connection fail attempts
 6. Start RabbitMQ cluster and ensure that it starts with all 3-nodes
   ```bash
   ../docker/deploy-rabbit-cluster
   docker exec -it rmq0 rabbitmqctl cluster_status
   ```
-7. Ensure both applications connect to RabbitMQ
----
+7. Check the logs for both apps to ensure they are connected to RabbitMQ and working as expected.
 
-:information_source: **Learnings**
-- **TODO** provide details with regards retry max attempts and/or frequency if there are any
-`recoveryInterval` is a property of consumer rabbitmq binder.
 
 <br/>
 <br/>
@@ -645,6 +642,9 @@ node went down are lost.
 7. Check the `durable-consumer` logs that it is receiving messages but only messages sent after the
 node came back.
 
+:information_source: **Key configuration settings**:  
+- [RabbitMQ Consumer Binding](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-consumer-properties) - `failedDeclarationRetryInterval` The interval (in milliseconds) between attempts to consume from a queue if it is missing (default `5000`)
+- [RabbitMQ Consumer Binding](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-consumer-properties) - `missingQueuesFatal` When the queue cannot be found, whether to treat the condition as fatal and stop the listener container. (default `false`)
 
 ### :white_check_mark: Transient consumers, HA durable consumers and producers in general are resilient to this failure
 
@@ -1112,13 +1112,18 @@ while it was reconnecting.
 ## Verify delivery guarantee-2d Consumer receives a Poison message
 
 A *Poison message* is a message that the consumer will never be able to process. Common
-cases are that the consumer is not able to parse the message due to schema conflicts, or
-the message carries invalid data.
+cases are:
+- badly formed message, e.g. missing required header, or missing required body
+- unable to parse content, e.g. badly formed json or xml payload
+- missing schema and/or schema incompatibility, e.g. avro schema reader cannot parse avro payload
+- validation errors, e.g. invalid date format, field value out of range
 
-:warning: As we already know, SCS limits the number of retries otherwise it could crash all consumer instances,
-and consume lots of network bandwidth and cpu in the broker.
+A consumer should detect *poison message* and reject it immediately rather than retrying it. However, if we do not configure our application to do it at least SCS will limit the number of retries (by default to 3).
 
-### :x: All consumers without a dlq lose the message
+:warning: Be careful changing the default SCS's configuration (e.g. `requeueRejected: true`, `maxAttepmts`) otherwise we could crash all consumer instances, or worse, consume lots of network bandwidth and cpu in the broker.
+
+
+### :x: All consumers without a DLQ lose the message
 
 :warning: After retrying a number of times, the message is rejected and the broker drops it.
 
@@ -1255,14 +1260,28 @@ Check the depth of the queue has 1 message.
 <br/>
 <br/>
 
+### :white_check_mark: Consumers should not retry poison message neither lose it
+
+This scenario builds on top of the previous scenario so that we do not lose poison messages. But
+we do not want to retry them because it would be wasteful to do it.
+
+**TODO** Demonstrate techniques that prevents retrying poison message (`retriableExceptions`,
+  throwing appropriate Spring AMQP exception)
+
+
 <a name="2e"></a>
 ## Verify delivery guarantee-2e Consumer gives up after failing to process a message
 
-This failure is the same as [2.c](#user-content-2c). It is more a semantic difference.
-What happens if we need to execute a query against a database which is down in all 3 attempts?
-The message would have to be rejected and if we do not want to loose it, it should go to a dlq.
+This failure is very similar to the previous failure, [2d Consumer receives a Poison message](#user-content-2d). It is more a semantic difference. This time we do not fail to parse or validate a *poison message*, but we fail to process it due to an infrastructure issue (e.g. database server is down).
 
-This type of failure, alike a Poison message, are transient. Transient messages should be retried however we cannot suspend or delay the listener. If we want to automatically retry messages after a configurable delay there is a mechanism explained [here](https://cloud.spring.io/spring-cloud-stream-binder-rabbit/multi/multi__retry_with_the_rabbitmq_binder.html).
+We know that SCS will retry it and we know that once we exhaust all the attempts, it is redirected to a DLQ.
+
+### :white_check_mark: Transient failures should be delayed and retried without blocking newer messages
+
+This type of failure, alike a *Poison message*, is transient and typically due to an infrastructure problem. Transient failures should be retried however we cannot suspend or delay the listener until the problem is solved. Ideally, we would want to schedule it for another time and carry on processing other messages. Hopefully, newer messages will not suffer the same issue.
+
+If we want to automatically retry messages after a configurable delay there is a mechanism explained [here](https://cloud.spring.io/spring-cloud-stream-binder-rabbit/multi/multi__retry_with_the_rabbitmq_binder.html).
+
 
 <br/>
 <br/>
@@ -1272,8 +1291,8 @@ This type of failure, alike a Poison message, are transient. Transient messages 
 ## Verify Guarantee of delivery-2f Connection drops while sending a message
 
 Something can go wrong right when we are sending a message. These could be the reasons:
-- it is not possible to establish any connection
-- the connection drops while sending
+- it is not possible to establish a connection
+- the connection drops while sending it
 - there is a channel failure (e.g. exchange does not exist, mandatory message could not be routed)
 
 When any of these situations occur we expect the publish operation to retry the message before
