@@ -79,6 +79,8 @@ various types of applications and what levels of resiliency you can expect from 
 	- [:white_check_mark: All consumers are resilient to this failure](#whitecheckmark-all-consumers-are-resilient-to-this-failure)
 - [Verify resiliency-1f Pause nodes](#verify-resiliency-1f-pause-nodes)
 - [Verify resiliency-1g Unresponsive connections](#verify-resiliency-1g-unresponsive-connections)
+	- [:white_check_mark: Unresponsive connections are eventually detected and closed](#whitecheckmark-unresponsive-connections-are-eventually-detected-and-closed)
+	- [:white_check_mark: Unresponsive connections should not make producers unresponsive](#whitecheckmark-unresponsive-connections-should-not-make-producers-unresponsive)
 - [Verify Guarantee of delivery-2a Consumer fail to process a message](#verify-guarantee-of-delivery-2a-consumer-fail-to-process-a-message)
 	- [:white_check_mark: All consumer types should retry the message before giving up](#whitecheckmark-all-consumer-types-should-retry-the-message-before-giving-up)
 - [Verify Guarantee of delivery - 2.b Consumer terminates while processing a message](#verify-guarantee-of-delivery-2b-consumer-terminates-while-processing-a-message)
@@ -794,16 +796,16 @@ are connected to. This will automatically pause the last standing node because i
 
 1. Launch a producer
   ```bash
-  fire-and-forget-producer/run.sh --tradeLogger=true --scheduledTradeRequester=true --processingTime=5s
+  fire-and-forget-producer/run.sh --processingTime=5s
   ```
 2. Launch a consumer
   ```bash
   transient-consumer/run.sh --processingTime=5s
   ```
 3. Wait till we have produced a message backlog
-4. Stop `rmq2`, `rmq3`
+4. Stop `rmq2`, `rmq3`.
   ```bash
-  docker-compose -f ../docker/docker-compose.yml  stop rmq1 rmq2
+  docker-compose -f docker/docker-compose.yml  stop rmq1 rmq2
   ```
 5. Notice connection errors in the application logs. Also we have lost connection to the
 management UI on `rmq0`.
@@ -860,7 +862,7 @@ dropping connections and/ introduce latency.
 
   If we list the proxies again, we should see:
   ```bash
-  ../docker/toxiproxy-cli list
+  docker/toxiproxy-cli list
   Name			Listen		Upstream		Enabled		Toxics
   ======================================================================================
   rabbit			[::]:25673	rmq0:5672		enabled		None
@@ -868,48 +870,108 @@ dropping connections and/ introduce latency.
   Hint: inspect toxics with `toxiproxy-cli inspect <proxyName>`
   ```
 
-4. Configure our application to connect via `localhost:25673` and launch it.
-  ```
-  SPRING_PROFILES_ACTIVE=toxi ./run.sh
-  ```
-  We configured the `proxi` profile here: [src/main/resources/application-toxi.yml](). It
-  just configure a single amqp address `localhost:25673`.
+### :white_check_mark: Unresponsive connections are eventually detected and closed
 
-**Simulate connection drop by disabling the proxy**
+To detect unresponsive connections we use RabbitMQ [heartbeats](https://www.rabbitmq.com/heartbeats.html).
 
-1. Disable the proxy
+  > Heartbeat frames are sent about every heartbeat timeout / 2 seconds. This value is sometimes referred to as the heartbeat interval. After two missed heartbeats, the peer is considered to be unreachable.
+
+Spring AMQP does not configure any heartbeat (`spring.rabbitmq.requested-heartbeat`) which means it accepts whatever timeout the RabbitMQ server has [configured](https://www.rabbitmq.com/configure.html). The setting is called `heartbeat`. Our RabbitMQ server uses the default heartbeat which is `60` seconds.
+
+We are going to test unresponsive connections on a consumer but it also applies to producer applications.
+
+1. Configure the proxy to stop all data from getting through. More details [here](https://github.com/Shopify/toxiproxy#timeout)
   ```bash
-  ./toxiproxy-cli toggle rabbit
-  Proxy rabbit is now disabled
+  docker/toxiproxy-cli toxic add --type timeout --upstream --attribute timeout=0 rabbit
+  Added upstream timeout toxic 'timeout_upstream' on proxy 'rabbit'
   ```
-The application detects the connection dropped:
-```
-o.s.a.r.c.CachingConnectionFactory       Channel shutdown: connection error
-o.s.a.r.c.CachingConnectionFactory       Channel shutdown: connection error
-```
-2. Request a trade
-```bash
-./request-trade
-```
-It will fail though:
-```
-c.p.r.DefaultTradeService                Sending trade 2 with correlation 1601019379310 . Attempt #1
-o.s.a.r.c.CachingConnectionFactory       Attempting to connect to: [localhost:25673]
-o.a.c.c.C.[.[.[.[dispatcherServlet]      Servlet.service() for servlet [dispatcherServlet] in context with path [] threw exception [Request processing failed; nested exception is org.springframework.messaging.MessageHandlingException: error occurred in message handler [org.springframework.integration.amqp.outbound.AmqpOutboundEndpoint@4578370e]; nested exception is org.springframework.amqp.AmqpIOException: java.io.IOException, failedMessage=GenericMessage [payload=byte[73], headers={resend=true, correlationId=1601019379310, id=da831fec-ea0c-a00b-cc7f-434e3a406a15, contentType=application/json, tradeId=2, account=23, timestamp=1601019379310}]] with root cause
-```
-3. Enable the proxy
-```bash
-./toxiproxy-cli toggle rabbit
-Proxy rabbit is now enabled
-```
-4. Request a trade should work this time
-```bash
-./request-trade
-```
+  ```bash
+  docker/toxiproxy-cli toxic add --type timeout --downstream --attribute timeout=0 rabbit
+  Added downstream timeout toxic 'timeout_downstream' on proxy 'rabbit'
+  ```
+2. Configure consumer to connect via the proxy and launch it.
+  ```
+  SPRING_PROFILES_ACTIVE=toxi transient-consumer/run.sh
+  ```
+  We configured the `proxi` profile here: [transient-consumer/src/main/resources/application-toxi.yml](). It overrides the already configured amqp address to be just `localhost:25673`.
 
-**Simulate unresponsive connection**
+3. The application should detect the unresponsive connection and close it after 60 seconds.
+  ```
+  o.s.a.r.c.CachingConnectionFactory       Channel shutdown: connection error
+  o.s.a.r.c.CachingConnectionFactory       Channel shutdown: connection error
+  ```
+4. Remove the toxics from the proxy
+  ```bash
+  docker/toxiproxy-cli toxic remove --toxicName timeout_upstream rabbit
+  Removed toxic 'timeout_upstream' on proxy 'rabbit'
+  ```
+  ```bash
+  docker/toxiproxy-cli toxic remove --toxicName timeout_downstream rabbit
+  Removed toxic 'timeout_downstream' on proxy 'rabbit'
+  ```
 
-**TODO**
+### :white_check_mark: Unresponsive connections should not make producers unresponsive
+
+This scenario verifies that a send operation should not block forever when the connection is unresponsive.
+
+1. Configure the proxy to stop all data from getting through.
+  ```bash
+  docker/toxiproxy-cli toxic add --type timeout --upstream --attribute timeout=0 rabbit
+  Added upstream timeout toxic 'timeout_upstream' on proxy 'rabbit'
+  ```
+  ```bash
+  docker/toxiproxy-cli toxic add --type timeout --downstream --attribute timeout=0 rabbit
+  Added downstream timeout toxic 'timeout_downstream' on proxy 'rabbit'
+  ```
+
+2. Launch `fire-and-forget-producer` connected via the proxy
+  ```bash
+  SPRING_PROFILES_ACTIVE=toxi fire-and-forget-producer/run.sh --scheduledTradeRequester=false
+  ```
+3. Launch a consumer. We will use it to ensure there is a queue and also that no messages go thru due to
+the toxic configured in the proxy.
+  ```bash
+  transient-consumer/run.sh
+  ```
+4. Request a trade
+  ```bash
+  fire-and-forget-producer/request-trade
+  ```
+  It will fail though:
+  ```
+  2020-10-07 15:27:26.198 c.p.r.FireAndForgetTradeService          [attempts:0,sent:0] Requesting Trade{ tradeId=1 accountId=23 asset=null amount=0 buy=false timestamp=0}
+  2020-10-07 15:27:26.200 c.p.r.FireAndForgetTradeService          Sending trade 1 with correlation 1602077246200
+  2020-10-07 15:27:26.226 o.s.a.r.c.CachingConnectionFactory       Attempting to connect to: [localhost:25673]
+  2020-10-07 15:27:31.228 c.r.c.i.ForgivingExceptionHandler        An unexpected connection driver error occured (Exception message: Socket closed)
+  2020-10-07 15:27:36.235 c.r.c.i.ForgivingExceptionHandler        An unexpected connection driver error occured (Exception message: Socket closed)
+  2020-10-07 15:27:36.276 o.a.c.c.C.[.[.[.[dispatcherServlet]      Servlet.service() for servlet [dispatcherServlet] in context with path [] threw exception [Request processing failed; nested exception is org.springframework.messaging.MessageHandlingException: error occurred in message handler [org.springframework.integration.amqp.outbound.AmqpOutboundEndpoint@677a0e3d]; nested exception is org.springframework.amqp.AmqpTimeoutException: java.util.concurrent.TimeoutException, failedMessage=GenericMessage [payload=byte[73], headers={resend=true, correlationId=1602077246200, id=a7f2859a-fa3e-9f18-2e3f-b4250cd2ea07, contentType=application/json, tradeId=1, account=23, timestamp=1602077246218}]] with root cause
+  java.util.concurrent.TimeoutException: null
+  ```
+5. Check the consumer has not received any message
+6. Remove the toxic from the proxy
+  ```bash
+  docker/toxiproxy-cli toxic remove --toxicName timeout_upstream rabbit
+  Removed toxic 'timeout_upstream' on proxy 'rabbit'
+  ```
+7. Request a trade should work this time
+  ```bash
+  ./request-trade
+  ```
+  It should work this time:
+  ```
+  2020-10-07 15:30:07.558 c.p.r.FireAndForgetTradeService          [attempts:0,sent:0] Requesting Trade{ tradeId=2 accountId=23 asset=null amount=0 buy=false timestamp=0}
+  2020-10-07 15:30:07.558 c.p.r.FireAndForgetTradeService          Sending trade 2 with correlation 1602077407558
+  2020-10-07 15:30:07.559 o.s.a.r.c.CachingConnectionFactory       Attempting to connect to: [localhost:25673]
+  2020-10-07 15:30:07.652 o.s.a.r.c.CachingConnectionFactory       Created new connection: fire-and-forget#3.publisher/SimpleConnection@54bb871d [delegate=amqp://fire-and-forget-producer@127.0.0.1:25673/, localPort= 59102]
+  2020-10-07 15:30:07.656 o.s.r.s.RetryTemplate                    Retry: count=0
+  2020-10-07 15:30:07.658 o.s.r.s.RetryTemplate                    Retry: count=0
+  2020-10-07 15:30:07.658 o.s.a.r.c.CachingConnectionFactory       Attempting to connect to: [localhost:25673]
+  2020-10-07 15:30:07.676 o.s.a.r.c.CachingConnectionFactory       Created new connection: fire-and-forget#4/SimpleConnection@591637d1 [delegate=amqp://fire-and-forget-producer@127.0.0.1:25673/, localPort= 59103]
+  2020-10-07 15:30:07.676 o.s.r.s.RetryTemplate                    Retry: count=0
+  2020-10-07 15:30:07.709 c.p.r.FireAndForgetTradeService          Sent trade 2
+  ```
+  > Note the two connections created by the producer. This is totally expected.
+
 
 <br/>
 <br/>

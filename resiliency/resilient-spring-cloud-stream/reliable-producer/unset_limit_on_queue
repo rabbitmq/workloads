@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-curl -u guest:guest -X DELETE localhost:${PORT:-15672}/api/policies/%2f/limit

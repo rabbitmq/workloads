@@ -6,6 +6,4 @@ public interface TradeService {
     Trade send(Trade trade);
     CompletableFuture<Trade> sendAsync(Trade trade);
 
-    public class MessagingBridge {
-    }
 }

@@ -19,44 +19,26 @@ import java.time.Duration;
 import java.util.Random;
 
 @Service
-@EnableBinding(ScheduledTradeRequester.MessagingBridge.class)
 @EnableScheduling
 @ConditionalOnProperty(name="scheduledTradeRequester", matchIfMissing = true)
 public class ScheduledTradeRequester {
     private final Logger logger = LoggerFactory.getLogger(ScheduledTradeRequester.class);
     private Random accountRandomizer = new Random(System.currentTimeMillis());
 
-    interface MessagingBridge {
-
-        String OUTBOUND_TRADE_REQUESTS = "outboundTradeRequests";
-
-        @Output(OUTBOUND_TRADE_REQUESTS)
-        MessageChannel outboundTradeRequests();
-    }
-
     @Autowired
-    private MessagingBridge messagingBridge;
+    private TradeService tradeService;
+    @Autowired
+    private TradeSequencer tradeSequencer;
 
     public ScheduledTradeRequester() {
         logger.info("Created");
     }
 
-    private volatile long tradeSequence = 1;
-    private volatile long sentTradeCount = 0;
-
     @Scheduled(fixedDelayString = "${tradeRateMs:1000}")
     public void produceTradeRequest() {
-        Trade trade = Trade.buy(accountRandomizer.nextInt(10), "VMW", 1000, System.currentTimeMillis());
-        trade.setId(tradeSequence++);
-
-        logger.info("[sent:{}] Requesting trade {} for account {}", sentTradeCount, trade.getId(), trade.getAccountId());
+        Trade trade = tradeSequencer.next(Trade.buy(accountRandomizer.nextInt(10), "VMW", 1000, System.currentTimeMillis()));
 
         // send() always return true so we cannot use it to determine a successful send
-        messagingBridge.outboundTradeRequests().send(
-                MessageBuilder.withPayload(trade)
-                        .setHeader("tradeId", trade.getId())
-                        .setHeader("account", trade.getAccountId()).build());
-
-        sentTradeCount++;
+        tradeService.send(trade);
     }
 }
