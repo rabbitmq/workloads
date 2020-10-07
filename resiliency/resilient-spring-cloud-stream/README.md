@@ -43,72 +43,7 @@ various types of applications and what levels of resiliency you can expect from 
     There is a [resiliency matrix](#resiliency-matrix) that can help you assess which application is right for you depending on what failures is able to handle.
 
 **Table of content**
-<!-- TOC depthFrom:2 depthTo:3 withLinks:1 updateOnSave:1 orderedList:0 -->
 
-- [What you will learn](#what-you-will-learn)
-- [Audience](#audience)
-- [Prerequisites](#prerequisites)
-- [How to follow the workshop](#how-to-follow-the-workshop)
-- [Getting started](#getting-started)
-	- [Get the entire workshop](#get-the-entire-workshop)
-	- [Building the code](#building-the-code)
-	- [How projects are structured](#how-projects-are-structured)
-	- [How to deploy RabbitMQ](#how-to-deploy-rabbitmq)
-- [Application types](#application-types)
-	- [Transient consumer](#transient-consumer)
-	- [Durable consumer](#durable-consumer)
-	- [Highly available durable consumer](#highly-available-durable-consumer)
-	- [Reliable consumer](#reliable-consumer)
-	- [Fire-and-forget producer](#fire-and-forget-producer)
-	- [Reliable producer](#reliable-producer)
-- [Testing Applications](#testing-applications)
-	- [Failure scenarios](#failure-scenarios)
-	- [Resiliency Matrix](#resiliency-matrix)
-- [Verify resiliency-1a RabbitMQ is not available when application starts](#verify-resiliency-1a-rabbitmq-is-not-available-when-application-starts)
-	- [:white_check_mark: All applications are resilient to this failure](#whitecheckmark-all-applications-are-resilient-to-this-failure)
-- [Verify resiliency-1b Restart a cluster node the application is connected to](#verify-resiliency-1b-restart-a-cluster-node-the-application-is-connected-to)
-	- [:white_check_mark: All applications are resilient to this failure](#whitecheckmark-all-applications-are-resilient-to-this-failure)
-- [Verify resiliency-1c Restart a cluster node hosting the consumer's queue](#verify-resiliency-1c-restart-a-cluster-node-hosting-the-consumers-queue)
-	- [:x: Durable consumers are resilient to this failure but will suffer downtime](#x-durable-consumers-are-resilient-to-this-failure-but-will-suffer-downtime)
-	- [:white_check_mark: Transient consumers, HA durable consumers and producers in general are resilient to this failure](#whitecheckmark-transient-consumers-ha-durable-consumers-and-producers-in-general-are-resilient-to-this-failure)
-- [Verify resiliency-1d Rolling restart of cluster nodes](#verify-resiliency-1d-rolling-restart-of-cluster-nodes)
-	- [:white_check_mark: All applications are resilient to this failure](#whitecheckmark-all-applications-are-resilient-to-this-failure)
-- [Verify resiliency-1e Kill producer connection](#verify-resiliency-1e-kill-producer-connection)
-	- [:white_check_mark: In general all producer applications are resilient to this failure](#whitecheckmark-in-general-all-producer-applications-are-resilient-to-this-failure)
-- [Verify resiliency-1e Kill consumer connection (repeatedly)](#verify-resiliency-1e-kill-consumer-connection-repeatedly)
-	- [:white_check_mark: All consumers are resilient to this failure](#whitecheckmark-all-consumers-are-resilient-to-this-failure)
-- [Verify resiliency-1f Pause nodes](#verify-resiliency-1f-pause-nodes)
-- [Verify resiliency-1g Unresponsive connections](#verify-resiliency-1g-unresponsive-connections)
-	- [:white_check_mark: Unresponsive connections are eventually detected and closed](#whitecheckmark-unresponsive-connections-are-eventually-detected-and-closed)
-	- [:white_check_mark: Unresponsive connections should not make producers unresponsive](#whitecheckmark-unresponsive-connections-should-not-make-producers-unresponsive)
-- [Verify Guarantee of delivery-2a Consumer fail to process a message](#verify-guarantee-of-delivery-2a-consumer-fail-to-process-a-message)
-	- [:white_check_mark: All consumer types should retry the message before giving up](#whitecheckmark-all-consumer-types-should-retry-the-message-before-giving-up)
-- [Verify Guarantee of delivery - 2.b Consumer terminates while processing a message](#verify-guarantee-of-delivery-2b-consumer-terminates-while-processing-a-message)
-	- [:x: Transient consumers will lose the message and all the remaining enqueued messages](#x-transient-consumers-will-lose-the-message-and-all-the-remaining-enqueued-messages)
-	- [:white_check_mark: Only durable consumers will never lose the message](#whitecheckmark-only-durable-consumers-will-never-lose-the-message)
-- [Verify Guarantee of delivery-2c Connection drops while processing a message](#verify-guarantee-of-delivery-2c-connection-drops-while-processing-a-message)
-	- [:x: Transient consumer looses all enqueued messages so far](#x-transient-consumer-looses-all-enqueued-messages-so-far)
-	- [:white_check_mark: Durable consumer does not loose the enqueued messages](#whitecheckmark-durable-consumer-does-not-loose-the-enqueued-messages)
-- [Verify delivery guarantee-2d Consumer receives a Poison message](#verify-delivery-guarantee-2d-consumer-receives-a-poison-message)
-	- [:x: All consumers without a DLQ lose the message](#x-all-consumers-without-a-dlq-lose-the-message)
-	- [:white_check_mark: Consumers with queues configured with DLQ do not lose the message](#whitecheckmark-consumers-with-queues-configured-with-dlq-do-not-lose-the-message)
-	- [:white_check_mark: Consumers should not retry poison message neither lose it](#whitecheckmark-consumers-should-not-retry-poison-message-neither-lose-it)
-- [Verify delivery guarantee-2e Consumer gives up after failing to process a message](#verify-delivery-guarantee-2e-consumer-gives-up-after-failing-to-process-a-message)
-	- [:white_check_mark: Transient failures should be delayed and retried without blocking newer messages](#whitecheckmark-transient-failures-should-be-delayed-and-retried-without-blocking-newer-messages)
-- [Verify Guarantee of delivery-2f Connection drops while sending a message](#verify-guarantee-of-delivery-2f-connection-drops-while-sending-a-message)
-	- [:x: Fire-and-forget is not resilient and fails to send it](#x-fire-and-forget-is-not-resilient-and-fails-to-send-it)
-	- [:white_check_mark: Fire-and-forget is now resilient and retries when it fails](#whitecheckmark-fire-and-forget-is-now-resilient-and-retries-when-it-fails)
-- [Verify Guarantee of delivery-2g RabbitMQ fails to accept a sent message](#verify-guarantee-of-delivery-2g-rabbitmq-fails-to-accept-a-sent-message)
-	- [:x: Fire-and-forget looses messages if RabbitMQ fails to accept it](#x-fire-and-forget-looses-messages-if-rabbitmq-fails-to-accept-it)
-	- [:white_check_mark: Reliable producer knows when RabbitMQ fails to accept a message](#whitecheckmark-reliable-producer-knows-when-rabbitmq-fails-to-accept-a-message)
-- [Verify Guarantee of delivery-2h RabbitMQ cannot route a message](#verify-guarantee-of-delivery-2h-rabbitmq-cannot-route-a-message)
-	- [:x: Fire-and-forget looses a message if RabbitMQ cannot route it](#x-fire-and-forget-looses-a-message-if-rabbitmq-cannot-route-it)
-	- [:white_check_mark: Reliable producer knows when RabbitMQ cannot route a message](#whitecheckmark-reliable-producer-knows-when-rabbitmq-cannot-route-a-message)
-	- [:white_check_mark: Reliable producer ensures the consumer groups' queues exists](#whitecheckmark-reliable-producer-ensures-the-consumer-groups-queues-exists)
-- [Verify Guarantee of delivery-2i Queue's hosting node down while sending messages to it](#verify-guarantee-of-delivery-2i-queues-hosting-node-down-while-sending-messages-to-it)
-- [Verify guarantee of delivery-2j Block producers](#verify-guarantee-of-delivery-2j-block-producers)
-
-<!-- /TOC -->
 
 ## Getting started
 
@@ -293,29 +228,32 @@ starts up, the resources must be available otherwise the application will fail. 
 
 A **durable consumer** receives messages sent after the consumer connected to the broker
 and created the *durable queue* bound to the corresponding *exchange*. However, contrary to
-the [Transient consumer](#transient-consumer), when **Durable consumer** disconnects from the broker, the queue remains in the broker receiving more messages. Once the **Durable consumer** reconnects to the broker, all the messages that were posted in the meantime will be delivered.
+the [Transient consumer](#transient-consumer), when the **durable consumer** disconnects from the broker, the queue remains in the broker receiving more messages. Once the **durable consumer** reconnects to the broker, it gets all messages, i.e. messages left in the queue when it disconnected, and messages sent meanwhile.
 
 We can find an example of this type of consumer in the project [durable-consumer](durable-consumer).
-It consists of one durable consumer called `DurableTradeLogger`. This service uses a *Consumer Group* called after its name `trade-logger` which creates a durable queue called
+It consists of a Spring `@Service` durable consumer called `DurableTradeLogger`. This service uses a *Consumer Group* called after its name `trade-logger` which creates a durable queue called
 `queue.trade-logger`.
 
 We switched to durable subscriptions so that we did not lose messages. However, we need to
-ensure that the message producer uses `deliveryMode: PERSISTENT` which is the default
-value though. If the producer did not send messages as persistent, they will be lost
+ensure the producer sends messages with `deliveryMode: PERSISTENT` which is the default
+value in SCS. If the producer did not send messages as persistent, they will be lost
 if the queue's hosting node goes down.
 
 #### What about data loss
 
 The consumer uses *Client Auto Acknowledgement* therefore it will not lose
- messages due to failures that may occur while processing the message.
+ messages due to failures that may occur while processing the message including losing the connection.
+If the failure is persistent eventually SCS gives up and the message could be lost if we have not
+configured the queue with a DLQ.
 
 However, queued messages -i.e. messages which are already in the queue- may be lost if
 the messages are not sent with the *persistent flag*. By default, Spring Cloud Stream will
 send messages as persistent unless we change it. Non-persistent messages are only kept
 in memory and if the queue's hosting node goes down, they will be lost.
 
-*IMPORTANT*: We are always talking about queued messages. We are not talking yet about all kind of messages, including those which are about to be sent by the producer.
-
+*IMPORTANT*: We are always talking about queued messages. That is, messages which are already in a queue.
+We are not addressing data loss of messages which are being sent to a queue. We will address this type of
+data loss in the producer application types later on.
 
 #### Is this consumer highly available
 
@@ -330,7 +268,9 @@ can be down then this consumer is suitable. Else, we need to make it HA. Look at
 
 If we need to have strict ordering of processing of messages we need to use `exclusive: true` attribute. If we have more instances, they will fail to subscribe but will retry based on the `recoveryInterval: 5000` attribute.
 
-**TODO** investigate how to set *single-active-consumer* on SCS
+Another way is by configuring a queue with [singleActiveConsumer](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-consumer-properties) which is simpler. RabbitMQ will ensure
+that there is only one active consumer. If there are more than one consumer, one will be active and the
+others will be passive.
 
 ### Highly available durable consumer
 
@@ -358,18 +298,25 @@ also specify `quorum.enabled: true` in the RabbitMQ Binder's producer bindings.
 
 ### Reliable consumer
 
-By default, Spring Cloud Stream uses client acknowledgement (`acknowledgeMode: AUTO)`.
-This means that if our listener threw an exception while processing a message, it would not be lost. Instead, the message is nacked and returned back to the queue and delivered again. This retry mechanism is enabled by default on SCS as we will see in the [next](#dealing-with-processing-failures) section.
+By default, Spring Cloud Stream uses client acknowledgement (`acknowledgeMode: AUTO`).
+This means that if our listener threw an exception while processing a message, it would not be lost. Instead, the message is retried. This retry mechanism is enabled by default on SCS as we will see in the [next](#dealing-with-processing-failures) section.
 
-In order to test consumer's reliability, we need to simulate failures while processing
-messages. For this reason, we have created another consumer project called [reliable-consumer](reliable-consumer). It still has the same durable consumer called `DurableTradeLogger`.
+In order to test the consumer's reliability, we need to simulate failures. For this reason, we have created another consumer project called [reliable-consumer](reliable-consumer).
 
 
 #### Dealing with processing failures
 
-If the listener fails to process the message and throws an exception (different to `AmqpRejectAndDontRequeueException`), SCS nacks the message and the broker delivers it again.
+If the listener fails to process the message and throws an exception (different to `AmqpRejectAndDontRequeueException`), SCS retries it a configurable number of times and with a delay between attempts.
 
 However, if the listener keeps failing, SCS will eventually reject it and the message is lost if the queue has not been configured with a *dead-letter-queue* (see [next](#Dealing-with-processing-failures-without-losing-messages) section).
+
+> We can change this behaviour with `requeueRejected: true`. But be careful changing this value because it could produce a storm of poisonous messages unless the application raises an `AmqpRejectAndDontRequeueException`.
+
+
+> We should not retry exceptions related to parsing/deserializing messages and/or
+business exceptions. Because it will always fail.
+> However, we should retry infrastructure related exceptions such as connectivity issues to downstream
+services over http, jdbc, etc.
 
 These are the consumer bindings' [settings](https://cloud.spring.io/spring-cloud-static/spring-cloud-stream/current/reference/html/spring-cloud-stream.html#_consumer_properties) that control the retries:
   - `maxAttempts: 3`
@@ -378,25 +325,18 @@ These are the consumer bindings' [settings](https://cloud.spring.io/spring-cloud
   - `defaultRetryable: true`
   - `retryableExceptions`
 
-
-> We can change this behaviour with `requeueRejected: true`. But be careful changing this value because it could produce a storm of poisonous messages unless the application raises an `AmqpRejectAndDontRequeueException`.
-
-> We should not retry exceptions related to parsing/deserializing messages and/or
-business exceptions. Because it will always fail.
-> Whereas, we should retry infrastructure related exceptions such as connectivity issues to downstream
-services over http, jdbc, etc.
+[application.yml](reliable-consumer/src/main/resources/application.yml) configures `maxAttempts` for the single input channel, `durable-trade-logger-input`.
 
 
 #### Dealing with processing failures without losing messages
 
 Once the consumer has exceeded the maximum of number of retries, we want to move the message to an
-error queue so that we do not lose it and it can be handled separately.
+error queue so that we do not lose it.
 
-SCS RabbitMQ binder allows us to configure a queue with a dead-letter-queue. All we need to do is
+SCS RabbitMQ binder allows us to configure a queue with a *dead-letter-queue*. All we need to do is
 add a `autoBindDlq: true` to the consumer channel. Check out [application-dlq](reliable-consumer/src/main/resources/application-dlq.yml).
 
-
-**VERY IMPORTANT**: Once we configure our queue with DLQ or any other features via one of the
+:bangbang: **VERY IMPORTANT**: Once we configure our queue with DLQ or any other features via one of the
 SCS settings, we cannot change it otherwise our application fails to declare it. Moreover, if we
 also configure the producer -via `requiredGroups`- to declare the queue, we will see failures
 happening in both, consumer and producer. Those failures are not fatal but annoying.
@@ -404,19 +344,22 @@ happening in both, consumer and producer. Those failures are not fatal but annoy
 
 ### Fire-and-forget producer
 
-This type of producer does not guarantee that the message is delivered to all
-bound queues. Instead, it sends the message and forgets about it.
+This type of producer does not guarantee that the message is delivered. Instead, it sends the message and forgets about it.
 
-The following circumstances will cause a message to be lost however this producer will
-never know it because it does not expect confirmation that it was sent:
-- connection drops with the message in transit
-- the broker rejects the message (e.g. due to *ttl* or *max-length* policy)
+The following circumstances produce message loss and this producer will
+never know it because it does not expect any confirmation that a message was delivered:
+- connection drops while sending the message
+- the broker rejects the message due to an internal error
+- the broker rejects the message due to *max-length* policy
 - the broker could not find a destination queue for it
-- the broker failed to accept the message due to an internal error
 
-We can find an example of this type of producer in the project [fire-and-forget-producer](fire-and-forget-producer). It is the `ScheduledTradeRequester` producer that we have used so far.
+We can find an example of this type of producer in the project [fire-and-forget-producer](fire-and-forget-producer). It has 2 Spring `@Service`(s):
+- `ScheduledTradeRequester` It is a Scheduled task that sends messages every 1sec by default
+- `TradeRequesterController` It is a Rest controller that exposes an endpoint that we use to send a message
 
 #### When is this type of producer useful
+
+This type of producer is useful in these use cases:
 
 - When data is not massively critical and consumers can tolerate message loss.
 - Especially interesting when the consumers are of type transient
