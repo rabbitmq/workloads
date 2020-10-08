@@ -25,25 +25,88 @@ To follow this workshop you need:
 
 ## How to follow the workshop
 
-1. Go straight to [Getting started](#getting-started) so that you get all the sample
- code and learn how to build it.
+First of all, we recommend checking out [Getting started](#getting-started) section so that you get all the content of this workshop which consists of various applications and scripts to launch 3-node RabbitMQ cluster using Docker. You will also build those applications locally so that you can run them later on.
 
-   Applications provided in this workshop have been configured to access a 3-node cluster running at localhost.
-   This workshop provides various scripts to start and stop a 3-node cluster using Docker.
+Then you can choose two ways to follow this workshop.
 
-2. Then continue with the section [Application types](#application-types) where you will learn why there are
-various types of applications and what levels of resiliency you can expect from each type.
+**For those who are fairly familiar with Spring Cloud Stream** and only want to know
+how to handle certain failure scenario, go straight to the [resiliency matrix](#resiliency-matrix).
+From this matrix you will quickly see which failure is handled by which application.
+Once you have identified the failure scenario, you can jump straight (each failure scenario is a hyperlink) to the section where we test the scenario.
 
-    By the end of this section, you have identified the type of application you need.
+**For those who want to learn what reliability options are available with SCS** and do not have
+any specific failure in mind we recommend going thru the [Application types](#application-types) section where you will learn why there are various types of applications and what levels of resiliency you can expect from each type.
+By the end of this section, you have identified the type of application you need and you can move onto the last section [Testing Applications](#testing-applications).
 
-3. And finally, you move onto the last section [Testing Applications](#testing-applications) where you are  going to test the resiliency of these applications.
-
-    For each type of failure, there are two test scenarios. The **unhappy** path -prefixed with the symbol :x:- where you test an application which is **not** resilient to the failure. And a **happy** path -prefixed with the symbol :white_check_mark:- where you test an application which is resilient to the failure.
-
-    There is a [resiliency matrix](#resiliency-matrix) that can help you assess which application is right for you depending on what failures is able to handle.
+There is a [resiliency matrix](#resiliency-matrix) that can help you assess which application is right for you depending on what failures is able to handle.
 
 **Table of content**
+<!-- TOC depthFrom:2 depthTo:3 withLinks:1 updateOnSave:1 orderedList:0 -->
 
+- [What you will learn](#what-you-will-learn)
+- [Audience](#audience)
+- [Prerequisites](#prerequisites)
+- [How to follow the workshop](#how-to-follow-the-workshop)
+- [Getting started](#getting-started)
+	- [Get the entire workshop](#get-the-entire-workshop)
+	- [Building the code](#building-the-code)
+	- [How projects are structured](#how-projects-are-structured)
+	- [How to deploy RabbitMQ](#how-to-deploy-rabbitmq)
+- [Application types](#application-types)
+	- [Transient consumer](#transient-consumer)
+	- [Durable consumer](#durable-consumer)
+	- [Highly available durable consumer](#highly-available-durable-consumer)
+	- [Reliable consumer](#reliable-consumer)
+	- [Fire-and-forget producer](#fire-and-forget-producer)
+	- [Reliable producer](#reliable-producer)
+- [Testing Applications](#testing-applications)
+	- [Failure scenarios](#failure-scenarios)
+	- [Resiliency Matrix](#resiliency-matrix)
+- [Verify resiliency-1a RabbitMQ is not available when application starts](#verify-resiliency-1a-rabbitmq-is-not-available-when-application-starts)
+	- [:white_check_mark: All applications are resilient to this failure](#whitecheckmark-all-applications-are-resilient-to-this-failure)
+- [Verify resiliency-1b Restart a cluster node the application is connected to](#verify-resiliency-1b-restart-a-cluster-node-the-application-is-connected-to)
+	- [:white_check_mark: All applications are resilient to this failure](#whitecheckmark-all-applications-are-resilient-to-this-failure)
+- [Verify resiliency-1c Restart a cluster node hosting the consumer's queue](#verify-resiliency-1c-restart-a-cluster-node-hosting-the-consumers-queue)
+	- [:x: Durable consumers are resilient to this failure but will suffer downtime](#x-durable-consumers-are-resilient-to-this-failure-but-will-suffer-downtime)
+	- [:white_check_mark: Transient consumers, HA durable consumers and producers in general are resilient to this failure](#whitecheckmark-transient-consumers-ha-durable-consumers-and-producers-in-general-are-resilient-to-this-failure)
+- [Verify resiliency-1d Rolling restart of cluster nodes](#verify-resiliency-1d-rolling-restart-of-cluster-nodes)
+	- [:white_check_mark: All applications are resilient to this failure](#whitecheckmark-all-applications-are-resilient-to-this-failure)
+- [Verify resiliency-1e Kill producer connection](#verify-resiliency-1e-kill-producer-connection)
+	- [:white_check_mark: In general all producer applications are resilient to this failure](#whitecheckmark-in-general-all-producer-applications-are-resilient-to-this-failure)
+- [Verify resiliency-1e Kill consumer connection (repeatedly)](#verify-resiliency-1e-kill-consumer-connection-repeatedly)
+	- [:white_check_mark: All consumers are resilient to this failure](#whitecheckmark-all-consumers-are-resilient-to-this-failure)
+- [Verify resiliency-1f Pause nodes](#verify-resiliency-1f-pause-nodes)
+- [Verify resiliency-1g Unresponsive connections](#verify-resiliency-1g-unresponsive-connections)
+	- [:white_check_mark: Unresponsive connections are eventually detected and closed](#whitecheckmark-unresponsive-connections-are-eventually-detected-and-closed)
+	- [:white_check_mark: Unresponsive connections should not make producers unresponsive](#whitecheckmark-unresponsive-connections-should-not-make-producers-unresponsive)
+- [Verify Guarantee of delivery-2a Consumer fail to process a message](#verify-guarantee-of-delivery-2a-consumer-fail-to-process-a-message)
+	- [:white_check_mark: All consumer types should retry the message before giving up](#whitecheckmark-all-consumer-types-should-retry-the-message-before-giving-up)
+- [Verify Guarantee of delivery - 2.b Consumer terminates while processing a message](#verify-guarantee-of-delivery-2b-consumer-terminates-while-processing-a-message)
+	- [:x: Transient consumers will lose the message and all the remaining enqueued messages](#x-transient-consumers-will-lose-the-message-and-all-the-remaining-enqueued-messages)
+	- [:white_check_mark: Only durable consumers will never lose the message](#whitecheckmark-only-durable-consumers-will-never-lose-the-message)
+- [Verify Guarantee of delivery-2c Connection drops while processing a message](#verify-guarantee-of-delivery-2c-connection-drops-while-processing-a-message)
+	- [:x: Transient consumer looses all enqueued messages so far](#x-transient-consumer-looses-all-enqueued-messages-so-far)
+	- [:white_check_mark: Durable consumer does not loose the enqueued messages](#whitecheckmark-durable-consumer-does-not-loose-the-enqueued-messages)
+- [Verify delivery guarantee-2d Consumer receives a Poison message](#verify-delivery-guarantee-2d-consumer-receives-a-poison-message)
+	- [:x: All consumers without a DLQ lose the message](#x-all-consumers-without-a-dlq-lose-the-message)
+	- [:white_check_mark: Consumers with queues configured with DLQ do not lose the message](#whitecheckmark-consumers-with-queues-configured-with-dlq-do-not-lose-the-message)
+	- [:white_check_mark: Consumers should not retry poison message neither lose it](#whitecheckmark-consumers-should-not-retry-poison-message-neither-lose-it)
+- [Verify delivery guarantee-2e Consumer gives up after failing to process a message](#verify-delivery-guarantee-2e-consumer-gives-up-after-failing-to-process-a-message)
+	- [:white_check_mark: Transient failures should be delayed and retried without blocking newer messages](#whitecheckmark-transient-failures-should-be-delayed-and-retried-without-blocking-newer-messages)
+- [Verify Guarantee of delivery-2f Connection drops while sending a message](#verify-guarantee-of-delivery-2f-connection-drops-while-sending-a-message)
+	- [:x: Fire-and-forget is not resilient and fails to send it](#x-fire-and-forget-is-not-resilient-and-fails-to-send-it)
+	- [:white_check_mark: Fire-and-forget is now resilient and retries when it fails](#whitecheckmark-fire-and-forget-is-now-resilient-and-retries-when-it-fails)
+- [Verify Guarantee of delivery-2g RabbitMQ fails to accept a sent message](#verify-guarantee-of-delivery-2g-rabbitmq-fails-to-accept-a-sent-message)
+	- [:x: Fire-and-forget looses messages if RabbitMQ fails to accept it](#x-fire-and-forget-looses-messages-if-rabbitmq-fails-to-accept-it)
+	- [:white_check_mark: Reliable producer knows when RabbitMQ fails to accept a message](#whitecheckmark-reliable-producer-knows-when-rabbitmq-fails-to-accept-a-message)
+- [Verify Guarantee of delivery-2h RabbitMQ cannot route a message](#verify-guarantee-of-delivery-2h-rabbitmq-cannot-route-a-message)
+	- [:x: Fire-and-forget looses a message if RabbitMQ cannot route it](#x-fire-and-forget-looses-a-message-if-rabbitmq-cannot-route-it)
+	- [:white_check_mark: Reliable producer knows when RabbitMQ cannot route a message](#whitecheckmark-reliable-producer-knows-when-rabbitmq-cannot-route-a-message)
+	- [:white_check_mark: Reliable producer ensures the consumer groups' queues exists](#whitecheckmark-reliable-producer-ensures-the-consumer-groups-queues-exists)
+- [Verify Guarantee of delivery-2i Queue's hosting node down while sending messages to it](#verify-guarantee-of-delivery-2i-queues-hosting-node-down-while-sending-messages-to-it)
+- [Verify guarantee of delivery-2j Block producers](#verify-guarantee-of-delivery-2j-block-producers)
+
+<!-- /TOC -->
 
 ## Getting started
 
@@ -464,6 +527,7 @@ The type of failures we are going test are:
 
 :white_check_mark: Application is resilient to the failure
 :x: Application is not resilient to the failure
+:heavy_minus_sign: Application not affected to the failure
 
 <br/>
 <br/>
@@ -496,7 +560,7 @@ so, we start with the simplest applications: `fire-and-forget-producer` and `tra
 5. Check the logs for connection fail attempts
 6. Start RabbitMQ cluster and ensure that it starts with all 3-nodes
   ```bash
-  ../docker/deploy-rabbit-cluster
+  docker/deploy-rabbit-cluster
   docker exec -it rmq0 rabbitmqctl cluster_status
   ```
 7. Check the logs for both apps to ensure they are connected to RabbitMQ and working as expected.
