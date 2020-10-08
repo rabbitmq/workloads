@@ -1576,7 +1576,7 @@ with newer ones.
 <br/>
 <br/>
 
-<a name="2g"></a>
+<a name="2h"></a>
 ## Verify Guarantee of delivery-2h RabbitMQ cannot route a message
 
 Our send operation has completed successfully, but has the message really gone to a queue?
@@ -1687,7 +1687,7 @@ the consumer has not started yet.
 <br/>
 <br/>
 
-<a name="2h"></a>
+<a name="2i"></a>
 ## Verify Guarantee of delivery-2i Queue's hosting node down while sending messages to it
 
 Our consumer will not be able to consume while the queue's hosting node is down. Furthermore,
@@ -1730,7 +1730,7 @@ we should make the queue highly available. Take a look at [Application with high
 <br/>
 <br/>
 
-<a name="2i"></a>
+<a name="2j"></a>
 ## Verify guarantee of delivery-2j Block producers
 
 We are going to force RabbitMQ to trigger a memory alarm by setting the high water mark to 0.
