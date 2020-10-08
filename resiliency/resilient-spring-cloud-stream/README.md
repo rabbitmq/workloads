@@ -103,6 +103,9 @@ By the end of this section, you have identified the type of application you need
 	- [:white_check_mark: Reliable producer knows when RabbitMQ cannot route a message](#whitecheckmark-reliable-producer-knows-when-rabbitmq-cannot-route-a-message)
 	- [:white_check_mark: Reliable producer ensures the consumer groups' queues exists](#whitecheckmark-reliable-producer-ensures-the-consumer-groups-queues-exists)
 - [Verify Guarantee of delivery-2i Queue's hosting node down while sending messages to it](#verify-guarantee-of-delivery-2i-queues-hosting-node-down-while-sending-messages-to-it)
+	- [:x: Transient consumers lose all enqueued messages](#x-transient-consumers-lose-all-enqueued-messages)
+	- [:question: Durable consumers do not lose any enqueued messages but may lose newer ones](#question-durable-consumers-do-not-lose-any-enqueued-messages-but-may-lose-newer-ones)
+	- [:white_check_mark: Highly available consumer will not lose messages](#whitecheckmark-highly-available-consumer-will-not-lose-messages)
 - [Verify guarantee of delivery-2j Block producers](#verify-guarantee-of-delivery-2j-block-producers)
 
 <!-- /TOC -->
@@ -526,6 +529,7 @@ The type of failures we are going test are:
 
 :white_check_mark: Application is resilient to the failure
 :x: Application is not resilient to the failure
+:question: Application is partially resilient to the failure
 :heavy_minus_sign: Application not affected to the failure
 
 <br/>
@@ -1690,17 +1694,34 @@ the consumer has not started yet.
 <a name="2i"></a>
 ## Verify Guarantee of delivery-2i Queue's hosting node down while sending messages to it
 
-Our consumer will not be able to consume while the queue's hosting node is down. Furthermore,
-if the producer does not use mandatory flag and/or alternate-exchange, those messages are lost too.
+This is a very common scenario that will find in production. We need to shutdown a node
+for maintenance or to upgrade it but we have applications sending and consuming messages.
+
+### :x: Transient consumers lose all enqueued messages
+
+If the transient queue is on the affected node, all enqueued messages are lost. This is because the consumer loses the connection.
+
+**TODO** What happens when the queue is on a different node to the node where the consumer is connected?
+The consumer is canceled but the connection is not lost. Will SCS automatically declare the queue again?
+
+There is very little down time (in the order of milliseconds). The consumer automatically connects to another node, declares the queue and carries on.
+
+### :question: Durable consumers do not lose any enqueued messages but may lose newer ones
+
+**Assumption**: Messages were sent as *persistent* otherwise all enqueue messages would be lost.
+
+Our durable consumer will not lose all enqueued messages however will not receive them while the queue's hosting node is down. Furthermore, if the producer does not cooperate, it may lose newer messages too.
+
+Our consumer will experience downtime.
 
 1. Launch durable consumer
-```bash
-./run.sh --durableTradeLogger=true
-```
+  ```bash
+  durable-consumer/run.sh
+  ```
 2. Stop the hosting node. Most likely the queue will be on the first node, `rmq0`.
-```bash
-docker-compose -f ../docker/docker-compose.yml stop rmq0
-```
+  ```bash
+  docker-compose -f docker/docker-compose.yml stop rmq0
+  ```
 3. We will notice the consumer fails to declare the queue but it keeps indefinitely trying.
 ```
 2020-09-16 16:56:17.050 o.s.a.r.l.BlockingQueueConsumer          Failed to declare queue: trades.trade-logger
@@ -1710,9 +1731,9 @@ Caused by: com.rabbitmq.client.ShutdownSignalException: channel error; protocol 
 
 ```
 4. Start the hosting node.
-```bash
-docker-compose -f ../docker/docker-compose.yml start rmq0
-```
+  ```bash
+  docker-compose -f docker/docker-compose.yml start rmq0
+  ```
 5. The consumer is able to declare the queue and subscribe to it.
 ```
 2020-09-16 16:51:47.022 o.s.a.r.l.BlockingQueueConsumer          Queue declaration succeeded after retrying
@@ -1725,6 +1746,13 @@ If we want to limit the amount of retries and terminate the application we have 
 
 If we cannot afford to lose messages and/or have downtime of our consumer service then
 we should make the queue highly available. Take a look at [Application with highly available subscriptions](#Application-with-highly-available-subscriptions).
+
+### :white_check_mark: Highly available consumer will not lose messages
+
+The queue is highly available therefore consumers can still receive messages even
+when the master/leader node goes down. And producers can also continue delivering messages to the
+queues.
+
 
 <br/>
 <br/>
