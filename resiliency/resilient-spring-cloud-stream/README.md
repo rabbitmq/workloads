@@ -1628,10 +1628,6 @@ Therefore, *publisher confirmations* is not enough to guarantee delivery.
 We need to use *publisher returns* too, another type of notification, to ensure that the
 message was actually delivered to a queue. It is an asynchronous mechanism like the *publisher confirmations*.
 
-Instead, if we want the send operation to immediately fail we send the message with a *mandatory* flag.
-Thus, the caller knows whether the message made to a queue or not.
-**However, We have not been able to turn this flag on yet on SCS.**
-
 
 ### :x: Fire-and-forget looses a message if RabbitMQ cannot route it
 
