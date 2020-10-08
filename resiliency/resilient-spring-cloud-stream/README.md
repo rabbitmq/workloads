@@ -517,16 +517,16 @@ The type of failures we are going test are:
 |[`1.f`](#user-content-1f)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
 |[`1.g`](#user-content-1g)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |[`1.h`](#user-content-1h)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|
-|[`2.a`](#user-content-2a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|   
+|[`2.a`](#user-content-2a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|   
 |[`2.b`](#user-content-2b)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|
 |[`2.c`](#user-content-2c)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|
-|[`2.d`](#user-content-2d)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|   
+|[`2.d`](#user-content-2d)|:white_check_mark::question:|:white_check_mark::question:|:white_check_mark::question:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|   
 |[`2.e`](#user-content-2e)|     |    |    |    |    |    |   
-|[`2.f`](#user-content-2f)|     |    |     |    |    |    |   
-|[`2.g`](#user-content-2g)|     |    |     |    |    |    |   
-|[`2.h`](#user-content-2h)|     |    |     |    |    |    |   
-|[`2.i`](#user-content-2i)|     |    |     |    |    |    |   
-|[`2.j`](#user-content-2j)|     |    |     |    |    |    |   
+|[`2.f`](#user-content-2f)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:white_check_mark::question:|:white_check_mark:|   
+|[`2.g`](#user-content-2g)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:|   
+|[`2.h`](#user-content-2h)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:|
+|[`2.i`](#user-content-2i)|:x:|:x::question:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|   
+|[`2.j`](#user-content-2j)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:|   
 
 :white_check_mark: Application is resilient to the failure
 :x: Application is not resilient to the failure
@@ -1771,6 +1771,11 @@ messages.
 We are going to force RabbitMQ to trigger a memory alarm by setting the high water mark to 0.
 This should only impact the producer connections and let consumer connections carry on.
 
+### :x: Fire-and-forget producers may lose messages
+
+If the application crashes, all messages sitting in the tcp buffers are lost.
+
+### :white_check_mark: Reliable producers will not lose message
 
 1. Launch a slow consumer
   ```bash
