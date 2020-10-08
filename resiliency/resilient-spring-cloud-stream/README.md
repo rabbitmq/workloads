@@ -140,6 +140,30 @@ required by the children projects.
 Common code shared by all application types resides in the [common](common) project. Therefore,
 all applications types has `common` as a dependency too.
 
+### Refresher on how application configuration works
+
+We will use [fire-and-forget-producer](fire-and-forget-producer) to explain how configuration is loaded.
+
+1. `application.yml` is loaded
+2. Spring profiles `management` and `cluster` are activated
+	```yaml
+	spring:
+	  profiles:
+	    include:
+	      - management
+	      - cluster
+	```
+3. `application-management.yml` and `application-cluster.yml` are loaded. The former configures actuator management endpoints, and the latter configures SCS RabbitMQ Binder.
+4. Additionally, if we launch the application with this environment variable `SPRING_PROFILES_ACTIVE=toxi`,
+the file `application-toxi.yml` is loaded and overrides existing configuration. For instance, `toxi` overrides the
+cluster address configured by `cluster` profile.
+
+Spring Cloud Stream RabbitMQ Binder uses Spring AMQP under the covers. This is how configuration is loaded:
+1. [Spring AMQP](https://docs.spring.io/spring-boot/docs/2.1.8.RELEASE/reference/html/common-application-properties.html) with `spring.rabbitmq` prefix
+2. [SCS RabbitMQ Binder](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-binder-properties) properties with `spring.cloud.stream.rabbit.binder` prefix
+3. [SCS RabbitMQ Bindings](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-consumer-properties) with `spring.cloud.stream.rabbit.bindings.<channelName>` prefix 
+
+
 ### How to deploy RabbitMQ
 
 By default, all applications are configured to connect to a 3-node cluster.
@@ -489,7 +513,9 @@ the failures we are going to test in this workshop.
 
 ### Failure scenarios
 
-The type of failures we are going test are:
+The type of failures we are going test are grouped into 2 categories:
+- **resiliency** : the goal is to test whether the application is robust to failures
+- **guarantee of delivery** : the goal is to test whether the application can lose messages
 
 | 1 | Resiliency | 2 | Guarantee of delivery |
 |:------:|-----|:----:|----|
@@ -528,10 +554,10 @@ The type of failures we are going test are:
 |[`2.i`](#user-content-2i)|:x:|:x::question:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|   
 |[`2.j`](#user-content-2j)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:|   
 
-:white_check_mark: Application is resilient to the failure
-:x: Application is not resilient to the failure
-:question: Application is partially resilient to the failure
-:heavy_minus_sign: Application not affected to the failure
+:white_check_mark: Application is resilient to the failure  
+:x: Application is not resilient to the failure  
+:question: Application is partially resilient to the failure  
+:heavy_minus_sign: Application not affected to the failure  
 
 <br/>
 <br/>
