@@ -493,29 +493,30 @@ The type of failures we are going test are:
 
 | 1 | Resiliency | 2 | Guarantee of delivery |
 |:------:|-----|:----:|----|
-|a|RabbitMQ is not available when application starts|a |Consumer fails to process a message|
-|b|Restart/Shutdown a cluster node the application is connected to| b|Consumer terminates while processing a message|
-|c|Restart/Shutdown a cluster node hosting the consumer's queue|c |Connection drops while processing a message|
-|d|Rolling restart of cluster nodes|d |Consumer receives a *Poison message*|
-|e|Kill/drop connection -consumer and/or producer|e|Consumer gives up after failing to process a message (same as c.)|
-|f|Pause nodes|f |Producer fails to send a message (due to connection/channel errors)|
-|g|Unresponsive connections|g |Broker nacks a message (i.e. sent message does not get delivered)|
-| | |h |Broker returns a message (i.e. sent message does not get delivered)|
-| | |i |Queue's hosting node down while sending messages to it (same as g.)|
-| | |j |Broker blocks producers  |
+|a|RabbitMQ is not available when application starts|a|Consumer fails to process a message|
+|b|Restart/Shutdown a cluster node the application is connected to|b|Consumer terminates while processing a message|
+|c|Restart/Shutdown a cluster node hosting the consumer's queue|c|Connection drops while processing a message|
+|d|Rolling restart of cluster nodes|d|Consumer receives a *Poison message*|
+|e|Producer looses connection|e|Consumer gives up after failing to process a message (same as c.)|
+|f|Consumer looses connection|f|Producer fails to send a message (due to connection/channel errors)|
+|g|Pause nodes|g|Broker nacks a message (i.e. sent message does not get delivered)|
+|h|Unresponsive connections |h|Broker returns a message (i.e. sent message does not get delivered)|
+| | |i|Queue's hosting node down while sending messages to it (same as g.)|
+| | |j|Broker blocks producers  |
 
 
 ### Resiliency Matrix
 
 |      |  Transient consumer  | Durable consumer  | HA Durable consumer  | Reliable consumer  | Fire-and-forget producer  | Reliable producer  |
 |------|:-----:|:----:|:----:|:----:|:----:|:----:|
-| [`1.a`](#user-content-1a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
-|[`1.b`](#user-content-1b)|:white_check_mark:|    |    |    |    |    |   
-|[`1.c`](#user-content-1c)|:white_check_mark:|    |    |    |    |    |   
-|[`1.d`](#user-content-1d)|:white_check_mark:|    |    |    |    |    |   
-|[`1.e`](#user-content-1e)|:white_check_mark:|    |     |    |    |    |   
-|[`1.f`](#user-content-1f)|:white_check_mark:|    |     |    |    |    |   
-|[`1.g`](#user-content-1g)|     |    |     |    |    |    |   
+|[`1.a`](#user-content-1a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
+|[`1.b`](#user-content-1b)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|
+|[`1.c`](#user-content-1c)|:white_check_mark:|:white_check_mark::question:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
+|[`1.d`](#user-content-1d)|:white_check_mark:|:white_check_mark::question:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
+|[`1.e`](#user-content-1e)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
+|[`1.f`](#user-content-1f)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
+|[`1.g`](#user-content-1g)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|
+|[`1.h`](#user-content-1h)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |[`2.a`](#user-content-2a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|   
 |[`2.b`](#user-content-2b)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|
 |[`2.c`](#user-content-2c)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|
@@ -730,12 +731,10 @@ We can choose any type of consumer and producer application. As an example, we c
 <br/>
 <br/>
 
-<a name="1e"></a><a name="1ep"></a>
-## Verify resiliency-1e Kill producer connection
+<a name="1e"></a>
+## Verify resiliency-1e Producer looses connection
 
-Sometimes a single connection is dropped and not necessarily due to a node crash.
-This can impact some parts of an application while others may continue to work. Such is the
-case when we have consumer and producers running within the same application.
+Sometimes a single connection is dropped and not necessarily due to a node crash. This could be due to a network infrastructure failure. This can impact some parts of an application -the producers- while others -the consumers- may continue to work.
 
 Producer applications should be able to deal with this failure especially if they occur while sending a message.
 
@@ -774,10 +773,10 @@ to ensure guarantee of delivery, i.e. we do not want to lose the message.
 <br/>
 <br/>
 
-<a name="1ec"></a>
-## Verify resiliency-1e Kill consumer connection (repeatedly)
+<a name="1f"></a>
+## Verify resiliency-1f Consumer looses connection
 
-Consumer applications should be able to deal with this failure. In other words, they should
+Consumer applications should be able to deal with this failure too. In other words, they should
 reconnect and resubscribe.
 
 ### :white_check_mark: All consumers are resilient to this failure
@@ -822,11 +821,17 @@ recovered from additional connection failures.
 <br/>
 <br/>
 
-<a name="1e"></a>
-## Verify resiliency-1f Pause nodes
+<a name="1g"></a>
+## Verify resiliency-1g Pause nodes
 
-We are going to pause a node, which is similar to what happen when a network partition occurs
-and the node is on the minority and we are using *pause_minority* cluster partition handling.
+Although it is not a failure scenario but it is an scenario that impacts applications.
+
+RabbitMQ pauses a node when either a network partition occurs and the node is on the minority.
+Or the cluster is running with fewer nodes than minimum required in case of using *pause_minority* cluster partition handling.
+
+This scenario may trigger previous failure scenarios such as [1b]#user-content-1b), [1c]#user-content-1c).
+
+### :white_check_mark: All applications are resilient to this failure
 
 We are going to shutdown all nodes (`rmq2`, `rmq3`) except one (`rmq0`) where our applications
 are connected to. This will automatically pause the last standing node because it is in minority.
@@ -854,32 +859,38 @@ management UI on `rmq0`.
 <br/>
 <br/>
 
-<a name="1f"></a>
-## Verify resiliency-1g Unresponsive connections
+<a name="1h"></a>
+## Verify resiliency-1h Unresponsive connections
 
-We are going to simulate buggy or unresponsive connections.
+This failure scenario corresponds to those situations where due to faulty network infrastructure
+connections are unresponsive. As far as the application is concerned, the socket is opened and write/read operations succeed. However, send operations eventually fail because RabbitMQ client expects a reply which never arrives and it times out throwing an exception.
 
-**About ToxiProxy**
-Toxiproxy is a framework for simulating network conditions. It consists of 2 parts:
-  - toxiproxy - server component that allows us to create proxies at runtime
-  - toxiproxy-cli - client application that allows us to interact with toxiproxy to create proxies.
+### About ToxiProxy
 
-In diagram below illustrates how it works. First we launch `toxiproxy-cli` so that
-we create a proxy called `rabbit` that listens on port `25673` and forwards it to
-`5673` where our real RabbitMQ node is listening.
-Then we configure our application to use `localhost:25673` (the proxy) as RabbitMQ address.
+[Toxiproxy](https://github.com/Shopify/toxiproxy) is a framework for simulating network conditions. It consists of 2 parts:
+  - **toxiproxy** - server component that allows us to create proxies at runtime
+  - **toxiproxy-cli** - client application that allows us to interact with toxiproxy to create proxies.
 
-With this setup all traffic goes thru the proxy and now we can introduce buggy behaviours like
-dropping connections and/ introduce latency.
+The diagram below illustrates how it works:
+
+1. First we launch `toxiproxy`. See next section on how to do it
+2. Then we create a proxy called `rabbit` that listens on port `25673` and forwards it to
+`5673` where our real RabbitMQ node is listening. We use `toxiproxy-cli`.
+3. We configure our application to use `localhost:25673` (the proxy) as RabbitMQ address.
+4. When our application connects to the proxy (on `localhost:25673`), it forwards the traffic to RabbitMQ on `localhost:5673`.
+
+With this setup in place we can introduce buggy behaviours like dropping connections and/ introduce latency.
 
 ```
+          (2)
     [toxiproxy-cli]----->8474:[toxiproxy]
                               [---------]
        [application]--->25673:[rabbit   ]---->5673:[real-rabbit]
-
+			 			(3)										(1)									(4)
 ```
+
 <a name="toxiproxy-ready"></a>
-**Get the environment ready**
+### Get the environment ready
 
 1. Launch ToxiProxy
   ```bash
@@ -887,7 +898,7 @@ dropping connections and/ introduce latency.
   ```
 2. Get a list of proxies currently installed
   ```bash
-  $ docker/toxiproxy-cli list
+  docker/toxiproxy-cli list
   Name			Listen		Upstream		Enabled		Toxics
   ======================================================================================
   no proxies
