@@ -32,13 +32,12 @@ Then you can choose two ways to follow this workshop.
 **For those who are fairly familiar with Spring Cloud Stream** and only want to know
 how to handle certain failure scenario, go straight to the [resiliency matrix](#resiliency-matrix).
 From this matrix you will quickly see which failure is handled by which application.
-Once you have identified the failure scenario, you can jump straight (each failure scenario is a hyperlink) to the section where we test the scenario.
+Once you have identified the failure scenario, you can jump straight (each failure scenario is a hyperlink) to the section where we test it.
 
 **For those who want to learn what reliability options are available with SCS** and do not have
 any specific failure in mind we recommend going thru the [Application types](#application-types) section where you will learn why there are various types of applications and what levels of resiliency you can expect from each type.
-By the end of this section, you have identified the type of application you need and you can move onto the last section [Testing Applications](#testing-applications).
+By the end of this section, you have identified the type of application you need and then you can move onto the last section [Testing Applications](#testing-applications).
 
-There is a [resiliency matrix](#resiliency-matrix) that can help you assess which application is right for you depending on what failures is able to handle.
 
 **Table of content**
 <!-- TOC depthFrom:2 depthTo:3 withLinks:1 updateOnSave:1 orderedList:0 -->
@@ -117,7 +116,7 @@ git clone https://github.com/rabbitmq/workloads
 cd workloads/resiliency/resilient-spring-cloud-stream
 ```
 
-:information_source: Any sample script, for instance to deploy a rabbitmq cluster,
+Any sample script, for instance to deploy a rabbitmq cluster,
  assumes we are on the `workloads/resiliency/resilient-spring-cloud-stream` folder.
 
 ### Building the code
@@ -678,13 +677,13 @@ node went down are lost.
 7. Check the `durable-consumer` logs that it is receiving messages but only messages sent after the
 node came back.
 
-:information_source: **Key configuration settings**:  
+**Key configuration settings**:  
 - [RabbitMQ Consumer Binding](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-consumer-properties) - `failedDeclarationRetryInterval` The interval (in milliseconds) between attempts to consume from a queue if it is missing (default `5000`)
 - [RabbitMQ Consumer Binding](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-consumer-properties) - `missingQueuesFatal` When the queue cannot be found, whether to treat the condition as fatal and stop the listener container. (default `false`)
 
 ### :white_check_mark: Transient consumers, HA durable consumers and producers in general are resilient to this failure
 
-:information_source: `transient-consumer` is resilient and does not suffer downtime because it automatically
+`transient-consumer` is resilient and does not suffer downtime because it automatically
 reconnects and redeclare the queue. Messages are lost but we are focusing here on resiliency not guarantee
 of delivery.
 
@@ -1046,7 +1045,7 @@ Once SCS has decided to reject a message, there are two ways to do it which is c
 
 ### :white_check_mark: All consumer types should retry the message before giving up
 
-:information_source: To guarantee we do not lose messages, consumers must use [client AUTO acknowledgment](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-consumer-properties), which is the default value. This means a consumer will only ack a message after it has successfully processed it. And if an exception occurs -except for `AmqpRejectAndDontRequeueException`, the message is retried before giving up. As we learnt earlier, depending on whether the queue has a DLQ, the message will be lost or not. We will cover this in the [scenario 2.d](#user-content-2d).
+To guarantee we do not lose messages, consumers must use [client AUTO acknowledgment](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-consumer-properties), which is the default value. This means a consumer will only ack a message after it has successfully processed it. And if an exception occurs -except for `AmqpRejectAndDontRequeueException`, the message is retried before giving up. As we learnt earlier, depending on whether the queue has a DLQ, the message will be lost or not. We will cover this in the [scenario 2.d](#user-content-2d).
 
 We will verify it on the `transient-consumer`.
 
@@ -1195,7 +1194,7 @@ can use the script below to check the queue depth.
 5. Follow the consumer's log and see that it reconnects and it receives all messages the
 producer sent since it started.
 
-:information_source: The durable consumer has not lost the messages which were in the queue
+The durable consumer has not lost the messages which were in the queue
 right before it lost the connection. It has not lost either the messages the producer sent
 while it was reconnecting.
 
