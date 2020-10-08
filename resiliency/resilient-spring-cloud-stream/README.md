@@ -1733,21 +1733,34 @@ we should make the queue highly available. Take a look at [Application with high
 <a name="2j"></a>
 ## Verify guarantee of delivery-2j Block producers
 
+This is not strictly speaking a failure scenario. However, it can impact our applications and RabbitMQ too if we do not follow certain best practice. When RabbitMQ memory or disk alarm triggers, it blocks all producer
+connections. However it does not block consumers as they can help reducing the excess of memory/disk that
+initially triggered the alarm.
+
+It is very important that we use separate connections for sending and consuming. This is a best practice implemented by SCS RabbitMQ binder. To truly test it, we should have both roles, consumer and producer,
+in the same application. However, we are not going to do it. Instead we continue using our dedicated consumer
+and producer applications, but knowing that producer applications uses a *.producer* connection solely to send
+messages.
+
 We are going to force RabbitMQ to trigger a memory alarm by setting the high water mark to 0.
 This should only impact the producer connections and let consumer connections carry on.
 
-1. Launch both roles (`tradeLogger` and `scheduledTradeRequester`) together in the same application, but the a slower consumer so that we create a queue backlog
-```bash
-./run.sh --tradeLogger=true --scheduledTradeRequester=true --processingTime=5s
-```
-2. Wait a couple of seconds until we produce a backlog
-3. Set high water mark to zero
-```bash
-docker-compose -f ../docker/docker-compose.yml exec rmq0 rabbitmqctl set_vm_memory_high_watermark 0
-```
-4. Watch the queue depth goes to zero, i.e. the consumer is able to consume.
-5. Watch messages stop coming to RabbitMQ. However, they are piling up in the tcp buffers.
-When we restore the high water mark, we will see all those messages sent to RabbitMQ.
-```bash
-docker-compose -f ../docker/docker-compose.yml  exec rmq0 rabbitmqctl set_vm_memory_high_watermark 1.0
-```
+
+1. Launch a slow consumer
+  ```bash
+  reliable-consumer/run.sh --processingTime=5s
+  ```
+2. Launch a producer
+  ```bash
+  reliable-producer/run.sh
+  ```
+3. Wait a couple of seconds until we produce a backlog
+4. Set high water mark to zero
+  ```bash
+  docker-compose -f docker/docker-compose.yml exec rmq0 rabbitmqctl set_vm_memory_high_watermark 0
+  ```
+5. Check out the queue depth goes to zero, i.e. the consumer is able to consume.
+6. Check out there are no messages coming to the queue. However, they are piling up in the producer's tcp buffers. When we restore the high water mark, we will see all those messages sent to RabbitMQ.
+  ```bash
+  docker-compose -f docker/docker-compose.yml  exec rmq0 rabbitmqctl set_vm_memory_high_watermark 1.0
+  ```
