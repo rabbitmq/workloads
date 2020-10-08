@@ -95,7 +95,7 @@ By the end of this section, you have identified the type of application you need
 - [Verify Guarantee of delivery-2f Connection drops while sending a message](#verify-guarantee-of-delivery-2f-connection-drops-while-sending-a-message)
 	- [:x: Fire-and-forget is not resilient and fails to send it](#x-fire-and-forget-is-not-resilient-and-fails-to-send-it)
 	- [:white_check_mark: Fire-and-forget is now resilient and retries when it fails](#whitecheckmark-fire-and-forget-is-now-resilient-and-retries-when-it-fails)
-- [Verify Guarantee of delivery-2g RabbitMQ fails to accept a sent message](#verify-guarantee-of-delivery-2g-rabbitmq-fails-to-accept-a-sent-message)
+- [Verify Guarantee of delivery-2g RabbitMQ fails to deliver a message to a queue](#verify-guarantee-of-delivery-2g-rabbitmq-fails-to-deliver-a-message-to-a-queue)
 	- [:x: Fire-and-forget looses messages if RabbitMQ fails to accept it](#x-fire-and-forget-looses-messages-if-rabbitmq-fails-to-accept-it)
 	- [:white_check_mark: Reliable producer knows when RabbitMQ fails to accept a message](#whitecheckmark-reliable-producer-knows-when-rabbitmq-fails-to-accept-a-message)
 - [Verify Guarantee of delivery-2h RabbitMQ cannot route a message](#verify-guarantee-of-delivery-2h-rabbitmq-cannot-route-a-message)
@@ -1055,14 +1055,12 @@ We will verify it on the `transient-consumer`.
 
 1. Launch the producer.
   ```bash
-  cd reliable-producer
-  ./run.sh
+  reliable-producer/run.sh
   ```
 2. Launch the consumer. It will fail to process tradeId `3` only two times (< `maxAttempts`) and it succeeds
 on the first attempt.
   ```bash
-  cd transient-consumer
-  ./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=2
+  transient-consumer/run.sh --chaos.tradeId=3 --chaos.maxFailTimes=2
   ```
 3. Notice in the consumer log how it fails 2 times and on the 3rd attempt it succeeds.
   ```
@@ -1102,13 +1100,11 @@ This is due to the nature of this consumer. Messages' live depend on the consume
 
 1. Launch the producer.
   ```bash
-  cd reliable-producer
-  ./run.sh
+  reliable-producer/run.sh
   ```
 2. Launch the consumer. It will fail to process tradeId `3` only two times (< `maxAttempts`) and then it terminates
   ```bash
-  cd durable-consumer
-  ./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=2 --chaos.actionAfterMaxFailTimes=exit
+  durable-consumer/run.sh --chaos.tradeId=3 --chaos.maxFailTimes=2 --chaos.actionAfterMaxFailTimes=exit
   ```
 3. Notice in the consumer log how it fails 2 times and on the 3rd attempt it terminates.
   ```
@@ -1147,14 +1143,12 @@ This time we are launching producer and consumer on separate application/process
 
 1. Start producer
   ```bash
-	cd fire-and-forget-producer
-  ./run.sh
+	fire-and-forget-producer/run.sh
   ```
 2. Start transient consumer (on a separate terminal) with a message processing time of
 5seconds to produce a backlog in the queue
   ```bash
-	cd transient-consumer
-  ./run.sh --processingTime=5s
+	transient-consumer/run.sh --processingTime=5s
   ```
 3. Wait until we have a few messages in the queue and then stop the producer. You
 can use the script below to check the queue depth.
@@ -1177,14 +1171,12 @@ can use the script below to check the queue depth.
 
 1. Start producer
   ```bash
-	cd fire-and-forget-producer
-  ./run.sh
+	fire-and-forget-producer/run.sh
   ```
 2. Start durable consumer (on a separate terminal) with a message processing time of
 5seconds to produce a backlog in the queue
   ```bash
-	cd durable-consumer
-  ./run.sh --processingTime=5s
+	durable-consumer/run.sh --processingTime=5s
   ```
 3. Wait until we have a few messages in the queue and then stop the producer. You
 can use the script below to check the queue depth.
@@ -1228,14 +1220,12 @@ A consumer should detect *poison message* and reject it immediately rather than 
 
 1. Launch the producer.
   ```bash
-  cd fire-and-forget-producer
-  ./run.sh
+  fire-and-forget-producer/run.sh
   ```
 2. Launch the durable consumer that fails tradeId `3` three times. But SCS
  retries at most 3 times before rejecting it.
   ```bash
-  cd durable-consumer
-  ./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=3
+  durable-consumer/run.sh --chaos.tradeId=3 --chaos.maxFailTimes=3
   ```
 3. Notice in the consumer log how it fails and the message is retried three times and then it is
 rejected, i.e. it is lost.
@@ -1307,7 +1297,7 @@ workshop up to this point, we already have a `trades.trade-logger` queue declare
 Channel shutdown: channel error; protocol method: #method<channel.close>(reply-code=406, reply-text=PRECONDITION_FAILED - inequivalent arg 'x-dead-letter-exchange' for queue 'trades.trade-logger' in vhost '/': received the value 'DLX' of type 'longstr' but current is none, class-id=50, method-id=10)
 ```
 
-**Two ways DLQ mechanisms available in SCS**
+**Two DLQ mechanisms available in SCS**
 
 SCS Rabbit binder gives us two DLQ mechanisms. Let's start with the standard
 RabbitMQ mechanism and then continue with a more advanced one.
@@ -1338,14 +1328,12 @@ Let's verify the scenario:
 
 1. Launch the producer.
   ```bash
-  cd fire-and-forget-producer
-  ./run.sh
+  fire-and-forget-producer/run.sh
   ```
 2. Go to the management ui and delete the `trades.trade-logger` queue
 3. Launch the consumer.
   ```bash
-  cd reliable-consumer
-  ./run.sh --chaos.tradeId=3 --chaos.maxFailTimes=3
+  reliable-consumer/run.sh --chaos.tradeId=3 --chaos.maxFailTimes=3
   ```
 4. Notice in the consumer log how it fails and the message is retried 3 times and then
 it moves onto the next message.
@@ -1482,10 +1470,9 @@ We are going to test this configuration in the `fire-and-forget-producer`. All w
 <br/>
 
 <a name="2g"></a>
-## Verify Guarantee of delivery-2g RabbitMQ fails to accept a sent message
+## Verify Guarantee of delivery-2g RabbitMQ fails to deliver a message to a queue
 
-Our send operation has completed successfully, but has it really succeeded?
-i.e. has the message made it to a queue? what if the broker dies right before it gets the message?
+As far as the producer is concerned, the send operation has completed successfully, but has it really succeeded? i.e. has RabbitMQ delivered the message all intended queues? what if the broker dies right before it gets the message? what if RabbitMQ cannot deliver the message to the queue?
 
 In this scenario we are going to test an scenario where RabbitMQ fails to deliver a message to a queue.
 There could be 2 main reasons:
