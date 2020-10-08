@@ -50,6 +50,7 @@ By the end of this section, you have identified the type of application you need
 	- [Get the entire workshop](#get-the-entire-workshop)
 	- [Building the code](#building-the-code)
 	- [How projects are structured](#how-projects-are-structured)
+	- [Refresher on how application configuration works](#refresher-on-how-application-configuration-works)
 	- [How to deploy RabbitMQ](#how-to-deploy-rabbitmq)
 - [Application types](#application-types)
 	- [Transient consumer](#transient-consumer)
@@ -70,12 +71,15 @@ By the end of this section, you have identified the type of application you need
 	- [:white_check_mark: Transient consumers, HA durable consumers and producers in general are resilient to this failure](#whitecheckmark-transient-consumers-ha-durable-consumers-and-producers-in-general-are-resilient-to-this-failure)
 - [Verify resiliency-1d Rolling restart of cluster nodes](#verify-resiliency-1d-rolling-restart-of-cluster-nodes)
 	- [:white_check_mark: All applications are resilient to this failure](#whitecheckmark-all-applications-are-resilient-to-this-failure)
-- [Verify resiliency-1e Kill producer connection](#verify-resiliency-1e-kill-producer-connection)
+- [Verify resiliency-1e Producer looses connection](#verify-resiliency-1e-producer-looses-connection)
 	- [:white_check_mark: In general all producer applications are resilient to this failure](#whitecheckmark-in-general-all-producer-applications-are-resilient-to-this-failure)
-- [Verify resiliency-1e Kill consumer connection (repeatedly)](#verify-resiliency-1e-kill-consumer-connection-repeatedly)
+- [Verify resiliency-1f Consumer looses connection](#verify-resiliency-1f-consumer-looses-connection)
 	- [:white_check_mark: All consumers are resilient to this failure](#whitecheckmark-all-consumers-are-resilient-to-this-failure)
-- [Verify resiliency-1f Pause nodes](#verify-resiliency-1f-pause-nodes)
-- [Verify resiliency-1g Unresponsive connections](#verify-resiliency-1g-unresponsive-connections)
+- [Verify resiliency-1g Pause nodes](#verify-resiliency-1g-pause-nodes)
+	- [:white_check_mark: All applications are resilient to this failure](#whitecheckmark-all-applications-are-resilient-to-this-failure)
+- [Verify resiliency-1h Unresponsive connections](#verify-resiliency-1h-unresponsive-connections)
+	- [About ToxiProxy](#about-toxiproxy)
+	- [Get the environment ready](#get-the-environment-ready)
 	- [:white_check_mark: Unresponsive connections are eventually detected and closed](#whitecheckmark-unresponsive-connections-are-eventually-detected-and-closed)
 	- [:white_check_mark: Unresponsive connections should not make producers unresponsive](#whitecheckmark-unresponsive-connections-should-not-make-producers-unresponsive)
 - [Verify Guarantee of delivery-2a Consumer fail to process a message](#verify-guarantee-of-delivery-2a-consumer-fail-to-process-a-message)
@@ -107,6 +111,8 @@ By the end of this section, you have identified the type of application you need
 	- [:question: Durable consumers do not lose any enqueued messages but may lose newer ones](#question-durable-consumers-do-not-lose-any-enqueued-messages-but-may-lose-newer-ones)
 	- [:white_check_mark: Highly available consumer will not lose messages](#whitecheckmark-highly-available-consumer-will-not-lose-messages)
 - [Verify guarantee of delivery-2j Block producers](#verify-guarantee-of-delivery-2j-block-producers)
+	- [:x: Fire-and-forget producers may lose messages](#x-fire-and-forget-producers-may-lose-messages)
+	- [:white_check_mark: Reliable producers will not lose message](#whitecheckmark-reliable-producers-will-not-lose-message)
 
 <!-- /TOC -->
 
@@ -161,7 +167,7 @@ cluster address configured by `cluster` profile.
 Spring Cloud Stream RabbitMQ Binder uses Spring AMQP under the covers. This is how configuration is loaded:
 1. [Spring AMQP](https://docs.spring.io/spring-boot/docs/2.1.8.RELEASE/reference/html/common-application-properties.html) with `spring.rabbitmq` prefix
 2. [SCS RabbitMQ Binder](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-binder-properties) properties with `spring.cloud.stream.rabbit.binder` prefix
-3. [SCS RabbitMQ Bindings](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-consumer-properties) with `spring.cloud.stream.rabbit.bindings.<channelName>` prefix 
+3. [SCS RabbitMQ Bindings](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-consumer-properties) with `spring.cloud.stream.rabbit.bindings.<channelName>` prefix
 
 
 ### How to deploy RabbitMQ
