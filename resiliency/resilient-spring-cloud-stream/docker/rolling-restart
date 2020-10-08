@@ -3,7 +3,7 @@
 SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 function restart {
-  echo "Shuttting down $1 ..."
+  echo "Shutting down $1 ..."
   docker-compose -f $SCRIPT/docker-compose.yml stop $1
 
   until ! docker-compose -f $SCRIPT/docker-compose.yml ps $1 >/dev/null 2>&1 /dev/null
