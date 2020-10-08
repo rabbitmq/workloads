@@ -164,7 +164,12 @@ We will use [fire-and-forget-producer](fire-and-forget-producer) to explain how 
 the file `application-toxi.yml` is loaded and overrides existing configuration. For instance, `toxi` overrides the
 cluster address configured by `cluster` profile.
 
-Spring Cloud Stream RabbitMQ Binder uses Spring AMQP under the covers. This is how configuration is loaded:
+Spring Cloud Stream has 2 types of configuration:
+- Channel binding configuration agnostic of any binder. We configure channels in `application.yml`
+- Binder configuration, e.g. RabbitMQ Binder. We configure the binder in `application-cluster.yml`
+- Channel Binder's binding configuration, e.g. RabbitMQ Binder bindings. An example of this type of configuration is on the `application-retries.yml` where we configure RabbitMQ bindings with retry settings.
+
+Spring Cloud Stream RabbitMQ Binder uses Spring AMQP under the covers. The properties are applied in the following hierarchy:
 1. [Spring AMQP](https://docs.spring.io/spring-boot/docs/2.1.8.RELEASE/reference/html/common-application-properties.html) with `spring.rabbitmq` prefix
 2. [SCS RabbitMQ Binder](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-binder-properties) properties with `spring.cloud.stream.rabbit.binder` prefix
 3. [SCS RabbitMQ Bindings](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-consumer-properties) with `spring.cloud.stream.rabbit.bindings.<channelName>` prefix
