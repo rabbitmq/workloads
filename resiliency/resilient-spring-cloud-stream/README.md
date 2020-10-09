@@ -83,6 +83,8 @@ By the end of this section, you have identified the type of application you need
 	- [:white_check_mark: Unresponsive connections are eventually detected and closed](#whitecheckmark-unresponsive-connections-are-eventually-detected-and-closed)
 	- [:white_check_mark: Unresponsive connections should not make producers unresponsive](#whitecheckmark-unresponsive-connections-should-not-make-producers-unresponsive)
 - [Verify Guarantee of delivery-2a Consumer fail to process a message](#verify-guarantee-of-delivery-2a-consumer-fail-to-process-a-message)
+	- [Simulating consumer failures](#simulating-consumer-failures)
+	- [Retries in Spring Cloud Stream](#retries-in-spring-cloud-stream)
 	- [:white_check_mark: All consumer types should retry the message before giving up](#whitecheckmark-all-consumer-types-should-retry-the-message-before-giving-up)
 - [Verify Guarantee of delivery - 2.b Consumer terminates while processing a message](#verify-guarantee-of-delivery-2b-consumer-terminates-while-processing-a-message)
 	- [:x: Transient consumers will lose the message and all the remaining enqueued messages](#x-transient-consumers-will-lose-the-message-and-all-the-remaining-enqueued-messages)
@@ -91,7 +93,7 @@ By the end of this section, you have identified the type of application you need
 	- [:x: Transient consumer looses all enqueued messages so far](#x-transient-consumer-looses-all-enqueued-messages-so-far)
 	- [:white_check_mark: Durable consumer does not loose the enqueued messages](#whitecheckmark-durable-consumer-does-not-loose-the-enqueued-messages)
 - [Verify delivery guarantee-2d Consumer receives a Poison message](#verify-delivery-guarantee-2d-consumer-receives-a-poison-message)
-	- [Simulating consumer failures](#simulating-consumer-failures)
+	- [Simulating poisson messages](#simulating-poisson-messages)
 	- [:x: All consumers without a DLQ lose the message](#x-all-consumers-without-a-dlq-lose-the-message)
 	- [:question: Should transient consumers be bothered with DLQ](#question-should-transient-consumers-be-bothered-with-dlq)
 	- [:white_check_mark: Consumers with queues configured with DLQ do not lose the message](#whitecheckmark-consumers-with-queues-configured-with-dlq-do-not-lose-the-message)
@@ -552,8 +554,8 @@ The type of failures we are going test are grouped into 2 categories:
 |[`1.b`](#user-content-1b)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |[`1.c`](#user-content-1c)|:white_check_mark:|:white_check_mark::question:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
 |[`1.d`](#user-content-1d)|:white_check_mark:|:white_check_mark::question:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
-|[`1.e`](#user-content-1e)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
-|[`1.f`](#user-content-1f)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
+|[`1.e`](#user-content-1e)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:white_check_mark:|:white_check_mark:|   
+|[`1.f`](#user-content-1f)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|   
 |[`1.g`](#user-content-1g)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |[`1.h`](#user-content-1h)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|
 |[`2.a`](#user-content-2a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|   
@@ -1077,14 +1079,46 @@ to problems with message itself (e.g. wrong/missing headers, unable to parse bod
 In this scenario, we are going to verify that in case of a *transient* failure, our consumer
 does not lose the message.
 
-**How to simulate processing failures**
+### Simulating consumer failures
 
-`transient-consumer` and `reliable-consumer` allows us to:
-  - throw a generic `RuntimeException` when it receives a trade with certain `tradeId` (`--chaos.tradeId`)
-  - configure how many times we want to repeatedly fail it (`--chaos.maxFailTimes`)
-  - and whether to do nothing after we have retried `maxFailTimes` (`--chaos.actionAfterMaxFailTimes=nothing`) which is the default behaviour or to throw `AmqpRejectAndDontRequeueException` (`--chaos.actionAfterMaxFailTimes=reject`) or to abruptly terminate (`--chaos.actionAfterMaxFailTimes=exit`).
+All consumer types, from [transient-consumer](transient-consumer) to [reliable-consumer](reliable-consumer), almost share the same `@StreamListener` implementation which means we can test failures in every consumer type.
 
-**Retries in Spring Cloud Stream**
+This is the `@StreamListener` from the `transient-consumer`.
+
+```Java
+ @StreamListener(MessagingBridge.INPUT)
+ public void execute(@Header("account") long account,@Header("tradeId") long tradeId,@Payload Trade trade) {
+
+	 missingTradesTracker.accept(trade);
+
+	 logger.info("Received {} done", trade);
+	 try {
+		 Thread.sleep(processingTime.toMillis());	// <--- OPTIONALLY INTRODUCE DELAY
+		 faultyConsumer.accept(trade);            // <--- OPTIONALLY INTRODUCE FAILURE
+		 logger.info("Successfully Processed trade {}", trade.getId());
+		 processedTradeCount++;
+	 } catch (RuntimeException e) {
+		 logger.info("Failed to processed trade {} due to {}", trade.getId(), e.getMessage());
+		 throw e;
+	 } catch (InterruptedException e) {
+		 e.printStackTrace();
+	 } finally {
+		 logSummary(trade);
+	 }
+
+ }
+ ```
+
+Look for the line with the comment `OPTIONALLY INTRODUCE FAILURE`. Every `Trade` is passed to [FaultyConsumer](common/src/main/java/com/pivotal/resilient/chaos/FaultyConsumer.java) which is a Spring `@Component` defined in the [common](common) project. We can configure the `faultyConsumer` with these settings:
+ - `--chaos.tradeId` where we set which trade id will generate a failure. The consumer will only fail with a trade with this id.
+ - `--chaos.maxFailTimes` where we set how many times in a row it should fail
+ - `--actionAfterMaxFailTimes` what to do after failing all attempts. We can do:  
+ 		- `nothing` (default) which means this trade id does not fail anymore  
+		- `reject` throws `AmqpRejectAndDontRequeueException` meaning that the message should be rejected  
+		- `immediateAck` throws `ImmediateAcknowledgeAmqpException` meaning that the message is acked   
+		- `exit` terminates the application
+
+### Retries in Spring Cloud Stream
 
 By default, SCS will retry a message as many times as indicated by [maxAttempts](https://cloud.spring.io/spring-cloud-static/spring-cloud-stream/current/reference/html/spring-cloud-stream.html#_retry_template_and_retrybackoff), which is by default, 3 times. However, if it is set to 1, SCS will not try it again. SCS relies on Spring's `RetryTemplate` to implement this retry mechanism. Once, `maxAttempts` is reached, the message is rejected.
 > We can configure exponential backoff retries via configuration. See the sample configuration file [application-retries.yml](transient-consumer/src/main/resources/application-retries.yml) we use in the transient-consumer.
@@ -1263,45 +1297,9 @@ A consumer should detect *poison message* and reject it immediately rather than 
 
 :warning: Be careful changing the default SCS's configuration (e.g. `requeueRejected: true`, `maxAttepmts`) otherwise we could crash all consumer instances, or worse, consume lots of network bandwidth and cpu in the broker.
 
-### Simulating consumer failures
+### Simulating poisson messages
 
-All consumer types, from [transient-consumer](transient-consumer) to [reliable-consumer](reliable-consumer), almost share the same `@StreamListener` implementation which means we can test failures in every consumer type.
-
-This is the `@StreamListener` from the `transient-consumer`.
-
-```Java
- @StreamListener(MessagingBridge.INPUT)
- public void execute(@Header("account") long account,@Header("tradeId") long tradeId,@Payload Trade trade) {
-
-	 missingTradesTracker.accept(trade);
-
-	 logger.info("Received {} done", trade);
-	 try {
-		 Thread.sleep(processingTime.toMillis());	// <--- OPTIONALLY INTRODUCE DELAY
-		 faultyConsumer.accept(trade);            // <--- OPTIONALLY INTRODUCE FAILURE
-		 logger.info("Successfully Processed trade {}", trade.getId());
-		 processedTradeCount++;
-	 } catch (RuntimeException e) {
-		 logger.info("Failed to processed trade {} due to {}", trade.getId(), e.getMessage());
-		 throw e;
-	 } catch (InterruptedException e) {
-		 e.printStackTrace();
-	 } finally {
-		 logSummary(trade);
-	 }
-
- }
- ```
-
-Look for the line with the comment `OPTIONALLY INTRODUCE FAILURE`. Every `Trade` is passed to [FaultyConsumer](common/src/main/java/com/pivotal/resilient/chaos/FaultyConsumer.java) which is a Spring `@Component` defined in the [common](common) project. We can configure the `faultyConsumer` with these settings:
- - `--chaos.tradeId` where we set which trade id will generate a failure. The consumer will only fail with a trade with this id.
- - `--chaos.maxFailTimes` where we set how many times in a row it should fail
- - `--actionAfterMaxFailTimes` what to do after failing all attempts. We can do:  
- 		- `nothing` (default) which means this trade id does not fail anymore  
-		- `reject` throws `AmqpRejectAndDontRequeueException` meaning that the message should be rejected  
-		- `immediateAck` throws `ImmediateAcknowledgeAmqpException` meaning that the message is acked  
-
-**NOTE**: The `FaultyConsumer` throws a generic `RuntimeException`. It does not throw any other type of exception that resembles a *poisson message* such as `IllegalArgumentException` or `JsonParseException` or the like. For most of the scenarios we are about to test we do not need to throw any specific exception. Except for the [last scenario](#user-content-do-not-retry-poision-messages), where we recommend not to retry *poision message*. On this latter case, we need to configure the exact exceptions thrown by *poison messages*.
+The `FaultyConsumer` throws a generic `RuntimeException`. It does not throw any other type of exception that resembles a *poisson message* such as `IllegalArgumentException` or `JsonParseException` or the like. For most of the scenarios we are about to test we do not need to throw any specific exception. Except for the [last scenario](#user-content-do-not-retry-poision-messages), where we recommend not to retry *poison message*. On this latter case, we need to configure the exact exceptions thrown by *poison messages*.
 
 
 ### :x: All consumers without a DLQ lose the message
