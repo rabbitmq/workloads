@@ -1271,26 +1271,24 @@ This is the `@StreamListener` from the `transient-consumer`.
 
 ```Java
  @StreamListener(MessagingBridge.INPUT)
- public void execute(@Header("account") long account,
-										 @Header("tradeId") long tradeId,
-										 @Payload Trade trade) {
+ public void execute(@Header("account") long account,@Header("tradeId") long tradeId,@Payload Trade trade) {
 
-		 missingTradesTracker.accept(trade);
+	 missingTradesTracker.accept(trade);
 
-		 logger.info("Received {} done", trade);
-		 try {
-				 Thread.sleep(processingTime.toMillis());		// <--- OPTIONALLY INTRODUCE DELAY
-				 faultyConsumer.accept(trade);						  // <--- OPTIONALLY INTRODUCE FAILURE
-				 logger.info("Successfully Processed trade {}", trade.getId());
-				 processedTradeCount++;
-		 } catch (RuntimeException e) {
-				 logger.info("Failed to processed trade {} due to {}", trade.getId(), e.getMessage());
-				 throw e;
-		 } catch (InterruptedException e) {
-				 e.printStackTrace();
-		 } finally {
-				 logSummary(trade);
-		 }
+	 logger.info("Received {} done", trade);
+	 try {
+		 Thread.sleep(processingTime.toMillis());		// <--- OPTIONALLY INTRODUCE DELAY
+		 faultyConsumer.accept(trade);						  // <--- OPTIONALLY INTRODUCE FAILURE
+		 logger.info("Successfully Processed trade {}", trade.getId());
+		 processedTradeCount++;
+	 } catch (RuntimeException e) {
+		 logger.info("Failed to processed trade {} due to {}", trade.getId(), e.getMessage());
+		 throw e;
+	 } catch (InterruptedException e) {
+		 e.printStackTrace();
+	 } finally {
+		 logSummary(trade);
+	 }
 
  }
  ```
