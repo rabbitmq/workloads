@@ -91,6 +91,7 @@ By the end of this section, you have identified the type of application you need
 	- [:x: Transient consumer looses all enqueued messages so far](#x-transient-consumer-looses-all-enqueued-messages-so-far)
 	- [:white_check_mark: Durable consumer does not loose the enqueued messages](#whitecheckmark-durable-consumer-does-not-loose-the-enqueued-messages)
 - [Verify delivery guarantee-2d Consumer receives a Poison message](#verify-delivery-guarantee-2d-consumer-receives-a-poison-message)
+	- [Simulating consumer failures](#simulating-consumer-failures)
 	- [:x: All consumers without a DLQ lose the message](#x-all-consumers-without-a-dlq-lose-the-message)
 	- [:question: Should transient consumers be bothered with DLQ](#question-should-transient-consumers-be-bothered-with-dlq)
 	- [:white_check_mark: Consumers with queues configured with DLQ do not lose the message](#whitecheckmark-consumers-with-queues-configured-with-dlq-do-not-lose-the-message)
@@ -1262,6 +1263,48 @@ A consumer should detect *poison message* and reject it immediately rather than 
 
 :warning: Be careful changing the default SCS's configuration (e.g. `requeueRejected: true`, `maxAttepmts`) otherwise we could crash all consumer instances, or worse, consume lots of network bandwidth and cpu in the broker.
 
+### Simulating consumer failures
+
+All consumer types, from [transient-consumer](transient-consumer) to [reliable-consumer](reliable-consumer), almost share the same `@StreamListener` implementation which means we can test failures in every consumer type.
+
+This is the `@StreamListener` from the `transient-consumer`.
+
+```Java
+ @StreamListener(MessagingBridge.INPUT)
+ public void execute(@Header("account") long account,
+										 @Header("tradeId") long tradeId,
+										 @Payload Trade trade) {
+
+		 missingTradesTracker.accept(trade);
+
+		 logger.info("Received {} done", trade);
+		 try {
+				 Thread.sleep(processingTime.toMillis());		// <--- OPTIONALLY INTRODUCE DELAY
+				 faultyConsumer.accept(trade);						  // <--- OPTIONALLY INTRODUCE FAILURE
+				 logger.info("Successfully Processed trade {}", trade.getId());
+				 processedTradeCount++;
+		 } catch (RuntimeException e) {
+				 logger.info("Failed to processed trade {} due to {}", trade.getId(), e.getMessage());
+				 throw e;
+		 } catch (InterruptedException e) {
+				 e.printStackTrace();
+		 } finally {
+				 logSummary(trade);
+		 }
+
+ }
+ ```
+
+Look for the line with the comment `OPTIONALLY INTRODUCE FAILURE`. Every `Trade` is passed to [FaultyConsumer](common/src/main/java/com/pivotal/resilient/chaos/FaultyConsumer.java) which is a Spring `@Component` defined in the [common](common) project. We can configure the `faultyConsumer` with these two settings:
+ - `--chaos.tradeId` where we set which trade id will generate a failure
+ - `--chaos.maxFailTimes` where we set how many times in a row it should fail
+ - `--actionAfterMaxFailTimes` what to do after failing all attempts. We can do:
+ 		- `nothing` (default) which means this trade id does not fail anymore
+		- `reject` throws `AmqpRejectAndDontRequeueException` meaning that the message should be rejected
+		- `immediateAck` throws `ImmediateAcknowledgeAmqpException` meaning that the message is acked
+
+**NOTE**: The `FaultyConsumer` throws a generic `RuntimeException`. It does not throw any other type of exception that resembles a *poisson message* such as `IllegalArgumentException` or `JsonParseException` or the like. For most of the scenarios we are about to test we do no need to throw any specific exception. Except for the [last scenario](#user-content-do-not-retry-poision-messages), where we recommend not to retry *poision message*. On this latter case, we need to configure the exact exceptions thrown by *poison messages*.
+
 
 ### :x: All consumers without a DLQ lose the message
 
@@ -1403,6 +1446,7 @@ Check the depth of the queue has 1 message.
 <br/>
 <br/>
 
+<a name="do-not-retry-poision-messages"></a>
 ### :white_check_mark: Consumers should not retry poison message neither lose it
 
 It does not make sense to retry *poison message* because we know they will always fail. And yet, we do not want to
