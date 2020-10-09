@@ -1277,8 +1277,8 @@ This is the `@StreamListener` from the `transient-consumer`.
 
 	 logger.info("Received {} done", trade);
 	 try {
-		 Thread.sleep(processingTime.toMillis());		// <--- OPTIONALLY INTRODUCE DELAY
-		 faultyConsumer.accept(trade);						  // <--- OPTIONALLY INTRODUCE FAILURE
+		 Thread.sleep(processingTime.toMillis());	// <--- OPTIONALLY INTRODUCE DELAY
+		 faultyConsumer.accept(trade);            // <--- OPTIONALLY INTRODUCE FAILURE
 		 logger.info("Successfully Processed trade {}", trade.getId());
 		 processedTradeCount++;
 	 } catch (RuntimeException e) {
@@ -1293,15 +1293,15 @@ This is the `@StreamListener` from the `transient-consumer`.
  }
  ```
 
-Look for the line with the comment `OPTIONALLY INTRODUCE FAILURE`. Every `Trade` is passed to [FaultyConsumer](common/src/main/java/com/pivotal/resilient/chaos/FaultyConsumer.java) which is a Spring `@Component` defined in the [common](common) project. We can configure the `faultyConsumer` with these two settings:
- - `--chaos.tradeId` where we set which trade id will generate a failure
+Look for the line with the comment `OPTIONALLY INTRODUCE FAILURE`. Every `Trade` is passed to [FaultyConsumer](common/src/main/java/com/pivotal/resilient/chaos/FaultyConsumer.java) which is a Spring `@Component` defined in the [common](common) project. We can configure the `faultyConsumer` with these settings:
+ - `--chaos.tradeId` where we set which trade id will generate a failure. The consumer will only fail with a trade with this id.
  - `--chaos.maxFailTimes` where we set how many times in a row it should fail
- - `--actionAfterMaxFailTimes` what to do after failing all attempts. We can do:
- 		- `nothing` (default) which means this trade id does not fail anymore
-		- `reject` throws `AmqpRejectAndDontRequeueException` meaning that the message should be rejected
-		- `immediateAck` throws `ImmediateAcknowledgeAmqpException` meaning that the message is acked
+ - `--actionAfterMaxFailTimes` what to do after failing all attempts. We can do:  
+ 		- `nothing` (default) which means this trade id does not fail anymore  
+		- `reject` throws `AmqpRejectAndDontRequeueException` meaning that the message should be rejected  
+		- `immediateAck` throws `ImmediateAcknowledgeAmqpException` meaning that the message is acked  
 
-**NOTE**: The `FaultyConsumer` throws a generic `RuntimeException`. It does not throw any other type of exception that resembles a *poisson message* such as `IllegalArgumentException` or `JsonParseException` or the like. For most of the scenarios we are about to test we do no need to throw any specific exception. Except for the [last scenario](#user-content-do-not-retry-poision-messages), where we recommend not to retry *poision message*. On this latter case, we need to configure the exact exceptions thrown by *poison messages*.
+**NOTE**: The `FaultyConsumer` throws a generic `RuntimeException`. It does not throw any other type of exception that resembles a *poisson message* such as `IllegalArgumentException` or `JsonParseException` or the like. For most of the scenarios we are about to test we do not need to throw any specific exception. Except for the [last scenario](#user-content-do-not-retry-poision-messages), where we recommend not to retry *poision message*. On this latter case, we need to configure the exact exceptions thrown by *poison messages*.
 
 
 ### :x: All consumers without a DLQ lose the message
