@@ -50,7 +50,7 @@ public class FaultyConsumer implements Consumer<Trade> {
                         System.exit(-1);
                 }
 
-            }else throw new RuntimeException(String.format("ChaosMoney on trade %d after %d attempts",
+            }else throw new RuntimeException(String.format("ChaosMonkey on trade %d after %d attempts",
                     trade.getId(), attempts));
         }
     }
