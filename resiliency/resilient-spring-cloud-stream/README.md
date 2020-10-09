@@ -92,6 +92,7 @@ By the end of this section, you have identified the type of application you need
 	- [:white_check_mark: Durable consumer does not loose the enqueued messages](#whitecheckmark-durable-consumer-does-not-loose-the-enqueued-messages)
 - [Verify delivery guarantee-2d Consumer receives a Poison message](#verify-delivery-guarantee-2d-consumer-receives-a-poison-message)
 	- [:x: All consumers without a DLQ lose the message](#x-all-consumers-without-a-dlq-lose-the-message)
+	- [:question: Should transient consumers be bothered with DLQ](#question-should-transient-consumers-be-bothered-with-dlq)
 	- [:white_check_mark: Consumers with queues configured with DLQ do not lose the message](#whitecheckmark-consumers-with-queues-configured-with-dlq-do-not-lose-the-message)
 	- [:white_check_mark: Consumers should not retry poison message neither lose it](#whitecheckmark-consumers-should-not-retry-poison-message-neither-lose-it)
 - [Verify delivery guarantee-2e Consumer gives up after failing to process a message](#verify-delivery-guarantee-2e-consumer-gives-up-after-failing-to-process-a-message)
@@ -558,7 +559,7 @@ The type of failures we are going test are grouped into 2 categories:
 |[`2.b`](#user-content-2b)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|
 |[`2.c`](#user-content-2c)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|
 |[`2.d`](#user-content-2d)|:white_check_mark::question:|:white_check_mark::question:|:white_check_mark::question:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|   
-|[`2.e`](#user-content-2e)|     |    |    |    |    |    |   
+|[`2.e`](#user-content-2e)|:x:|:x:|:x:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|   
 |[`2.f`](#user-content-2f)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:white_check_mark::question:|:white_check_mark:|   
 |[`2.g`](#user-content-2g)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:|   
 |[`2.h`](#user-content-2h)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:|
@@ -1264,14 +1265,13 @@ A consumer should detect *poison message* and reject it immediately rather than 
 
 ### :x: All consumers without a DLQ lose the message
 
-:warning: After retrying a number of times, the message is rejected and the broker drops it.
+:warning: After retrying a number of times, the message is rejected and the broker drops it unless the queue is configured with a DLQ.
 
 1. Launch the producer.
   ```bash
   fire-and-forget-producer/run.sh
   ```
-2. Launch the durable consumer that fails tradeId `3` three times. But SCS
- retries at most 3 times before rejecting it.
+2. Launch the durable consumer which is going to fail 3 times the tradeId `3`. SCS is configured to retry at most 3 times before rejecting it.
   ```bash
   durable-consumer/run.sh --chaos.tradeId=3 --chaos.maxFailTimes=3
   ```
@@ -1303,12 +1303,20 @@ rejected, i.e. it is lost.
 4. Notice the last logging statement about `republishToDlq`. This is just a warning that we do not have an
 alternate route -a.k.a dlq- for our rejected message. We are addressing this issue in the happy scenario below.
 
+### :question: Should transient consumers be bothered with DLQ
+
+Does it really make sense to configure transient consumers with a DLQ? It is
+definitely possible if your use case requires it. But given how relaxed this type of consumer is with regards
+message loss we have to wonder whether it makes sense to use a DLQ with it. Maybe a DLQ can serve as a repository
+of *poison messages* rather than relying on log analysis to spot them.
+
 
 ### :white_check_mark: Consumers with queues configured with DLQ do not lose the message
 
 In order to demonstrate *dead-letter-queues* we are going to use the [reliable-consumer](reliable-consumer) project.
+However, as you will see, any consumer type can be configured with a DLQ.
 
-**Required configuration changes**
+#### Required configuration changes**
 
  We are going to configure our consumer channel with a *dead-letter-queue* in the [application-dlq.yaml](reliable-consumer/src/main/resources/application-dlq.yaml).
   ```yaml
@@ -1345,7 +1353,7 @@ workshop up to this point, we already have a `trades.trade-logger` queue declare
 Channel shutdown: channel error; protocol method: #method<channel.close>(reply-code=406, reply-text=PRECONDITION_FAILED - inequivalent arg 'x-dead-letter-exchange' for queue 'trades.trade-logger' in vhost '/': received the value 'DLX' of type 'longstr' but current is none, class-id=50, method-id=10)
 ```
 
-**Two DLQ mechanisms available in SCS**
+#### Two Dead-Letter-Queue mechanisms
 
 SCS Rabbit binder gives us two DLQ mechanisms. Let's start with the standard
 RabbitMQ mechanism and then continue with a more advanced one.
@@ -1397,8 +1405,13 @@ Check the depth of the queue has 1 message.
 
 ### :white_check_mark: Consumers should not retry poison message neither lose it
 
-This scenario builds on top of the previous scenario so that we do not lose poison messages. But
-we do not want to retry them because it would be wasteful to do it.
+It does not make sense to retry *poison message* because we know they will always fail. And yet, we do not want to
+lose it. We want to do is configure SCS to not retry certain exceptions.
+
+We are yet to demonstrate it with an example but the key configuration is:
+- `defaultRetryable` (default `true`) Whether exceptions thrown by the listener that are not listed in the `retryableExceptions` are retryable.
+- `retryableExceptions` (default empty) Specify those exceptions (and subclasses) that will or won’t be retried
+ 	e.g. `spring.cloud.stream.bindings.<channelName>.consumer.retryable-exceptions.java.lang.IllegalStateException: false`
 
 **TODO** Demonstrate techniques that prevents retrying poison message (`retriableExceptions`,
   throwing appropriate Spring AMQP exception)
@@ -1407,16 +1420,18 @@ we do not want to retry them because it would be wasteful to do it.
 <a name="2e"></a>
 ## Verify delivery guarantee-2e Consumer gives up after failing to process a message
 
-This failure is very similar to the previous failure, [2d Consumer receives a Poison message](#user-content-2d). It is more a semantic difference. This time we do not fail to parse or validate a *poison message*, but we fail to process it due to an infrastructure issue (e.g. database server is down).
+This failure is almost identical to the previous failure, [2d Consumer receives a Poison message](#user-content-2d), except the root cause. In this scenario, the root cause is not the message itself but an interim or transient infrastructure failure. For instance, the app cannot process the message because it cannot contact the database.
 
-We know that SCS will retry it and we know that once we exhaust all the attempts, it is redirected to a DLQ.
+It is clear that we can safely retry these messages until they succeed. However, we need to be careful as to how we do it.
 
 ### :white_check_mark: Transient failures should be delayed and retried without blocking newer messages
 
-This type of failure, alike a *Poison message*, is transient and typically due to an infrastructure problem. Transient failures should be retried however we cannot suspend or delay the listener until the problem is solved. Ideally, we would want to schedule it for another time and carry on processing other messages. Hopefully, newer messages will not suffer the same issue.
+This type of failure, alike a *Poison message*, is transient. Transient failures should always be retried however we cannot suspend or delay the listener until the problem is solved. Ideally, we would want to schedule it for another time and carry on processing other messages. Hopefully, newer messages will not suffer the same issue.
 
-If we want to automatically retry messages after a configurable delay there is a mechanism explained [here](https://cloud.spring.io/spring-cloud-stream-binder-rabbit/multi/multi__retry_with_the_rabbitmq_binder.html).
+For durable consumers it makes sense to configure it with retries and DLQ so that it retries and eventually send it to a DLQ so that we do no lose the message. However, we also want to configure an external retry mechanism that retries messages in the DLQ after a configurable delay.
+This mechanism is explained [here](https://cloud.spring.io/spring-cloud-stream-binder-rabbit/multi/multi__retry_with_the_rabbitmq_binder.html).
 
+For transient consumers it may not make sense as it does not make sense to have a DLQ for transient consumers.
 
 <br/>
 <br/>
@@ -1522,8 +1537,7 @@ We are going to test this configuration in the `fire-and-forget-producer`. All w
 
 As far as the producer is concerned, the send operation has completed successfully, but has it really succeeded? i.e. has RabbitMQ delivered the message all intended queues? what if the broker dies right before it gets the message? what if RabbitMQ cannot deliver the message to the queue?
 
-In this scenario we are going to test an scenario where RabbitMQ fails to deliver a message to a queue.
-There could be 2 main reasons:
+There are two reasons why RabbitMQ fail to deliver a message to a queue:
 - RabbitMQ internal failure
 - RabbitMQ reject policy due to exceeding max-length policy
 
@@ -1554,11 +1568,10 @@ there will be point when the queue is full and messages are dropped. However, th
 
 ### :white_check_mark: Reliable producer knows when RabbitMQ fails to accept a message
 
-To make our producer more resilient we have to use publisher confirmations. But that adds a
+To make our producer more resilient we have to use *publisher confirmations*. But that adds a
 complication to our application's design because those notifications arrive asynchronously.
 
-We have implemented a solution in the `reliable-producer` project. This solution gives us the following
-advantages:
+We have implemented a solution in the [reliable-producer](reliable-producer) project. This solution gives us the following advantages:
 - We can make the caller wait until the message is sent
 - We can make the caller not to wait however should the message failed we invoke a fallback strategy. In order dummy solution, we log it but we could have stored in a persistent store like a db or send it another queue.
 - Failed messages are retried as many times as required before giving up
