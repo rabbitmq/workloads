@@ -24,7 +24,8 @@ public class FaultyConsumer implements Consumer<Trade> {
 
     public FaultyConsumer(ChaosMonkeyProperties properties) {
         this.properties = properties;
-        shouldFailThisTrade = t->t.getId() == properties.getTradeId();
+        shouldFailThisTrade = properties.getTradeId().isPresent() ?
+                t->t.getId() == properties.getTradeId().get() : t->false;
         hasExceededMaxFailures = t-> {
             Integer times = timesFailed.get(t.getId());
             return times != null && times > properties.getMaxFailTimes();

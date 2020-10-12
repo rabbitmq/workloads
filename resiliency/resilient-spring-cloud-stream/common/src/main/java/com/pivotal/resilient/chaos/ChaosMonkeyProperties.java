@@ -3,6 +3,8 @@ package com.pivotal.resilient.chaos;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.Optional;
+
 @Configuration
 @ConfigurationProperties(prefix = "chaos")
 public class ChaosMonkeyProperties {
@@ -15,10 +17,10 @@ public class ChaosMonkeyProperties {
         this.actionAfterMaxFailTimes = actionAfterMaxFailTimes;
     }
 
-    public static enum ActionAfterMaxFailTimes { nothing, reject, immediateAck, exit }
+    public enum ActionAfterMaxFailTimes { nothing, reject, immediateAck, exit }
 
     private int maxFailTimes = 2;
-    private long tradeId = 3;
+    private Optional<Long> tradeId = Optional.empty();
     private ActionAfterMaxFailTimes actionAfterMaxFailTimes = ActionAfterMaxFailTimes.nothing;
 
     public int getMaxFailTimes() {
@@ -29,14 +31,13 @@ public class ChaosMonkeyProperties {
         this.maxFailTimes = maxFailTimes;
     }
 
-    public long getTradeId() {
+    public Optional<Long> getTradeId() {
         return tradeId;
     }
 
-    public void setTradeId(long tradeId) {
-        this.tradeId = tradeId;
+    public void setTradeId(Long tradeId) {
+        this.tradeId = Optional.of(tradeId);
     }
-
 
 }
 
