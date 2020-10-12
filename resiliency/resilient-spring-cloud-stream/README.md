@@ -152,10 +152,9 @@ all applications types has `common` as a dependency too.
 
 ### Refresher on how application configuration works
 
-We will use [fire-and-forget-producer](fire-and-forget-producer) to explain how configuration is loaded.
+We will use [fire-and-forget-producer](fire-and-forget-producer) to explain how configuration is loaded.  
 
-1. `application.yml` is loaded
-2. Spring profiles `management` and `cluster` are activated
+1. `application.yml` is loaded which activates the `management` and `cluster` profiles. See below how they are activated.
 	```yaml
 	spring:
 	  profiles:
@@ -163,10 +162,8 @@ We will use [fire-and-forget-producer](fire-and-forget-producer) to explain how 
 	      - management
 	      - cluster
 	```
-3. `application-management.yml` and `application-cluster.yml` are loaded. The former configures actuator management endpoints, and the latter configures SCS RabbitMQ Binder.
-4. Additionally, if we launch the application with this environment variable `SPRING_PROFILES_ACTIVE=toxi`,
-the file `application-toxi.yml` is loaded and overrides existing configuration. For instance, `toxi` overrides the
-cluster address configured by `cluster` profile.
+2. `application-management.yml` and `application-cluster.yml` are loaded. The former configures Spring Boot Actuator management endpoints, and the latter configures SCS RabbitMQ Binder.
+3. Additionally, we can override the already loaded configuration by activating another profiles. For instance, if we launch the application with this environment variable `SPRING_PROFILES_ACTIVE=toxi`, we are activating the `toxi` profile. There is a `application-toxi.yml` which is loaded and overrides the RabbitMQ address initially configured by the `cluster` profile.
 
 Spring Cloud Stream has 3 types of configuration:
 - Channel binding configuration agnostic of any binder. We configure channels in [application.yml](fire-and-forget-producer/src/main/resources/application.yml)
