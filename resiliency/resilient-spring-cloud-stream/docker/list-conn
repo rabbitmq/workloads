@@ -2,4 +2,8 @@
 
 SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+. $SCRIPT/check-commands
+
+check-jq-installed
+curl-installed
 curl -s -u guest:guest localhost:${PORT:-15673}/api/connections | jq -r '.[]| [.name,.user_provided_name,.user,.node]|@tsv'

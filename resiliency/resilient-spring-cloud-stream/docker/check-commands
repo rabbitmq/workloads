@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+function check-jq-installed {
+  if ! command -v jq &> /dev/null
+  then
+    echo "jq could not be found"
+    echo "To install it on mac: brew install jq"
+    echo "To install it on linux: sudo yum install jq"
+    exit
+  fi
+}
+function curl-installed {
+  if ! command -v curl &> /dev/null
+  then
+    echo "curl could not be found"
+    exit
+  fi
+}

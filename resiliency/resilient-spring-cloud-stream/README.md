@@ -22,6 +22,8 @@ To follow this workshop you need:
 - Java 1.8
 - Maven 3.6.2 or more recent
 - Docker
+- jq (`brew install jq` on Mac, `sudo yum install jq` on RHEL, CentOS)
+- curl
 
 ## How to follow the workshop
 
@@ -170,7 +172,7 @@ Spring Cloud Stream has 3 types of configuration:
 - Binder configuration, e.g. RabbitMQ Binder. We configure the binder in [application-cluster.yml](fire-and-forget-producer/src/main/resources/application-cluster.yml)
 - Channel Binder's binding configuration, e.g. RabbitMQ Binder bindings. An example of this type of configuration is on the [application-dlq.yml](reliable-consumer/src/main/resources/application-dlq.yml)
 
-Spring Cloud Stream RabbitMQ Binder uses Spring AMQP under the covers. The numbering below represents the order on which configuration is loaded. The latter overrides the former. 
+Spring Cloud Stream RabbitMQ Binder uses Spring AMQP under the covers. The numbering below represents the order on which configuration is loaded. The latter overrides the former.
 1. [Spring AMQP](https://docs.spring.io/spring-boot/docs/2.1.8.RELEASE/reference/html/common-application-properties.html) with `spring.rabbitmq` prefix. Under [application-retries.yml](fire-and-forget-producer/src/main/resources/application-retries.yml) we configure these settings.
 2. [SCS RabbitMQ Binder](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-binder-properties) properties with `spring.cloud.stream.rabbit.binder` prefix
 3. [SCS RabbitMQ Bindings](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-consumer-properties) with `spring.cloud.stream.rabbit.bindings.<channelName>` prefix

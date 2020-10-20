@@ -2,12 +2,7 @@
 
 SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-function kill_connections {
-  $SCRIPT/list-conn | grep "$1" | awk -F '\t' '{print $1}' | while read line; do
-    connection=`$SCRIPT/rawurlencode "$line"`
-    echo "Killing connection $line"
-    curl -s -X DELETE -u guest:guest localhost:${PORT:-15673}/api/connections/$connection
-  done
-}
+. $SCRIPT/check-commands
 
+curl-installed
 kill_connections $1
