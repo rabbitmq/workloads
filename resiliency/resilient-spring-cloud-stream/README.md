@@ -583,24 +583,24 @@ The type of failures we are going test are grouped into 2 categories:
 
 |      |  Transient consumer  | Durable consumer  | HA Durable consumer  | Reliable consumer  | Fire-and-forget producer  | Reliable producer  | Unreliable processor |
 |------|:-----:|:----:|:----:|:----:|:----:|:----:|:----:|
-|[`1.a`](#user-content-1a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:----:|   
-|[`1.b`](#user-content-1b)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:----:|
-|[`1.c`](#user-content-1c)|:white_check_mark:|:white_check_mark::question:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:----:|   
-|[`1.d`](#user-content-1d)|:white_check_mark:|:white_check_mark::question:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:----:|   
-|[`1.e`](#user-content-1e)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:white_check_mark:|:white_check_mark:|:----:|   
-|[`1.f`](#user-content-1f)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|:----:|   
-|[`1.g`](#user-content-1g)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:----:|
-|[`1.h`](#user-content-1h)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:----:|
-|[`2.a`](#user-content-2a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|:----:|   
-|[`2.b`](#user-content-2b)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|:----:|
-|[`2.c`](#user-content-2c)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|:----:|
-|[`2.d`](#user-content-2d)|:white_check_mark::question:|:white_check_mark::question:|:white_check_mark::question:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|:----:|   
-|[`2.e`](#user-content-2e)|:x:|:x:|:x:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|:----:|   
-|[`2.f`](#user-content-2f)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:white_check_mark::question:|:white_check_mark:|:----:|   
-|[`2.g`](#user-content-2g)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:|:----:|   
-|[`2.h`](#user-content-2h)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:|:----:|
-|[`2.i`](#user-content-2i)|:x:|:x::question:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|:----:|   
-|[`2.j`](#user-content-2j)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:|:----:|   
+|[`1.a`](#user-content-1a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:||   
+|[`1.b`](#user-content-1b)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:||
+|[`1.c`](#user-content-1c)|:white_check_mark:|:white_check_mark::question:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:||   
+|[`1.d`](#user-content-1d)|:white_check_mark:|:white_check_mark::question:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:||   
+|[`1.e`](#user-content-1e)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:white_check_mark:|:white_check_mark:||   
+|[`1.f`](#user-content-1f)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:||   
+|[`1.g`](#user-content-1g)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:||
+|[`1.h`](#user-content-1h)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:||
+|[`2.a`](#user-content-2a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:||   
+|[`2.b`](#user-content-2b)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:||
+|[`2.c`](#user-content-2c)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:||
+|[`2.d`](#user-content-2d)|:white_check_mark::question:|:white_check_mark::question:|:white_check_mark::question:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:||   
+|[`2.e`](#user-content-2e)|:x:|:x:|:x:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:||   
+|[`2.f`](#user-content-2f)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:white_check_mark::question:|:white_check_mark:||   
+|[`2.g`](#user-content-2g)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:||   
+|[`2.h`](#user-content-2h)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:||
+|[`2.i`](#user-content-2i)|:x:|:x::question:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:||   
+|[`2.j`](#user-content-2j)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:||   
 
 :white_check_mark: Application is resilient to the failure  
 :x: Application is not resilient to the failure  
