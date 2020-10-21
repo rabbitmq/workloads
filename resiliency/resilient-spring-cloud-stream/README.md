@@ -1073,6 +1073,10 @@ the toxic configured in the proxy.
   docker/toxiproxy-cli toxic remove --toxicName timeout_upstream rabbit
   Removed toxic 'timeout_upstream' on proxy 'rabbit'
   ```
+  ```bash
+  docker/toxiproxy-cli toxic remove --toxicName timeout_downstream rabbit
+  Removed toxic 'timeout_upstream' on proxy 'rabbit'
+  ```
 7. Request a trade should work this time
   ```bash
   ./request-trade
