@@ -821,12 +821,11 @@ reconnect and resubscribe.
 
 ### :white_check_mark: All consumers are resilient to this failure
 
-We can try any of the 3 consumer applications. But given that `durable-consumer` already showed
-a weakness (see scenario [1c](#user-content-1c)), we are going to test it here.
+We can try any of the 3 consumer applications.
 
-1. Launch `durable-consumer`
+1. Launch `transient-consumer`
   ```bash
-  durable-consumer/run.sh
+  transient-consumer/run.sh
   ```
 2. Launch `fire-and-forget-producer`
   ```bash
@@ -834,7 +833,7 @@ a weakness (see scenario [1c](#user-content-1c)), we are going to test it here.
   ```
 3. Kill consumer connection
   ```bash
-  docker/kill-conn-grep durable-consumer
+  docker/kill-conn-grep transient-consumer
   ```
 4. The consumer should recover from it. We should get a similar logging sequence to this one:
 ```
@@ -848,14 +847,13 @@ a weakness (see scenario [1c](#user-content-1c)), we are going to test it here.
 2020-09-16 10:34:30.441  INFO 30872 --- [3mb6uTnFmfrJQ-2] com.pivotal.resilient.TradeLogger        : Received [total:8,missed:28] Trade 36 (account: 5) done
 ```
 
-However, we should notice that our consumer has missed 28 messages. That is due to 2 factors.
+However, we should notice that our `transient-consumer` has missed 28 messages. That is due to 2 factors.
 The first is that our consumer is slower (processingTime:5s) than the producer (trade) so we
 are creating a queue backlog. And second, when the connection is closed, we loose the backlog
 because the queue is deleted and recreated it again.
 
 
-**TODO** Investigate: I noticed that the consumer connection creates 2 channels after it recovers the connection rather than just one. However, it does not keep opening further channels should it
-recovered from additional connection failures.
+**TODO** Investigate: I noticed that the consumer connection creates 2 channels after it recovers the connection rather than just one. However, it does not keep opening further channels should it recovered from additional connection failures.
 
 <br/>
 <br/>
