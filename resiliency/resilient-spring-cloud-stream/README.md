@@ -61,6 +61,7 @@ By the end of this section, you have identified the type of application you need
 	- [Reliable consumer](#reliable-consumer)
 	- [Fire-and-forget producer](#fire-and-forget-producer)
 	- [Reliable producer](#reliable-producer)
+	- [Unreliable processor](#unreliable-processor)
 - [Testing Applications](#testing-applications)
 	- [Failure scenarios](#failure-scenarios)
 	- [Resiliency Matrix](#resiliency-matrix)
@@ -518,6 +519,39 @@ In terms of Spring Cloud Stream, this is what we need to do:
 4. Configure RabbitMQ's binder (`application-cluster.yml`) to use publisher confirms and publisher returns.
 
 
+### Unreliable processor
+
+So far we have seen **consumer** and **producer** applications, but there is a third type called **Processor**. A **Processor** application takes an input message, processes it and produces an output message.
+
+Spring Cloud Streams helps us write this type of application. Our `StreamListener` should return an Object and must be annotate with `@Output` to indicate where the message should go to.
+
+```Java
+   interface MessagingBridge {
+
+      String INPUT = "trade-input";
+
+      @Input(INPUT)
+      SubscribableChannel input();
+
+      String OUTPUT = "deal-done-output";
+
+      @Output(OUTPUT)
+			MessageChannel outboundTradeDone();	// <--- outbound channel
+  }
+
+  @StreamListener(MessagingBridge.INPUT)
+	@Output(MessagingBridge.OUTPUT)  // <--- outbound channel
+	public Trade execute(@Header("account") long account,  // <--- returned Trade is sent to outbound channel
+     @Header("tradeId") long tradeId,
+	   @Payload Trade trade) {
+
+   ...
+ }
+```
+
+This processor, in particular, is unreliable because it uses a *fire-and-forget-producer* style in order to
+send the returned `Trade` object to RabbitMQ.
+
 
 ## Testing Applications
 
@@ -547,26 +581,26 @@ The type of failures we are going test are grouped into 2 categories:
 
 ### Resiliency Matrix
 
-|      |  Transient consumer  | Durable consumer  | HA Durable consumer  | Reliable consumer  | Fire-and-forget producer  | Reliable producer  |
-|------|:-----:|:----:|:----:|:----:|:----:|:----:|
-|[`1.a`](#user-content-1a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
-|[`1.b`](#user-content-1b)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|
-|[`1.c`](#user-content-1c)|:white_check_mark:|:white_check_mark::question:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
-|[`1.d`](#user-content-1d)|:white_check_mark:|:white_check_mark::question:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|   
-|[`1.e`](#user-content-1e)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:white_check_mark:|:white_check_mark:|   
-|[`1.f`](#user-content-1f)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|   
-|[`1.g`](#user-content-1g)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|
-|[`1.h`](#user-content-1h)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|
-|[`2.a`](#user-content-2a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|   
-|[`2.b`](#user-content-2b)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|
-|[`2.c`](#user-content-2c)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|
-|[`2.d`](#user-content-2d)|:white_check_mark::question:|:white_check_mark::question:|:white_check_mark::question:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|   
-|[`2.e`](#user-content-2e)|:x:|:x:|:x:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|   
-|[`2.f`](#user-content-2f)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:white_check_mark::question:|:white_check_mark:|   
-|[`2.g`](#user-content-2g)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:|   
-|[`2.h`](#user-content-2h)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:|
-|[`2.i`](#user-content-2i)|:x:|:x::question:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|   
-|[`2.j`](#user-content-2j)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:|   
+|      |  Transient consumer  | Durable consumer  | HA Durable consumer  | Reliable consumer  | Fire-and-forget producer  | Reliable producer  | Unreliable processor |
+|------|:-----:|:----:|:----:|:----:|:----:|:----:|:----:|
+|[`1.a`](#user-content-1a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:----:|   
+|[`1.b`](#user-content-1b)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:----:|
+|[`1.c`](#user-content-1c)|:white_check_mark:|:white_check_mark::question:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:----:|   
+|[`1.d`](#user-content-1d)|:white_check_mark:|:white_check_mark::question:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:----:|   
+|[`1.e`](#user-content-1e)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:white_check_mark:|:white_check_mark:|:----:|   
+|[`1.f`](#user-content-1f)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|:----:|   
+|[`1.g`](#user-content-1g)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:----:|
+|[`1.h`](#user-content-1h)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:----:|
+|[`2.a`](#user-content-2a)|:white_check_mark:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|:----:|   
+|[`2.b`](#user-content-2b)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|:----:|
+|[`2.c`](#user-content-2c)|:x:|:white_check_mark:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|:----:|
+|[`2.d`](#user-content-2d)|:white_check_mark::question:|:white_check_mark::question:|:white_check_mark::question:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|:----:|   
+|[`2.e`](#user-content-2e)|:x:|:x:|:x:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|:----:|   
+|[`2.f`](#user-content-2f)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:white_check_mark::question:|:white_check_mark:|:----:|   
+|[`2.g`](#user-content-2g)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:|:----:|   
+|[`2.h`](#user-content-2h)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:|:----:|
+|[`2.i`](#user-content-2i)|:x:|:x::question:|:white_check_mark:|:white_check_mark:|:heavy_minus_sign:|:heavy_minus_sign:|:----:|   
+|[`2.j`](#user-content-2j)|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:heavy_minus_sign:|:x:|:white_check_mark:|:----:|   
 
 :white_check_mark: Application is resilient to the failure  
 :x: Application is not resilient to the failure  

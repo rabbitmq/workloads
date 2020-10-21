@@ -1,0 +1,24 @@
+
+logging:
+  pattern.console: "%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%-40.40logger{1}){cyan} %msg %n"
+  level:
+    com.pivotal.resilient: debug
+
+spring:
+  application:
+    name: unreliable-processor
+  profiles:
+    include:
+      - management
+      - cluster
+  cloud:
+    stream:
+      bindings: # spring cloud stream binding configuration
+        trade-input:
+          destination: trades
+          group: trade-logger
+          consumer:
+            maxAttempts: 3  # default is 3
+        deal-done-output:
+          destination: deal-done
+

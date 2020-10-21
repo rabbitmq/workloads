@@ -1,5 +1,8 @@
 package com.pivotal.resilient;
 
+import java.math.BigDecimal;
+import java.text.DecimalFormat;
+
 public class Trade {
     long id;
     long accountId;
@@ -7,6 +10,11 @@ public class Trade {
     long amount;
     boolean buy;
     long timestamp;
+
+
+    BigDecimal price;
+
+    private static DecimalFormat priceFormat = new DecimalFormat("##.00");
 
     @Override
     public String toString() {
@@ -17,6 +25,8 @@ public class Trade {
                 .append(" amount=").append(amount)
                 .append(" buy=").append(buy)
                 .append(" timestamp=").append(timestamp)
+                .append(" ").append(price == null ? " Request" : " Executed @ ")
+                    .append(price == null ? "" : priceFormat.format(price))
                 .append("}").toString();
     }
 
@@ -36,6 +46,13 @@ public class Trade {
     }
     public static Trade sell(long acountId, String asset, long amount, long timestamp) {
         return new Trade(acountId, asset, amount, false, timestamp);
+    }
+
+    public Trade executed(BigDecimal price) {
+        Trade trade = new Trade(accountId, asset, amount, buy, timestamp);
+        trade.id = id;
+        trade.price = price;
+        return trade;
     }
 
     public long getId() {
@@ -85,4 +102,9 @@ public class Trade {
     public void setTimestamp(long timestamp) {
         this.timestamp = timestamp;
     }
+
+    public BigDecimal getPrice() {
+        return price;
+    }
+
 }

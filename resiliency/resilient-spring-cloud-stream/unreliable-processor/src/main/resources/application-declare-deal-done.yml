@@ -1,0 +1,9 @@
+
+spring:
+  cloud:
+    stream:
+      bindings:
+        deal-done-output:
+          producer:
+            requiredGroups:
+              - deal-done
