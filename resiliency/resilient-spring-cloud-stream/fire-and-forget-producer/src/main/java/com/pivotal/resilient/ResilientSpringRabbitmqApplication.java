@@ -11,21 +11,6 @@ import org.springframework.context.annotation.Bean;
 @SpringBootApplication
 public class ResilientSpringRabbitmqApplication {
 
-	@Autowired(required = false)
-	Cloud cloud;
-
-	@Autowired(required = false)
-	CloudFoundryConnector connector;
-
-	@Bean
-	CommandLineRunner runner() {
-		return (args)-> {
-
-			System.out.printf("%s\n", System.getenv("VCAP_APPLICATION"));
-			System.out.printf("%s\n", cloud != null ? cloud.getApplicationInstanceInfo().toString() : "none");
-			if (connector != null) System.out.println("Has connector");
-		};
-	}
 	public static void main(String[] args) {
 		SpringApplication.run(ResilientSpringRabbitmqApplication.class, args);
 	}
