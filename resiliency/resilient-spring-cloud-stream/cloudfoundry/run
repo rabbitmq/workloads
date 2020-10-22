@@ -12,9 +12,9 @@ function append_cloud_profile {
 
   if [ -z "$SPRING_PROFILES_ACTIVE" ]
   then
-        SPRING_PROFILES_ACTIVE='cloud'
+        SPRING_PROFILES_ACTIVE='cloud,Cloud'
   else
-        SPRING_PROFILES_ACTIVE=$SPRING_PROFILES_ACTIVE',cloud'
+        SPRING_PROFILES_ACTIVE=$SPRING_PROFILES_ACTIVE',cloud,Cloud'
   fi
 }
 
@@ -22,7 +22,7 @@ function declare_vcap_application {
 
   read -r -d '' VCAP_APPLICATION << EOM
 {
-  "user-instance_id": "$APP_INSTANCE",
+  "instance_id": "$APP_INSTANCE",
   "name": "$APP_FOLDER",
   "space_id" : "development"
 }

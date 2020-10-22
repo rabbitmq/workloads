@@ -20,7 +20,7 @@ spring:
   profiles:
     include:
       - management
-      - cluster
+      #- cluster
   cloud:
     stream:
       bindings: # spring cloud stream binding configuration

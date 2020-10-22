@@ -236,7 +236,7 @@ SPRING_PROFILES_ACTIVE=retries transient-consumer/run.sh
 How about if we want to run the applications as if they were running in Cloud Foundry?
 
 This is what we need to do it:
-1. Build the application with [Spring Cloud Connectors](https://cloud.spring.io/spring-cloud-connectors/) dependency
+1. Build the application with [Spring Cloud Connectors](https://cloud.spring.io/spring-cloud-connectors/) dependency and [Cloud Foundry Java AutoReconfiguration](https://github.com/cloudfoundry/java-buildpack-auto-reconfiguration) dependency
 	```
 	mvn -Pcloudfoundry
 	```
@@ -245,25 +245,19 @@ This is what we need to do it:
 	cloudfoundry/run fire-and-forget-producer
 	```
 
-	This script declares the environment variables `VCAP_APPLICATION` & `VCAP_SERVICES` and invoke the
-	corresponding `run.sh` under the specified application's folder.
-	It also appends the `Cloud` profile to `SPRING_PROFILES_ACTIVE` environment variable.
-
-	**Required parameters**:
-
-	We must pass one parameter which matches the application folder name, e.g. `fire-and-forget-producer`.
-
-	**Optional Environment variables**:
-
-	Optionally, we can pass 2 environment variables as shown below:
-	```
-	RABBIT=cluster APP_INSTANCE=001 cloudfoundry/run fire-and-forget-producer
-	```
-
-	`RABBIT` can accept 2 values: `cluster` (default) and `standalone`
-
-	`APP_INSTANCE` can accept any value. It actually configures the application instance index
-
+	This script does the following:
+	- appends the the `Cloud` profile to `SPRING_PROFILES_ACTIVE` environment variable
+	- declares the environment variable `VCAP_APPLICATION` with application name and `instance_id = 001`.
+	To use a different `instance_id` run it like below:
+		```
+		APP_INSTANCE=001 cloudfoundry/run fire-and-forget-producer
+		```
+	- declares the environment variable `VCAP_SERVICES` that connects to the local cluster. If we want to
+	use the standalone server running on `5672` we run it like below:
+		```
+		RABBIT=standalone cloudfoundry/run fire-and-forget-producer
+		```
+	- invokes the corresponding `run.sh` under the specified application's folder.
 
 
 ## Application types
