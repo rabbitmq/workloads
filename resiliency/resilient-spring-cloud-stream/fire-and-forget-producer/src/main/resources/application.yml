@@ -20,10 +20,9 @@ spring:
   profiles:
     include:
       - management
-      #- cluster
+      - cluster
   cloud:
     stream:
-      override-cloud-connectors: false
       bindings: # spring cloud stream binding configuration
         outboundTradeRequests:
           destination: trades

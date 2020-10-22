@@ -1,0 +1,16 @@
+
+# Spring Cloud Stream named binder configuration necessary only when there is +1 binder
+spring:
+  cloud:
+    stream:
+      binders:
+        local_rabbit:
+          type: rabbit
+          defaultCandidate: true
+          environment:
+            spring:
+              rabbitmq:
+                addresses: localhost:5673,localhost:5674,localhost:5675
+                username: durable-consumer
+                password: guest
+                virtual-host: /

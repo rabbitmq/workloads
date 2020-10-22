@@ -1,16 +1,11 @@
 
 
+# Spring AMQP Configuration
+# Spring Cloud Stream single binder configuration
+
 spring:
-  cloud:
-    stream:
-      binders:
-        local_rabbit:
-          type: rabbit
-          defaultCandidate: true
-          environment:
-            spring:
-              rabbitmq:
-                addresses: localhost:5673,localhost:5674,localhost:5675
-                username: reliable-consumer
-                password: guest
-                virtual-host: /
+  rabbitmq:
+    addresses: localhost:5673,localhost:5674,localhost:5675
+    username: reliable-consumer
+    password: guest
+    virtual-host: /
