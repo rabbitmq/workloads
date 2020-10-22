@@ -54,6 +54,8 @@ By the end of this section, you have identified the type of application you need
 	- [How projects are structured](#how-projects-are-structured)
 	- [Refresher on how application configuration works](#refresher-on-how-application-configuration-works)
 	- [How to deploy RabbitMQ](#how-to-deploy-rabbitmq)
+	- [How to run the applications](#how-to-run-the-applications)
+	- [How to run the applications like if they were in Cloud Foundry](#how-to-run-the-applications-like-if-they-were-in-cloud-foundry)
 - [Application types](#application-types)
 	- [Transient consumer](#transient-consumer)
 	- [Durable consumer](#durable-consumer)
@@ -216,6 +218,53 @@ To launch the 3-node cluster, we run the script:
 ```bash
 docker/deploy-rabbit-cluster
 ```
+
+### How to run the applications
+
+Once you have run `mvn` from the root folder, we can run any application from this same folder like this:
+```
+fire-and-forget-producer/run.sh
+```
+
+If we need to run the application with a different spring boot profile we can do like this:
+```
+SPRING_PROFILES_ACTIVE=retries transient-consumer/run.sh
+```
+
+### How to run the applications like if they were in Cloud Foundry
+
+How about if we want to run the applications as if they were running in Cloud Foundry?
+
+This is what we need to do it:
+1. Build the application with [Spring Cloud Connectors](https://cloud.spring.io/spring-cloud-connectors/) dependency
+	```
+	mvn -Pcloudfoundry
+	```
+2. Launch the application via a new script called `cloudfoundry/run` as shown below:
+	```
+	cloudfoundry/run fire-and-forget-producer
+	```
+
+	This script declares the environment variables `VCAP_APPLICATION` & `VCAP_SERVICES` and invoke the
+	corresponding `run.sh` under the specified application's folder.
+	It also appends the `Cloud` profile to `SPRING_PROFILES_ACTIVE` environment variable.
+
+	**Required parameters**:
+
+	We must pass one parameter which matches the application folder name, e.g. `fire-and-forget-producer`.
+
+	**Optional Environment variables**:
+
+	Optionally, we can pass 2 environment variables as shown below:
+	```
+	RABBIT=cluster APP_INSTANCE=001 cloudfoundry/run fire-and-forget-producer
+	```
+
+	`RABBIT` can accept 2 values: `cluster` (default) and `standalone`
+
+	`APP_INSTANCE` can accept any value. It actually configures the application instance index
+
+
 
 ## Application types
 
@@ -540,8 +589,9 @@ Spring Cloud Streams helps us write this type of application. Our `StreamListene
   }
 
   @StreamListener(MessagingBridge.INPUT)
-	@Output(MessagingBridge.OUTPUT)  // <--- outbound channel
-	public Trade execute(@Header("account") long account,  // <--- returned Trade is sent to outbound channel
+  @Output(MessagingBridge.OUTPUT)  // <--- outbound channel
+  public Trade execute(            // <--- returned Trade is sent to outbound channel
+     @Header("account") long account,  
      @Header("tradeId") long tradeId,
 	   @Payload Trade trade) {
 

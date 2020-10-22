@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+
+set +x
+
+RABBIT=${RABBIT:-'cluster'}
+APP_INSTANCE=${APP_INSTANCE:-'001'}
+APP_FOLDER=${1:?second parameter is the application folder}
+
+[ ! -d "$APP_FOLDER" ] && (echo "Directory $APP_FOLDER DOES NOT exists."; exit -1;)
+
+function append_cloud_profile {
+
+  if [ -z "$SPRING_PROFILES_ACTIVE" ]
+  then
+        SPRING_PROFILES_ACTIVE='cloud'
+  else
+        SPRING_PROFILES_ACTIVE=$SPRING_PROFILES_ACTIVE',cloud'
+  fi
+}
+
+function declare_vcap_application {
+
+  read -r -d '' VCAP_APPLICATION << EOM
+{
+  "user-instance_id": "$APP_INSTANCE",
+  "name": "$APP_FOLDER",
+  "space_id" : "development"
+}
+EOM
+}
+
+function declare_vcap_services {
+  if [ "$RABBIT" == "cluster" ]
+  then
+      declare_vcap_services_with_rabbit_cluster
+  else
+      declare_vcap_services_with_rabbit_standalone
+  fi
+}
+function declare_vcap_services_with_rabbit_cluster {
+
+  read -r -d '' VCAP_SERVICES << EOM
+{
+  "user-provided": [
+    {
+      "credentials":  {
+        "uri": "amqp://$APP_FOLDER:guest@localhost:5673/%2F",
+        "uris": [
+            "amqp://$APP_FOLDER:guest@localhost:5673/%2F",
+            "amqp://$APP_FOLDER:guest@localhost:5674/%2F",
+            "amqp://$APP_FOLDER:guest@localhost:5675/%2F"
+          ]
+      },
+      "instance_name": "rmq",
+      "label": "rabbitmq",
+      "name": "rmq"
+    }
+  ]
+}
+EOM
+
+}
+
+function declare_vcap_services_with_rabbit_standalone {
+
+  read -r -d '' VCAP_SERVICES << EOM
+{
+  "user-provided": [
+    {
+      "credentials":  {
+        "uri": "amqp://$APP_FOLDER:guest@localhost:5672/%2F",
+        "uris": [
+            "amqp://$APP_FOLDER:guest@localhost:5672/%2F"
+          ]
+      },
+      "instance_name": "rmq",
+      "label": "rabbitmq",
+      "name": "rmq"
+
+    }
+  ]
+}
+EOM
+
+}
+append_cloud_profile
+declare_vcap_application
+declare_vcap_services
+
+echo "Using :"
+echo " - RABBIT = $RABBIT"
+echo " - SPRING_PROFILES_ACTIVE = $SPRING_PROFILES_ACTIVE"
+echo " - VCAP_APPLICATION = $VCAP_APPLICATION"
+echo " - VCAP_SERVICES = $VCAP_SERVICES"
+
+export SPRING_PROFILES_ACTIVE
+export VCAP_APPLICATION
+export VCAP_SERVICES
+
+$APP_FOLDER/run.sh ${@:2}

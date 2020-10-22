@@ -26,4 +26,3 @@ spring:
       bindings: # spring cloud stream binding configuration
         outboundTradeRequests:
           destination: trades
-
