@@ -102,20 +102,12 @@
 
 		<profile>
 			<id>cloudfoundry</id>
-
 			<dependencies>
-
 				<dependency>
-			    <groupId>org.springframework.boot</groupId>
-			    <artifactId>spring-boot-starter-cloud-connectors</artifactId>
-			    <version>${spring-cloud-connectors.version}</version>
-			</dependency>
-		
-			<dependency>
-				 <groupId>org.cloudfoundry</groupId>
-				 <artifactId>java-buildpack-auto-reconfiguration</artifactId>
-				 <version>2.11.0.RELEASE</version>
-		 </dependency>
+					<groupId>io.pivotal.cfenv</groupId>
+					<artifactId>java-cfenv-boot</artifactId>
+					<version>2.2.2.RELEASE</version>
+				</dependency>
 			</dependencies>
 
 			<repositories>

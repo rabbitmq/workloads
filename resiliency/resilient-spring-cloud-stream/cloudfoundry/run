@@ -44,11 +44,11 @@ function declare_vcap_services_with_rabbit_cluster {
   "user-provided": [
     {
       "credentials":  {
-        "uri": "amqp://$APP_FOLDER:guest@localhost:5673/%2F",
+        "uri": "amqp://$APP_FOLDER:guest@localhost:5673",
         "uris": [
-            "amqp://$APP_FOLDER:guest@localhost:5673/%2F",
-            "amqp://$APP_FOLDER:guest@localhost:5674/%2F",
-            "amqp://$APP_FOLDER:guest@localhost:5675/%2F"
+            "amqp://$APP_FOLDER:guest@localhost:5673",
+            "amqp://$APP_FOLDER:guest@localhost:5674",
+            "amqp://$APP_FOLDER:guest@localhost:5675"
           ]
       },
       "instance_name": "rmq",
@@ -68,9 +68,9 @@ function declare_vcap_services_with_rabbit_standalone {
   "user-provided": [
     {
       "credentials":  {
-        "uri": "amqp://$APP_FOLDER:guest@localhost:5672/%2F",
+        "uri": "amqp://$APP_FOLDER:guest@localhost:5672",
         "uris": [
-            "amqp://$APP_FOLDER:guest@localhost:5672/%2F"
+            "amqp://$APP_FOLDER:guest@localhost:5672"
           ]
       },
       "instance_name": "rmq",

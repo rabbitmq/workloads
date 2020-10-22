@@ -56,6 +56,7 @@ By the end of this section, you have identified the type of application you need
 	- [How to deploy RabbitMQ](#how-to-deploy-rabbitmq)
 	- [How to run the applications](#how-to-run-the-applications)
 	- [How to run the applications like if they were in Cloud Foundry](#how-to-run-the-applications-like-if-they-were-in-cloud-foundry)
+	- [How to run the applications in Cloud Foundry](#how-to-run-the-applications-in-cloud-foundry)
 - [Application types](#application-types)
 	- [Transient consumer](#transient-consumer)
 	- [Durable consumer](#durable-consumer)
@@ -236,7 +237,7 @@ SPRING_PROFILES_ACTIVE=retries transient-consumer/run.sh
 How about if we want to run the applications as if they were running in Cloud Foundry?
 
 This is what we need to do it:
-1. Build the application with [Spring Cloud Connectors](https://cloud.spring.io/spring-cloud-connectors/) dependency and [Cloud Foundry Java AutoReconfiguration](https://github.com/cloudfoundry/java-buildpack-auto-reconfiguration) dependency
+1. Build the application with [Java CFEnv](https://github.com/pivotal-cf/java-cfenv) dependency
 	```
 	mvn -Pcloudfoundry
 	```
@@ -258,6 +259,13 @@ This is what we need to do it:
 		RABBIT=standalone cloudfoundry/run fire-and-forget-producer
 		```
 	- invokes the corresponding `run.sh` under the specified application's folder.
+
+
+### How to run the applications in Cloud Foundry
+
+We have to set the following environment variables in the application's manifest:
+- `JBP_CONFIG_SPRING_AUTO_RECONFIGURATION '{enabled: false}'`
+- `SPRING_PROFILES_ACTIVE 'cloud'`
 
 
 ## Application types
