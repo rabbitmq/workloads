@@ -63,6 +63,10 @@ By the end of this section, you have identified the type of application you need
 	- [Configure applications with RabbitMQ credentials](#configure-applications-with-rabbitmq-credentials)
 	- [Deploy applications](#deploy-applications)
 	- [How to kill connections](#how-to-kill-connections)
+- [Application health and metrics monitoring](#application-health-and-metrics-monitoring)
+	- [Gathering health status](#gathering-health-status)
+	- [Gathering metrics](#gathering-metrics)
+	- [Gathering prometheus metrics](#gathering-prometheus-metrics)
 - [Application types](#application-types)
 	- [Transient consumer](#transient-consumer)
 	- [Durable consumer](#durable-consumer)
@@ -341,6 +345,96 @@ RABBIT=robbit cloudfoundry/kill-conn-grep fire
 
 > Note: The script creates a Service Key with the name robbit-chaos and it uses the credentials from
 the service key to kill connections
+
+## Application health and metrics monitoring
+
+By default, all the applications in this workshop exposes Spring Boot Actuator management endpoint.
+[Here](parent/pom.xml) is where we include the actuator dependency and here is where we configure it.
+
+### Gathering health status
+
+Gathering the health of the application and its components, in particular, RabbitMQ client and Spring Cloud Stream Binder:
+```bash
+curl localhost:8082/actuator/health | jq .
+```
+```json
+{
+  "status": "UP",
+  "components": {
+    "binders": {
+      "status": "UP",
+      "components": {
+        "rabbit": {
+          "status": "UP",
+          "details": {
+            "version": "3.8.0-rc.1"
+          }
+        }
+      }
+    },
+    "diskSpace": {
+      "status": "UP",
+      "details": {
+        "total": 499963174912,
+        "free": 334605049856,
+        "threshold": 10485760,
+        "exists": true
+      }
+    },
+    "ping": {
+      "status": "UP"
+    },
+    "rabbit": {
+      "status": "UP",
+      "details": {
+        "version": "3.8.0-rc.1"
+      }
+    }
+  }
+}
+```
+
+### Gathering metrics
+
+Gathering all the metrics emitted by the Java RabbitMQ client:
+```bash
+curl -s localhost:8080/actuator/metrics | jq -r '.names[]' | grep rabbitmq | sort
+
+rabbitmq.acknowledged
+rabbitmq.acknowledged_published
+rabbitmq.channels
+rabbitmq.connections
+rabbitmq.consumed
+rabbitmq.failed_to_publish
+rabbitmq.not_acknowledged_published
+rabbitmq.published
+rabbitmq.rejected
+rabbitmq.unrouted_published
+```
+
+
+### Gathering prometheus metrics
+
+To expose prometheus metrics we need to include an additional dependency. To have this
+dependency include we build the applications using `prometheus` Maven profile.
+```bash
+mvn -Pprometheus
+```
+
+```bash
+curl localhost:8080/actuator/prometheus
+# HELP system_cpu_usage The "recent cpu usage" for the whole system
+# TYPE system_cpu_usage gauge
+system_cpu_usage 0.056640625
+# HELP jvm_classes_loaded_classes The number of classes that are currently loaded in the Java virtual machine
+# TYPE jvm_classes_loaded_classes gauge
+jvm_classes_loaded_classes 10054.0
+# HELP rabbitmq_acknowledged_total
+# TYPE rabbitmq_acknowledged_total counter
+rabbitmq_acknowledged_total{name="rabbit",} 0.0
+# HELP spring_integration_handlers The number of message handler
+```
+
 
 ## Application types
 

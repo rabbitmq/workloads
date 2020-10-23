@@ -15,8 +15,6 @@ function generate_manifest {
 applications:
 - name: $APP_FOLDER_NAME
   path: $APP_FOLDER/target/$APP_FOLDER_NAME-0.0.1-SNAPSHOT.jar
-  health-check-type: port
-  no-route: true
   env:
     SPRING_PROFILES_ACTIVE: cloud
     JBP_CONFIG_SPRING_AUTO_RECONFIGURATION: '{enabled: false}'
