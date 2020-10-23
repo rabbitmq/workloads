@@ -349,7 +349,7 @@ the service key to kill connections
 ## Application health and metrics monitoring
 
 By default, all the applications in this workshop exposes Spring Boot Actuator management endpoint.
-[Here](parent/pom.xml) is where we include the actuator dependency and here is where we configure it.
+[Here](parent/pom.xml) is where we include the actuator dependency and [here](fire-and-forget-producer/src/main/resources/application-management.yml) is where one of the applications configures it.
 
 ### Gathering health status
 
@@ -416,7 +416,7 @@ rabbitmq.unrouted_published
 ### Gathering prometheus metrics
 
 To expose prometheus metrics we need to include an additional dependency. To have this
-dependency include we build the applications using `prometheus` Maven profile.
+dependency [included](parent/pom.xml#L94-L101) we build the applications using `prometheus` Maven profile.
 ```bash
 mvn -Pprometheus
 ```
