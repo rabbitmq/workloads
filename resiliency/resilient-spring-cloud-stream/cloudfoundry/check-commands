@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set +x
+SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+function check-jq-installed {
+  if ! command -v jq &> /dev/null
+  then
+    echo "jq could not be found"
+    echo "To install it on mac: brew install jq"
+    echo "To install it on linux: sudo yum install jq"
+    exit
+  fi
+}
+function curl-installed {
+  if ! command -v curl &> /dev/null
+  then
+    echo "curl could not be found"
+    exit
+  fi
+}
+function ensure-chaos-service-key {
+  tmpfile=$(mktemp)
+  if cf service-key $1 $1-chaos | tail -n +3 &> $tmpfile; then
+      jq -r .http_api_uri $tmpfile
+  else
+      cf create-service-key $1 $1-chaos -c '{"tags": "administrator"}' &> /dev/null
+      cf service-key $1 $1-chaos | tail -n +3 &> $tmpfile
+      jq -r .http_api_uri $tmpfile
+  fi
+
+}

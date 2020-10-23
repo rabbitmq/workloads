@@ -61,6 +61,8 @@ By the end of this section, you have identified the type of application you need
 	- [How to run the applications like if they were in Cloud Foundry](#how-to-run-the-applications-like-if-they-were-in-cloud-foundry)
 - [Running workshop with Cloud Foundry](#running-workshop-with-cloud-foundry)
 	- [Configure applications with RabbitMQ credentials](#configure-applications-with-rabbitmq-credentials)
+	- [Deploy applications](#deploy-applications)
+	- [How to kill connections](#how-to-kill-connections)
 - [Application types](#application-types)
 	- [Transient consumer](#transient-consumer)
 	- [Durable consumer](#durable-consumer)
@@ -206,8 +208,9 @@ To launch the 3-node cluster, we run the script:
 docker/deploy-rabbit-cluster
 ```
 
-The cluster address is : localhost:5673, localhost:5674, localhost:5675
-It has a RabbitMQ user per application with `guest` as the password and the default virtual host
+The cluster address is : localhost:5673, localhost:5674, localhost:5675.
+It has a RabbitMQ user per application with username matching the application name and
+`guest` as the password and the default virtual host.
 
 For more details check out these configuration files:
 - [rabbitmq-cluster.conf](docker/rabbitmq-cluster.conf)
@@ -217,7 +220,7 @@ For more details check out these configuration files:
 
 ### Configure applications with RabbitMQ credentials
 
-By default, all applications are configured to connect to a 3-node cluster.
+By default, all applications are configured to connect to the [3-node cluster](#deploy-3-node-cluster).
 
 Under `src/main/resources` of each application project there is an `application-cluster.yml` file with
 RabbitMQ's binder configuration that looks like this:
@@ -231,7 +234,7 @@ spring:
 
 ```
 
-Our applications use a single/unnamed RabbitMQ cluster. Following Spring Cloud Stream best practice, we should use a
+Our applications use a single RabbitMQ cluster. Following Spring Cloud Stream best practice, we should use a
  *unnamed binder*, configured using Spring AMQP settings as shown above. If we needed more than one cluster, we would use *named binders* configured using `spring.cloud.stream.binders.<binderName>`. There is a sample named binder
  [here](durable-consumer/src/main/resources/application-named-cluster.yml) which we are not using at all in our
  applications. It is here only for reference.
@@ -270,7 +273,7 @@ This is what we need to do it:
 	```
 	mvn -Pcloudfoundry
 	```
-	> We opted to optionally include the [Java CFEnv](https://github.com/pivotal-cf/java-cfenv) dependency only when
+	> We chose to include the [Java CFEnv](https://github.com/pivotal-cf/java-cfenv) dependency only when
 	we know the application is going to run in Cloud Foundry. It does not cause any harm having it permanently though.
 
 2. Launch the application via a new script called `cloudfoundry/run` as shown below:
@@ -297,16 +300,47 @@ This is what we need to do it:
 
 ### Configure applications with RabbitMQ credentials
 
-Once we have the application bound to a RabbitMQ service, our application gets the credentials
-via the `VCAP_SERVICES` environment variable.
+We need to perform two easy steps in order to configure our applications to read RabbitMQ credentials from Cloud Foundry.
 
-We are going to include [Java CFEnv](https://github.com/pivotal-cf/java-cfenv) as a dependency to our
-application.
+First, we are going to include [Java CFEnv](https://github.com/pivotal-cf/java-cfenv) as a dependency to our
+applications. By default, our applications do not include this dependency. To have it included, we need to build the applications with the `cloudfoundry` Maven profile like shown below. For more details, check out the [parent/pom.xml](https://github.com/rabbitmq/workloads/blob/master/resiliency/resilient-spring-cloud-stream/parent/pom.xml#L103-L123).
+```bash
+mvn -Pcloudfoundry
+```
 
-For this library to read credentials from  `VCAP_SERVICES` we have to set the following environment variables in the application's manifest:
+Second, we have to set the following environment variables in the application's manifest:
 - `JBP_CONFIG_SPRING_AUTO_RECONFIGURATION '{enabled: false}'` This disables Java Buildpack AutoReconfiguration not necessary in this case thanks to Java CFEnv library.
 - `SPRING_PROFILES_ACTIVE 'cloud'` The library requires this profile in order to read from `VCAP_SERVICES`
 
+### Deploy applications
+
+We have provided a convenient script that deploys any of the application's types in this workshop. For instance,
+to deploy `fire-and-forget-producer` we run the following command. The parameter is the actual application's folder name:
+```bash
+cloudfoundry/deploy fire-and-forget-producer
+```
+
+This script does the following:
+- Generate the application manifest with the corresponding environment variables and `rabbit` service instance
+- Invoke `cf push` command
+
+If our RabbitMQ Service instance has a different name, e.g. `robbit`, we run the script like this:
+```bash
+RABBIT=robbit cloudfoundry/deploy fire-and-forget-producer
+```
+
+### How to kill connections
+
+Later on the workshop, you will see how we simulate connections failures by killing connections.
+The workshop examples are based on docker. The command below kills all the connections in the RabbitMq
+service instance called `robbit` whose name has the word `fire` on it.
+
+```bash
+RABBIT=robbit cloudfoundry/kill-conn-grep fire
+```
+
+> Note: The script creates a Service Key with the name robbit-chaos and it uses the credentials from
+the service key to kill connections
 
 ## Application types
 

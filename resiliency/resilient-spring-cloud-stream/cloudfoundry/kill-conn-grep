@@ -6,11 +6,13 @@ SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 function kill_connections {
   $SCRIPT/list-conn | grep "$1" | awk -F '\t' '{print $1}' | while read line; do
-    connection=`$SCRIPT/rawurlencode "$line"`
+    connection=`$SCRIPT/../docker/rawurlencode "$line"`
     echo "Killing connection $line"
-    curl -s -X DELETE -u guest:guest localhost:${PORT:-15673}/api/connections/$connection
+    curl -s -X DELETE ${RABBIT_URL}connections/$connection
   done
 }
 
 curl-installed
+RABBIT_URL=$(ensure-chaos-service-key $RABBIT)
+
 kill_connections $1

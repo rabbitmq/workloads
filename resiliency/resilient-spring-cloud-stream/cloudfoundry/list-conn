@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+RABBIT=${RABBIT:-'rabbit'}
+
+. $SCRIPT/check-commands
+
+check-jq-installed
+curl-installed
+
+RABBIT_URL=$(ensure-chaos-service-key $RABBIT)
+echo "Connections available in $RABBIT:"
+curl -s -k ${RABBIT_URL}connections | jq -r '.[]| [.name,.user_provided_name,.user,.node]|@tsv'

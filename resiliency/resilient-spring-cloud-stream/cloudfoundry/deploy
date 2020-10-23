@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+set +x
+
+APP_FOLDER_NAME=${1:?second parameter is the application folder name}
+RABBIT=${RABBIT:-rabbit}
+SCRIPT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+APP_FOLDER=$SCRIPT/../$APP_FOLDER_NAME
+
+[ ! -d "$APP_FOLDER" ] && (echo "Directory $APP_FOLDER DOES NOT exists."; exit -1;)
+
+function generate_manifest {
+  cat > $1 << EOM
+---
+applications:
+- name: $APP_FOLDER_NAME
+  path: $APP_FOLDER/target/$APP_FOLDER_NAME-0.0.1-SNAPSHOT.jar
+  health-check-type: port
+  no-route: true
+  env:
+    SPRING_PROFILES_ACTIVE: cloud
+    JBP_CONFIG_SPRING_AUTO_RECONFIGURATION: '{enabled: false}'
+  services:
+    - $RABBIT
+EOM
+
+}
+
+tmpfile=$(mktemp)
+echo "Generating manifest -> $tmpfile"
+generate_manifest $tmpfile
+
+cf push -f $tmpfile
