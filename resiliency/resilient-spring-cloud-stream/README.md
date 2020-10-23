@@ -53,10 +53,14 @@ By the end of this section, you have identified the type of application you need
 	- [Building the code](#building-the-code)
 	- [How projects are structured](#how-projects-are-structured)
 	- [Refresher on how application configuration works](#refresher-on-how-application-configuration-works)
-	- [How to deploy RabbitMQ](#how-to-deploy-rabbitmq)
+- [Running workshop with Docker](#running-workshop-with-docker)
+	- [Deploy a standalone RabbitMQ server](#deploy-a-standalone-rabbitmq-server)
+	- [Deploy 3-node cluster](#deploy-3-node-cluster)
+	- [Configure applications with RabbitMQ credentials](#configure-applications-with-rabbitmq-credentials)
 	- [How to run the applications](#how-to-run-the-applications)
 	- [How to run the applications like if they were in Cloud Foundry](#how-to-run-the-applications-like-if-they-were-in-cloud-foundry)
-	- [How to run the applications in Cloud Foundry](#how-to-run-the-applications-in-cloud-foundry)
+- [Running workshop with Cloud Foundry](#running-workshop-with-cloud-foundry)
+	- [Configure applications with RabbitMQ credentials](#configure-applications-with-rabbitmq-credentials)
 - [Application types](#application-types)
 	- [Transient consumer](#transient-consumer)
 	- [Durable consumer](#durable-consumer)
@@ -154,7 +158,7 @@ from a common [parent](parent) project. The `parent` project centralizes depende
 required by the children projects.
 
 Common code shared by all application types resides in the [common](common) project. Therefore,
-all applications types has `common` as a dependency too.
+all applications types have [common](common) as a dependency too.
 
 ### Refresher on how application configuration works
 
@@ -181,30 +185,59 @@ Spring Cloud Stream RabbitMQ Binder uses Spring AMQP under the covers. The numbe
 2. [SCS RabbitMQ Binder](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-binder-properties) properties with `spring.cloud.stream.rabbit.binder` prefix
 3. [SCS RabbitMQ Bindings](https://github.com/spring-cloud/spring-cloud-stream-binder-rabbit#rabbitmq-consumer-properties) with `spring.cloud.stream.rabbit.bindings.<channelName>` prefix
 
+## Running workshop with Docker
 
-### How to deploy RabbitMQ
+For convenience, the entire workshop was written so that anyone could follow it along from their
+own laptops using Docker.
+
+### Deploy a standalone RabbitMQ server
+
+To launch a standalone server, we run the script:
+```bash
+docker/deploy-rabbit
+```
+
+However during the workshop we will use a 3-node cluster instead.
+
+### Deploy 3-node cluster
+
+To launch the 3-node cluster, we run the script:
+```bash
+docker/deploy-rabbit-cluster
+```
+
+The cluster address is : localhost:5673, localhost:5674, localhost:5675
+It has a RabbitMQ user per application with `guest` as the password and the default virtual host
+
+For more details check out these configuration files:
+- [rabbitmq-cluster.conf](docker/rabbitmq-cluster.conf)
+- [enabled_plugins](docker/enabled_plugins)
+- [definitions.json](docker/definitions.json)
+- [docker-compose.yml](docker/docker-compose.yml)
+
+### Configure applications with RabbitMQ credentials
 
 By default, all applications are configured to connect to a 3-node cluster.
+
 Under `src/main/resources` of each application project there is an `application-cluster.yml` file with
 RabbitMQ's binder configuration that looks like this:
 ```yaml
 spring:
-  cloud:
-    stream:
-      binders:
-        local_rabbit:
-          type: rabbit
-          defaultCandidate: true
-          environment:
-            spring:
-              rabbitmq:
-                addresses: localhost:5673,localhost:5674,localhost:5675
-                username: guest
-                password: guest
-                virtual-host: /
+  rabbitmq:
+    addresses: localhost:5673,localhost:5674,localhost:5675
+    username: durable-consumer
+    password: guest
+    virtual-host: /
 
 ```
-And every application is configured with the `cluster` profile in their `application.yml`:
+
+Our applications use a single/unnamed RabbitMQ cluster. Following Spring Cloud Stream best practice, we should use a
+ *unnamed binder*, configured using Spring AMQP settings as shown above. If we needed more than one cluster, we would use *named binders* configured using `spring.cloud.stream.binders.<binderName>`. There is a sample named binder
+ [here](durable-consumer/src/main/resources/application-named-cluster.yml) which we are not using at all in our
+ applications. It is here only for reference.
+
+
+And finally, every application is configured with the `cluster` profile in their `application.yml`:
 ```yaml
 spring:
   application:
@@ -215,10 +248,6 @@ spring:
       - cluster
 ```
 
-To launch the 3-node cluster, we run the script:
-```bash
-docker/deploy-rabbit-cluster
-```
 
 ### How to run the applications
 
@@ -241,6 +270,9 @@ This is what we need to do it:
 	```
 	mvn -Pcloudfoundry
 	```
+	> We opted to optionally include the [Java CFEnv](https://github.com/pivotal-cf/java-cfenv) dependency only when
+	we know the application is going to run in Cloud Foundry. It does not cause any harm having it permanently though.
+
 2. Launch the application via a new script called `cloudfoundry/run` as shown below:
 	```
 	cloudfoundry/run fire-and-forget-producer
@@ -261,11 +293,19 @@ This is what we need to do it:
 	- invokes the corresponding `run.sh` under the specified application's folder.
 
 
-### How to run the applications in Cloud Foundry
+## Running workshop with Cloud Foundry
 
-We have to set the following environment variables in the application's manifest:
-- `JBP_CONFIG_SPRING_AUTO_RECONFIGURATION '{enabled: false}'`
-- `SPRING_PROFILES_ACTIVE 'cloud'`
+### Configure applications with RabbitMQ credentials
+
+Once we have the application bound to a RabbitMQ service, our application gets the credentials
+via the `VCAP_SERVICES` environment variable.
+
+We are going to include [Java CFEnv](https://github.com/pivotal-cf/java-cfenv) as a dependency to our
+application.
+
+For this library to read credentials from  `VCAP_SERVICES` we have to set the following environment variables in the application's manifest:
+- `JBP_CONFIG_SPRING_AUTO_RECONFIGURATION '{enabled: false}'` This disables Java Buildpack AutoReconfiguration not necessary in this case thanks to Java CFEnv library.
+- `SPRING_PROFILES_ACTIVE 'cloud'` The library requires this profile in order to read from `VCAP_SERVICES`
 
 
 ## Application types
