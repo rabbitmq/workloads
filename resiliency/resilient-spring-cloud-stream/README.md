@@ -769,15 +769,30 @@ Spring Cloud Streams helps us write this type of application. To produce an outp
  }
 ```
 
-**Why is this application unreliable?**
+#### Why is this application unreliable?
 
-A **processor** is after all, a *producer* and a *consumer*. In the previous sections, we learnt the
-techniques to make a *consumer* reliable and a *producer* separately. Those same techniques applies to
-*processors* too. In order words, if we do not want to lose messages, at the very least, we need to use
-a *durable consumer* combined with a producer that uses *publisher confirm*.
+A **processor** is after all, a *producer* and a *consumer*. From the applications types we have seen so far,
+ we learnt the techniques to make a *consumer* and a *producer* reliable, but separately.
+Those same techniques applies to *processors* too. In order words, if we do not want to lose messages, at the very least, we have to use a *durable consumer* combined with a producer that uses *publisher confirm*.
 
-However, this processor is unreliable because it uses a *fire-and-forget-producer* style in order to
-send the returned `Trade` object to RabbitMQ.
+However, this processor application is unreliable because it uses a *fire-and-forget-producer* style in order to
+send the returned `Trade` object to RabbitMQ. Why is that a problem? See the sequence of events below:
+
+- Spring Cloud Stream receives a message which contains a `Trade` object
+- the `execute()` method is invoked with the `Trade` object
+- the `execute()` method finishes processing it and returns another `Trade` object
+- Spring Cloud Stream sends the returned `Trade` object and acknowledges the incoming `Trade` object
+- RabbitMQ fails to send the `Trade` object
+- At this point, even if we tried to send the message again, we are at risk of loosing the incoming `Trade` message.
+Because the message is gone from the input queue and if our application crashes, we have lost it forever.
+
+If we cannot afford to lose a single message, we have to acknowledge the input message after we have successfully
+sent it, not earlier.
+
+Nowadays, the only way to achieve it is by sending the message ourselves rather than relying on
+Spring Cloud Stream to do it for us. We should use a method rather than a function. And the method should wait until the message is sent before returning.
+
+There are two ways of doing it. Either we can use the *interactive-way* explained in the [reliable producer](#reliable-producer) or we use a [new mechanism introduced in 2.2 of Spring AMQP](https://docs.spring.io/spring-amqp/reference/html/#template-confirms).
 
 
 ## Testing Applications
