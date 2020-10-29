@@ -792,7 +792,8 @@ If we cannot afford to lose a single message, we have to acknowledge the input m
 sent it, not earlier.
 
 Nowadays, the only way to achieve it is by sending the message ourselves rather than relying on
-Spring Cloud Stream to do it for us. We should use a method rather than a function. And the method should wait until the message is sent before returning.
+Spring Cloud Stream to do it for us via the function-construct combined with the `@Output` annotation.
+We should use a method rather than a function. And the method should wait until the message is sent before returning.
 
 There are two ways of doing it. Either we can use the *interactive-way* explained in the [reliable producer](#reliable-producer) or we use a [new mechanism introduced in 2.2 of Spring AMQP](https://docs.spring.io/spring-amqp/reference/html/#template-confirms).
 
