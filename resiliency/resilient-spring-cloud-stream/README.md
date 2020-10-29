@@ -316,6 +316,8 @@ Second, we have to set the following environment variables in the application's 
 - `JBP_CONFIG_SPRING_AUTO_RECONFIGURATION '{enabled: false}'` This disables Java Buildpack AutoReconfiguration not necessary in this case thanks to Java CFEnv library.
 - `SPRING_PROFILES_ACTIVE 'cloud'` The library requires this profile in order to read from `VCAP_SERVICES`
 
+[Here](cloudfoundry/deploy#L15-L22) is the script we will use later on to deploy our applications to Cloud Foundry. In this script, you can see how we generate on the fly the application manifest with the 2 environment variables.
+
 ### Deploy applications
 
 We have provided a convenient script that deploys any of the application's types in this workshop. For instance,
