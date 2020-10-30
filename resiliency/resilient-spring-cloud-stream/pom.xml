@@ -18,6 +18,7 @@
 			<module>durable-consumer</module>
 			<module>reliable-consumer</module>
 			<module>reliable-producer</module>
+			<module>unreliable-processor</module>
 
 		</modules>
 
