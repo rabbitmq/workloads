@@ -325,9 +325,10 @@ to deploy `fire-and-forget-producer` we run the following command. The parameter
 ```bash
 cloudfoundry/deploy fire-and-forget-producer
 ```
+**IMPORTANT**: It assumes there is a RabbitMQ service instance named `rabbit`. See more details below.
 
 This script does the following:
-- Generate the application manifest with the corresponding environment variables and `rabbit` service instance
+- Generate the application manifest with the corresponding environment variables and binds to the `rabbit` service instance
 - Invoke `cf push` command
 
 If our RabbitMQ Service instance has a different name, e.g. `robbit`, we run the script like this:
@@ -422,6 +423,8 @@ dependency [included](parent/pom.xml#L94-L101) we build the applications using `
 ```bash
 mvn -Pprometheus
 ```
+
+> To run with prometheus and cloudfoundry profile use `mvn -Pprometheus,cloudfoundry`
 
 ```bash
 curl localhost:8080/actuator/prometheus
