@@ -775,15 +775,16 @@ Spring Cloud Stream helps us write this type of application. To produce an outpu
 ```
 
 Note: `@StreamListener` is officially deprecated; the SCSt team recommends using the functional model moving forward.
- 	Here it is how we should declare the execute function:
-	```Java
-	@Bean
-	public Function<Message<Trade>, Trade> execute() {          // <--- returned Trade is sent to outbound channel
-		return msg -> ...
-	}
-	```
+Here it is how we should declare the execute function:
 
- 	And the bindings are `execute-in-0`, `execute-out-0`
+```Java
+@Bean
+public Function<Message<Trade>, Trade> execute() {          // <--- returned Trade is sent to outbound channel
+	return msg -> ...
+}
+```
+
+And the bindings are `execute-in-0`, `execute-out-0`
 
 
 #### Why is this application unreliable?
@@ -810,6 +811,7 @@ Nowadays, the only way to achieve it is by sending the message ourselves rather 
 There are two ways of doing it. Either we can use the *interactive-way* explained in the [reliable producer](#reliable-producer) or we use a [new mechanism introduced in 2.2 of Spring AMQP](https://docs.spring.io/spring-amqp/reference/html/#template-confirms).
 
 **NOTE**: It will also possible to support reliability in the next version Spring Cloud Stream (3.1). See sample code below:
+
 ```Java
 @Autowired
 StreamBridge bridge;
