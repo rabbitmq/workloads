@@ -747,7 +747,7 @@ In terms of Spring Cloud Stream, this is what we need to do:
 
 So far we have seen **consumer** and **producer** applications, but there is a third application type called **Processor**. A **Processor** application takes an input message, processes it and produces an output message.
 
-Spring Cloud Streams helps us write this type of application. To produce an output message, our `@StreamListener` method should return an Object and must be annotated with `@Output` to indicate where the message should go to. For instance, below we have the Java function `execute` that returns a `Trade` object which is sent to the `deal-done-output` channel.
+Spring Cloud Stream helps us write this type of application. To produce an output message, our `@StreamListener` method should return an Object and must be annotated with `@Output` to indicate where the message should go to. For instance, below we have the Java function `execute` that returns a `Trade` object which is sent to the `deal-done-output` channel.
 
 ```Java
    interface MessagingBridge {
@@ -774,11 +774,23 @@ Spring Cloud Streams helps us write this type of application. To produce an outp
  }
 ```
 
+Note: `@StreamListener` is officially deprecated; the SCSt team recommends using the functional model moving forward.
+ 	Here it is how we should declare the execute function:
+	```Java
+	@Bean
+	public Function<Message<Trade>, Trade> execute() {          // <--- returned Trade is sent to outbound channel
+		return msg -> ...
+	}
+	```
+
+ 	And the bindings are `execute-in-0`, `execute-out-0`
+
+
 #### Why is this application unreliable?
 
 A **processor** is after all, a *producer* and a *consumer*. From the applications types we have seen so far,
  we learnt the techniques to make a *consumer* and a *producer* reliable, but separately.
-Those same techniques applies to *processors* too. In order words, if we do not want to lose messages, at the very least, we have to use a *durable consumer* combined with a producer that uses *publisher confirm*.
+Those same techniques apply to *processors* too. In order words, if we do not want to lose messages, at the very least, we have to use a *durable consumer* combined with a producer that uses *publisher confirm*.
 
 However, this processor application is unreliable because it uses a *fire-and-forget-producer* style in order to
 send the returned `Trade` object to RabbitMQ. Why is that a problem? See the sequence of events below:
@@ -791,15 +803,38 @@ send the returned `Trade` object to RabbitMQ. Why is that a problem? See the seq
 - At this point, even if we tried to send the message again, we are at risk of loosing the incoming `Trade` message.
 Because the message is gone from the input queue and if our application crashes, we have lost it forever.
 
-If we cannot afford to lose a single message, we have to acknowledge the input message after we have successfully
-sent it, not earlier.
+If we cannot afford to lose a single message, we have to acknowledge the input message after we have successfully sent it, not earlier.
 
-Nowadays, the only way to achieve it is by sending the message ourselves rather than relying on
-Spring Cloud Stream to do it for us via the function-construct combined with the `@Output` annotation.
-We should use a method rather than a function. And the method should wait until the message is sent before returning.
+Nowadays, the only way to achieve it is by sending the message ourselves rather than relying on Spring Cloud Stream to do it for us via the function-construct combined with the `@Output` annotation. We should use a method rather than a function. And the method should wait until the message is sent before returning.
 
 There are two ways of doing it. Either we can use the *interactive-way* explained in the [reliable producer](#reliable-producer) or we use a [new mechanism introduced in 2.2 of Spring AMQP](https://docs.spring.io/spring-amqp/reference/html/#template-confirms).
 
+**NOTE**: It will also possible to support reliability in the next version Spring Cloud Stream (3.1). See sample code below:
+```Java
+@Autowired
+StreamBridge bridge;
+​
+@Bean
+Consumer<Trade> execute() {
+	return msg -> {
+		...
+		CorrelationData cd = new CorrelationData(msg.getHeaders().getId());
+		this.bridge.send("outputChannel", MessageBuilder.fromMessage(msg)
+			.setHeader(AmqpHeaders.PUBLISH_CONFIRM_CORRELATION, cd)
+			.build());
+		Confirm confirm = cd.getFuture().get(10, TimeUnit.SECONDS);
+		if (cd.getReturnedMessage != null) {
+			...
+		}
+		if (!confirm.isAck()) {
+			...
+		}
+	}
+}
+```
+​
+`AmqpHeaders.PUBLISH_CONFIRM_CORRELATION` was added in Spring Integration 5.4.
+https://docs.spring.io/spring-integration/docs/current/reference/html/amqp.html#alternative-confirms-returns
 
 ## Testing Applications
 
