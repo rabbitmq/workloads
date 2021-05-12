@@ -1,10 +1,23 @@
 spring:
   application.name: sample-spring-rabbitmq
-  rabbitmq:
-    cache:
-      channel:
-        size: 15
 
+  rabbitmq:
+    host: ${vcap.services.test-od.credentials.hostname:}
+    addresses: ${vcap.services.test-od.credentials.hostnames:}
+    username: ${vcap.services.test-od.credentials.username:}
+    password: ${vcap.services.test-od.credentials.password:}
+    port: ${vcap.services.test-od.credentials.protocols.amqp.port:5672}
+    virtual-host: ${vcap.services.Rabbit-oe.credentials.vhost:}
+
+
+management:
+  endpoint:
+    env:
+      keys-to-sanitize:
+        - none
+    configprops:
+      keys-to-sanitize:
+        - none
 
 management.endpoints.web.exposure.include: "*"
 management.endpoints.web.exposure.exclude:
@@ -20,3 +33,6 @@ durable:
   enabled: true
   producer.enabled: true
   consumer.enabled: true
+
+#  ssl:
+#    enabled: ${vcap.services.Rabbit-oe.credentials.ssl:true}

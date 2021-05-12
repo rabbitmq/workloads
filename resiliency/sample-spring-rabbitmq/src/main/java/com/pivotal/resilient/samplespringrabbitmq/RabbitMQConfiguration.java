@@ -44,7 +44,7 @@ public class RabbitMQConfiguration {
     @Bean
     public RabbitConnectionFactoryConfig rabbitConnectionFactoryConfig(RabbitProperties rabbitProperties) {
         Map<String, Object> properties = new HashMap<>();
-        properties.put("channelCacheSize", rabbitProperties.getCache().getChannel().getSize());
+        //properties.put("channelCacheSize", rabbitProperties.getCache().getChannel().getSize());
         RabbitConnectionFactoryConfig connectionFactoryConfig = new RabbitConnectionFactoryConfig(properties);
         return connectionFactoryConfig;
     }

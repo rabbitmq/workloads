@@ -16,5 +16,5 @@ spring:
     stream:
       bindings: # spring cloud stream binding configuration
         trade-logger-input:
-          destination: trades
+          destination: issue
 
