@@ -1,9 +1,5 @@
 spring:
   application.name: sample-spring-rabbitmq
-  rabbitmq:
-    cache:
-      channel:
-        size: 15
 
 
 management.endpoints.web.exposure.include: "*"
