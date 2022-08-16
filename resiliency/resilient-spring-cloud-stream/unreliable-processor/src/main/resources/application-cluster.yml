@@ -1,8 +1,0 @@
-
-
-spring:
-  rabbitmq:
-    addresses: localhost:5673,localhost:5674,localhost:5675
-    username: durable-consumer
-    password: guest
-    virtual-host: /

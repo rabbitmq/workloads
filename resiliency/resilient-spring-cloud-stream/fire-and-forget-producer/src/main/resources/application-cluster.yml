@@ -1,9 +1,0 @@
-
-# Spring AMQP Configuration
-# Spring Cloud Stream single binder configuration
-spring:
-  rabbitmq:
-    addresses: localhost:5673,localhost:5674,localhost:5675
-    username: fire-and-forget-producer
-    password: guest
-    virtual-host: /
